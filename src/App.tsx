@@ -7,7 +7,7 @@ import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import TeamDetail from './pages/TeamDetail'
 import Admin from './pages/Admin'
-import Me, { ProfileHost, openProfile } from './pages/Me'
+import Me, { ProfileHost, PublishHost, openProfile } from './pages/Me'
 import { PointsPill, Toaster } from './components/points'
 import { IClose, IHome, ILogout, IMenu, IShield, IUser } from './components/icons'
 import { Avatar } from './components/Avatar'
@@ -122,6 +122,7 @@ export default function App() {
       <AiSheet />
       <DetailHost />
       <ProfileHost />
+      <PublishHost />
       <Toaster />
     </AppCtx.Provider>
   )

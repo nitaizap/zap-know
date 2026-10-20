@@ -30,9 +30,9 @@ export const TYPE_LABEL: Record<ResType, string> = {
   course: 'קורס', article: 'מאמר', podcast: 'פודקאסט', video: 'סרטון', news: 'חדשות', doc: 'מסמך צוות', bite: 'בקצרה',
 }
 
-export function TypeBadge({ item, bite, className }: { item: Typed; bite?: boolean; className?: string }) {
+export function TypeBadge({ item, bite, className, note }: { item: Typed; bite?: boolean; className?: string; note?: string }) {
   const t = typeOf(item, bite)
-  const len = item.minutes ? fmtMinutes(item.minutes) : ''
+  const len = t === 'doc' && note ? note : item.minutes ? fmtMinutes(item.minutes) : ''
   return (
     <span className={`tbadge t-${t}${className ? ` ${className}` : ''}`}>
       {ICON[t]}<b>{TYPE_LABEL[t]}</b>{len && <span>· {len}</span>}

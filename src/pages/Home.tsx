@@ -20,7 +20,7 @@ export default function Home() {
   return (
     <Feed key={tab.source} source={tab.source}
       head={TABS.map((t) => (
-        <button key={t.key} role="tab" aria-selected={t === tab} className={`tk-tab${t === tab ? ' on' : ''}`} onClick={() => pick(t.key)}>{t.label}</button>
+        <button key={t.key} role="tab" aria-selected={t === tab} className={`tk-tab${t === tab ? ' on' : ''}`} data-lane={t.key || 'all'} onClick={() => pick(t.key)}>{t.label}</button>
       ))} />
   )
 }

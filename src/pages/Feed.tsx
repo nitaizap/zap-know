@@ -6,7 +6,7 @@ import { BoardRow, earn } from '../components/points'
 import { BoardCard } from '../components/board'
 import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
 import { PageNav, useApp } from '../App'
-import { openProfile } from './Me'
+import { openProfile, openPublish } from './Me'
 import '../feed.css'
 import '../tiktok.css'
 import '../desk.css'
@@ -437,6 +437,10 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
               </Link>
             )}
             {!desk && chip}
+            {desk && <button type="button" className="tk-publish" onClick={() => openPublish()}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              לפרסם
+            </button>}
             <EpisodeBell />
             <AiButton />
             {desk && (chip ?? (
@@ -677,7 +681,9 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
         <div className="fd-stamp save" style={{ opacity: stampSave }} aria-hidden>שומר לי</div>
         <div className="fd-stamp hide" style={{ opacity: stampHide }} aria-hidden>לא בשבילי</div>
 
-        <TypeBadge item={item} bite={bite} className="fd-type" />
+        <TypeBadge item={item} bite={bite} className="fd-type" note={team ? `צוות ${team.team}` : undefined} />
+        {/* A team doc shown on its tool's page: the tool's logo in the corner says which tool it is. */}
+        {item.doc_id && item.thumbnail_url && tools[0] && <span className="fd-toolchip"><ToolLogo name={mainTool(item.title_he, tools)} /></span>}
 
         {/* The caption is the way in: tap it to open, in place. */}
         <DetailLink {...targetOf(item)} className={`fd-cap${band ? ' band' : ''}`} label={`לפתוח: ${item.title_he}`}>
@@ -692,7 +698,7 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
 
       <div className="fd-rail" aria-label="פעולות">
         <div className="fd-likewrap">
-        <RailBtn label="אהבתי" count={s?.likes ?? item.likes ?? 0} on={s?.mine === 1} pop onClick={() => react(item.id, 1)}><IcoHeart /></RailBtn>
+        <RailBtn tone="like" label="אהבתי" count={s?.likes ?? item.likes ?? 0} on={s?.mine === 1} pop onClick={() => react(item.id, 1)}><IcoHeart /></RailBtn>
         {stack.length > 0 && (
           // The faces sit on a ring around the heart (2, 10, 4, 8 o'clock), on its edge, never over it.
           <span className="fd-ring">
@@ -705,10 +711,10 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
           </span>
         )}
         </div>
-        <RailBtn label="לא אהבתי" count={s?.dislikes ?? 0} on={s?.mine === -1} onClick={() => react(item.id, -1)}><IcoDown /></RailBtn>
-        <RailBtn label="תגובות" count={s?.comments_count ?? 0} onClick={onComments}><IcoChat /></RailBtn>
-        <RailBtn label="לשתף" count={s?.shares_count ?? 0} onClick={onShare}><IcoShare /></RailBtn>
-        <RailBtn label={kept ? 'נשמר' : 'לשמור'} on={kept} pop onClick={onKeep}><IcoSave /></RailBtn>
+        <RailBtn tone="dislike" label="לא אהבתי" count={s?.dislikes ?? 0} on={s?.mine === -1} onClick={() => react(item.id, -1)}><IcoDown /></RailBtn>
+        <RailBtn tone="comment" label="תגובות" count={s?.comments_count ?? 0} onClick={onComments}><IcoChat /></RailBtn>
+        <RailBtn tone="share" label="לשתף" count={s?.shares_count ?? 0} onClick={onShare}><IcoShare /></RailBtn>
+        <RailBtn tone="save" label={kept ? 'נשמר' : 'לשמור'} on={kept} pop onClick={onKeep}><IcoSave /></RailBtn>
         {listenMain && listenBtn}
         <div className="fd-more-wrap">
           <RailBtn label="עוד" on={menu} onClick={() => setMenu((m) => !m)}><IcoMore /></RailBtn>
@@ -865,6 +871,8 @@ const TOOL_SLUG: [RegExp, string][] = [
   [/zapier/i, 'zapier'], [/mailchimp/i, 'mailchimp'], [/chatgpt|openai/i, 'openai'], [/gemini/i, 'googlegemini'], [/bigquery/i, 'googlebigquery'],
   [/youtube/i, 'youtube'], [/shopify/i, 'shopify'], [/hotjar/i, 'hotjar'], [/google sheets|sheets/i, 'googlesheets'],
 ]
+const mainTool = (title: string, tools: string[]) => tools.find((t) => title.toLowerCase().includes(t.split(' / ')[0].toLowerCase())) ?? tools[0]
+
 function ToolLogo({ name }: { name: string }) {
   const slug = TOOL_SLUG.find(([re]) => re.test(name))?.[1]
   const [bad, setBad] = useState(false)
@@ -1108,11 +1116,11 @@ function QuoteSlide({ q, index }: { q: Quote; index: number }) {
   )
 }
 
-function RailBtn({ label, count, on, pop, busy, onClick, children }: {
-  label: string; count?: number; on?: boolean; pop?: boolean; busy?: boolean; onClick: () => void; children: React.ReactNode
+function RailBtn({ label, count, on, pop, busy, tone, onClick, children }: {
+  label: string; count?: number; on?: boolean; pop?: boolean; busy?: boolean; tone?: string; onClick: () => void; children: React.ReactNode
 }) {
   return (
-    <button className={`fd-rail-btn${on ? ' on' : ''}${on && pop ? ' pop' : ''}`} aria-label={count !== undefined ? `${label}, ${count}` : label}
+    <button className={`fd-rail-btn${tone ? ` tone-${tone}` : ''}${on ? ' on' : ''}${on && pop ? ' pop' : ''}`} aria-label={count !== undefined ? `${label}, ${count}` : label}
       aria-pressed={on} aria-busy={busy} onClick={(e) => { e.stopPropagation(); onClick() }}>
       <span className="fd-rail-ico">{children}</span>
       {count ? <span className="fd-rail-n">{count.toLocaleString('he-IL')}</span> : null}

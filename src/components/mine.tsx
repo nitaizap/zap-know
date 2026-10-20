@@ -273,12 +273,12 @@ export function AddCard({ onOpen }: { onOpen: () => void }) {
   return (
     <Card kicker="לשתף">
       <div className="mc-add">
-        <button type="button" className="mc-add-btn" onClick={onOpen} aria-label="להוסיף פוסט או מקור">
+        <button type="button" className="mc-add-btn" onClick={onOpen} aria-label="לפרסם פוסט או מקור">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
-        <h2>להוסיף פוסט או מקור</h2>
+        <h2>לפרסם פוסט או מקור</h2>
         <p>קישור, קובץ, הקלטה או כמה מילים. ה-AI כותב את הפוסט, מוסיף תמונה מהמקור ומפרסם, עם הקרדיט והנקודות שלכם.</p>
-        <button type="button" className="mc-btn" onClick={onOpen}>להתחיל</button>
+        <button type="button" className="mc-btn mc-publish" onClick={onOpen}>לפרסם</button>
       </div>
     </Card>
   )

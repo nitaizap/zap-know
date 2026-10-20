@@ -616,3 +616,36 @@
 button.tk-me { padding: 0; background: none; cursor: pointer; }
 .dt-actions { display: inline-flex; align-items: center; gap: 8px; }
 .dt-signout { border: 0; background: none; color: #4d6070; font: inherit; font-size: 14px; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 6px; }
+
+/* ---------- Colour by family (zap palette only; colour on the active state, idle stays glass) ----------
+   AI = yellow #ffc600 · לפרסם = green #00ab12 · new episode = pink #ff5c9e · like = red #ff210d ·
+   dislike = dark #001c32 · comments = navy #052b7a · share = purple-blue #485cc7 · save = yellow #ffc600.
+   Text/icons on light fills are dark #001c32, on dark fills white; all pairs ≥ 4.5:1 (icons ≥ 3:1). */
+.tk-publish { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border-radius: 999px; border: 0; flex: none;
+  background: #00ab12; color: #001c32; font: inherit; font-weight: 900; font-size: 15px; cursor: pointer; }
+.tk-publish:hover { background: #26b836; }
+.tk-publish:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; }
+.mc-publish { background: #00ab12 !important; color: #001c32 !important; }
+.mc-add-btn { background: #00ab12; box-shadow: 0 10px 30px rgba(0, 171, 18, .35); }
+.tk-head .tk-publish { height: 34px; padding: 0 10px; font-size: 13.5px; }
+.ep-bell.fresh { background: #ff5c9e; border-color: #ff5c9e; color: #001c32; }
+.ep-count { background: #001c32; color: #fff; }
+
+.fd-rail-btn.tone-like.on .fd-rail-ico { background: #fff; color: #ff210d; border-color: #fff; }
+.fd-rail-btn.tone-dislike.on .fd-rail-ico { background: #001c32; color: #fff; border-color: #fff; }
+.fd-rail-btn.tone-dislike.on .fd-rail-ico svg { fill: none; }
+.fd-rail-btn.tone-comment:hover .fd-rail-ico { background: #052b7a; }
+.fd-rail-btn.tone-share:hover .fd-rail-ico, .fd-rail-btn.tone-share.on .fd-rail-ico { background: #485cc7; border-color: #485cc7; color: #fff; }
+.fd-rail-btn.tone-save.on .fd-rail-ico { background: #ffc600; color: #001c32; border-color: #ffc600; }
+.fd-rail-btn.tone-save.on .fd-rail-ico svg { fill: currentColor; }
+
+/* Lane chips: each lane its own accent when active. */
+.tk-tab.on[data-lane="all"] { background: #052b7a; color: #fff; }
+.tk-tab.on[data-lane="in"] { background: #00ab12; color: #001c32; text-shadow: none; }
+.tk-tab.on[data-lane="out"] { background: #485cc7; color: #fff; }
+.tk-tab.on[data-lane="bites"] { background: #ff5c9e; color: #001c32; text-shadow: none; }
+
+/* A team doc on its tool's page: the tool's logo in the corner. */
+.fd-toolchip { position: absolute; z-index: 4; inset-inline-end: 12px; top: calc(max(8px, env(safe-area-inset-top)) + 104px); }
+.desk .fd-toolchip { top: 16px; }
+.fd-toolchip .dv-tool { width: 40px; height: 40px; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); }

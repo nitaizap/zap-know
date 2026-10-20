@@ -358,7 +358,6 @@ export default function Me() {
   const [params, setParams] = useSearchParams()
   const lane = LANES.find((l) => l.key === params.get('lane'))?.key ?? 'mine'
   const [maker, setMaker] = useState(false)
-  const [adding, setAdding] = useState(false)
   const [q, setQ] = useState('')
   const [dq, setDq] = useState('')
   const [searching, setSearching] = useState(false)
@@ -397,8 +396,9 @@ export default function Me() {
           {l.key === 'later' ? <><span className="lbl-long">{l.label}</span><span className="lbl-short" aria-hidden>אח״כ</span></> : l.label}
         </button>
       ))}
-      <button type="button" className="tk-ico tk-add" aria-label="להוסיף פוסט או מקור" onClick={() => setAdding(true)}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+<button type="button" className="tk-publish" onClick={() => openPublish()}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        לפרסם
       </button>
       {lane === 'mine' ? null : searching || q ? (
         <input className="tk-search" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש אצלי"
@@ -418,7 +418,7 @@ export default function Me() {
         carousel={lane === 'mine' ? (
           <MineCarousel cards={[
             { key: 'me', label: 'פרופיל', node: <ProfileCard onMore={setSheet} onAvatar={() => setMaker(true)} /> },
-            { key: 'add', label: 'להוסיף פוסט או מקור', node: <AddCard onOpen={() => setAdding(true)} /> },
+            { key: 'add', label: 'לפרסם פוסט או מקור', node: <AddCard onOpen={() => openPublish()} /> },
             { key: 'board', label: 'לוח מובילים', node: <BoardSlide /> },
             { key: 'wallet', label: 'הארנק שלי', node: <WalletCard onMore={setSheet} /> },
             { key: 'stats', label: 'הסטטיסטיקה שלי', node: <StatsCard /> },
@@ -427,17 +427,6 @@ export default function Me() {
           ]} />
         ) : undefined} />
       {maker && <AiAvatarSheet onClose={() => setMaker(false)} />}
-      {adding && (
-        <Layer>
-          <div className="dt-back" onClick={() => setAdding(false)}>
-            <section className="dt-sheet" role="dialog" aria-modal="true" aria-label="להוסיף פוסט או מקור" onClick={(e) => e.stopPropagation()}>
-              <header className="dt-head"><span className="dt-grab" aria-hidden /><b>להוסיף פוסט או מקור</b>
-                <button className="dt-x" onClick={() => setAdding(false)} aria-label="לסגור"><IClose /></button></header>
-              <div className="dt-body contribute"><ContributeFlow embedded /></div>
-            </section>
-          </div>
-        </Layer>
-      )}
       {sheet && (
         <Layer>
           <div className="dt-back" onClick={() => setSheet(null)}>
@@ -511,6 +500,36 @@ export function ProfileHost() {
             </span>
           </header>
           <div className="dt-body"><MeDetails start={tab} /></div>
+        </section>
+      </div>
+    </Layer>
+  )
+}
+
+// "לפרסם": the add-a-post sheet, from anywhere (האזור שלי, the header), over the current page.
+const PUBLISH_EVENT = 'zapup:publish'
+export const openPublish = () => window.dispatchEvent(new Event(PUBLISH_EVENT))
+export function PublishHost() {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    const on = () => setOpen(true)
+    window.addEventListener(PUBLISH_EVENT, on)
+    return () => window.removeEventListener(PUBLISH_EVENT, on)
+  }, [])
+  useEffect(() => {
+    if (!open) return
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [open])
+  if (!open) return null
+  return (
+    <Layer>
+      <div className="dt-back" onClick={() => setOpen(false)}>
+        <section className="dt-sheet" role="dialog" aria-modal="true" aria-label="לפרסם פוסט או מקור" onClick={(e) => e.stopPropagation()}>
+          <header className="dt-head"><span className="dt-grab" aria-hidden /><b>לפרסם פוסט או מקור</b>
+            <button className="dt-x" onClick={() => setOpen(false)} aria-label="לסגור"><IClose /></button></header>
+          <div className="dt-body contribute"><ContributeFlow embedded /></div>
         </section>
       </div>
     </Layer>
