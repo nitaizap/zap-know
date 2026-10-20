@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   const [{ data: items }, { data: teams }] = await Promise.all([
     admin.from("items").select("id,kind,topic_slug,verticals,title_he,summary_he,source_name,source_url")
       .eq("status", "approved").order("opens", { ascending: false }).limit(300),
-    admin.from("team_profiles").select("team,vertical,summary_he,tools,resources,processes_he,contact_name,is_demo"),
+    admin.from("team_profiles").select("id,team,vertical,summary_he,tools,resources,processes_he,contact_name,is_demo"),
   ]);
 
   const catalog = (items ?? []).map((i) =>
@@ -54,7 +54,7 @@ ${catalog}`;
         return [{ type: "external", title: i.title_he, url: `#/item/${i.id}`, source_url: i.source_url }];
       }
       const t = (teams ?? [])[Number(ref.slice(1))];
-      return ref.startsWith("T") && t ? [{ type: "internal", title: `צוות ${t.team}`, url: `#/teams/${encodeURIComponent(t.team)}` }] : [];
+      return ref.startsWith("T") && t ? [{ type: "internal", title: `צוות ${t.team}`, url: `#/teams/${t.id}` }] : [];
     });
     return json({ answer_he: out.answer_he, sources });
   } catch (e) {

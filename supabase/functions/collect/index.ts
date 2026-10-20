@@ -75,8 +75,8 @@ async function pull(s: Source): Promise<Raw[]> {
     }
     case "skillshop": {
       // Undocumented guest catalog: wrapped so a break never stops the run.
-      const d = await (await fetch(`https://skillshop.docebosaas.com/learn/v1/catalog/${s.ref}?page_size=6`)).json();
-      return asArray(d.data?.items).map((i: Record<string, any>) => ({
+      const d = await (await fetch(`https://skillshop.docebosaas.com/learn/v1/catalog/${s.ref}?page_size=40`)).json();
+      return asArray(d.data?.items).filter((i: Record<string, any>) => i.item_language_code === "en").slice(0, 6).map((i: Record<string, any>) => ({
         kind: "course" as const,
         title: i.item_name,
         description: strip(i.item_description).slice(0, 1500),

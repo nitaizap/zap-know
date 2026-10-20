@@ -2,19 +2,26 @@
 -- Links point at real public pages (official channels, docs, catalogs); summaries are written for the demo.
 
 insert into sources (name, kind, ref, topic_slug, status, score, reason_he) values
-  ('Google Ads (YouTube)', 'youtube_channel', '@GoogleAds', 'ppc', 'active', 0.8, null),
-  ('Google Analytics (YouTube)', 'youtube_channel', '@googleanalytics', 'data-ai', 'active', 0.7, null),
-  ('HubSpot (YouTube)', 'youtube_channel', '@HubSpot', 'digital-marketing', 'active', 0.6, null),
-  ('Search Engine Journal', 'rss', 'https://www.searchenginejournal.com/feed/', 'geo-ecommerce', 'active', 0.7, null),
-  ('Social Media Today', 'rss', 'https://www.socialmediatoday.com/feeds/news/', 'social', 'active', 0.6, null),
-  ('Google Ads & Commerce Blog', 'rss', 'https://blog.google/products/ads-commerce/rss/', 'ppc', 'active', 0.7, null),
-  ('Nielsen Norman Group', 'rss', 'https://www.nngroup.com/feed/rss/', 'cx', 'active', 0.5, null),
-  ('edX catalog', 'edx', 'courses/v1', null, 'active', 0.5, null),
-  ('Google Skillshop', 'skillshop', 'catalog', 'ppc', 'active', 0.6, null),
-  ('Ahrefs (YouTube)', 'youtube_channel', '@AhrefsCom', 'geo-ecommerce', 'proposed', 0.72,
-   'עובדים שפתחו תוכן על GEO השבוע חזרו שוב ושוב לסרטונים של Ahrefs. מציעים להוסיף את הערוץ כמקור קבוע.'),
-  ('Meta for Business (YouTube)', 'youtube_channel', '@MetaforBusiness', 'social', 'proposed', 0.64,
-   'בנושא סושיאל חסר לנו מקור רשמי של Meta. הערוץ מפרסם הדרכות קצרות על Reels ו-Advantage+.')
+  ('HubSpot · Digital Marketing for Beginners', 'youtube_playlist', 'PLlw9qxNtFom0IBuCE9bU0BWQ-pl-eA9Z-', 'digital-marketing', 'active', 0, null),
+  ('HubSpot · Fix Your Funnel', 'youtube_playlist', 'PLlw9qxNtFom01QG2bK_u5d6ahUJpdNTcr', 'digital-marketing', 'active', 0, null),
+  ('Think with Google · Modern Marketers Podcast', 'youtube_playlist', 'PLNBdIP33wJ3oDbS5EmI4lxwKt65DYL46T', 'digital-marketing', 'active', 0, null),
+  ('HubSpot Marketing Blog', 'rss', 'https://blog.hubspot.com/marketing/rss.xml', 'digital-marketing', 'active', 0, null),
+  ('Google Ads · Google Marketing Live 2026', 'youtube_playlist', 'PL9piTIvKJnJMJKf4V0ENfnLO49vb6quQi', 'ppc', 'active', 0, null),
+  ('Google Ads · Full Value of Web and App', 'youtube_playlist', 'PL9piTIvKJnJMOj3PxAkmwS91Zsa__7hNz', 'ppc', 'active', 0, null),
+  ('Google Ads & Commerce Blog', 'rss', 'https://blog.google/products/ads-commerce/rss/', 'ppc', 'active', 0, null),
+  ('Google Skillshop · Google Ads', 'skillshop', '1', 'ppc', 'active', 0, null),
+  ('HubSpot · Social Media Business Strategies', 'youtube_playlist', 'PLlw9qxNtFom0SsofdmVg4Ow3aroLSFvLC', 'social', 'active', 0, null),
+  ('Social Media Today', 'rss', 'https://www.socialmediatoday.com/feeds/news/', 'social', 'active', 0, null),
+  ('Google Search Central · SEO Made Easy', 'youtube_playlist', 'PLKoqnv2vTMUMLjKqk2-_V_Spuf7Oo7XNg', 'geo-ecommerce', 'active', 0, null),
+  ('Google Ads · Merchant Center Tutorials', 'youtube_playlist', 'PL9piTIvKJnJM3Ru5SnqNG_vC_Q0_rrGXg', 'geo-ecommerce', 'active', 0, null),
+  ('Search Engine Journal', 'rss', 'https://www.searchenginejournal.com/feed/', 'geo-ecommerce', 'active', 0, null),
+  ('NN/g · Quantitative Research', 'youtube_playlist', 'PLJOFJ3Ok_ids1gYfgBYpaem4tskjejy8W', 'data-ai', 'active', 0, null),
+  ('Google Skillshop · Google Analytics', 'skillshop', '37', 'data-ai', 'active', 0, null),
+  ('Google Analytics (YouTube)', 'youtube_channel', 'UCJ5UyIAa5nEGksjcdp43Ixw', 'data-ai', 'active', 0, null),
+  ('Ahrefs · Big SEO Tutorials', 'youtube_playlist', 'PLvJ_dXFSpd2s-OV4MiYXV8yhUjKYtW_bm', 'geo-ecommerce', 'proposed', 0,
+   'בתחום GEO ואיקומרס יש לנו רק שלושה מקורות. זו סדרת הדרכה מסודרת של Ahrefs על SEO, הבסיס ל-GEO.'),
+  ('NN/g · Psychology for UX', 'youtube_playlist', 'PLJOFJ3Ok_idsHSibHAy0naQFW2gmCS5XK', 'behavioral-econ', 'proposed', 0,
+   'כלכלה התנהגותית עדיין מסומנת "בקרוב". הסדרה הזאת יכולה להיות המקור הראשון שלה.')
 on conflict (kind, ref) do nothing;
 
 insert into items (kind, topic_slug, verticals, title_he, title_orig, summary_he, why_he, lesson_plan, source_name, source_url, published_at, summarized_at, status, hot_week, opens, is_demo) values
