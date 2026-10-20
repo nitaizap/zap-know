@@ -29,7 +29,8 @@ export function ytId(i: PreviewInput): string | null {
 export function proxied(url: string, w = 1080): string {
   if (!url) return url
   const u = url.replace(/^http:\/\//i, 'https://')
-  if (/^https:\/\/(i\.ytimg\.com|images\.weserv\.nl)\//.test(u)) return u
+  // Already sized and https; thum.io captures also 404 through weserv, so they go straight through.
+  if (/^https:\/\/(i\.ytimg\.com|images\.weserv\.nl|image\.thum\.io)\//.test(u)) return u
   return `https://images.weserv.nl/?url=${encodeURIComponent(u)}&w=${w}&output=webp&we&il`
 }
 
