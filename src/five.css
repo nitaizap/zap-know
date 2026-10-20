@@ -7,7 +7,7 @@
 .avatar-picker { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 6px 0 4px; }
 .avatar-picker-ctl { display: grid; gap: 8px; }
 .pod-avatar { margin-bottom: 6px; }
-.board .avatar { margin-inline-end: 4px; }
+
 .person-btn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; text-align: start; }
 .comments .avatar { margin-inline-end: 2px; }
 
@@ -52,3 +52,5 @@
 .drive-pill:hover { background: var(--yellow-10); }
 .podcast-card h3 { display: flex; align-items: center; gap: 8px; }
 .fd-time { display: inline-flex; align-items: center; gap: 4px; }
+.board-who { align-items: center; }
+.board .board-av { margin: 0; }

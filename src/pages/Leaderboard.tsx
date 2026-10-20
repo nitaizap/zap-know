@@ -72,8 +72,8 @@ export default function Leaderboard() {
           {rows.map((r) => (
             <li key={r.rank + r.name} className={r.is_me ? 'me' : ''} title={`${r.name}: ${r.points} ${unit}`}>
               <span className="board-rank">{r.rank}</span>
-              {r.user_id ? <Avatar face={{ ...r, user_id: r.user_id }} size={32} /> : null}
               <span className="board-who">
+                {r.user_id ? <Avatar face={{ ...r, user_id: r.user_id }} size={30} className="board-av" /> : null}
                 <b>{r.name}{r.is_me ? ' (אתם)' : ''}</b>
                 <span className="small muted">{scope === 'teams' ? `${r.members} פעילים` : r.team}</span>
               </span>
