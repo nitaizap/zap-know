@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useApp } from '../App'
-import { callFn } from '../lib'
+import { callFn, supabase } from '../lib'
+import { DetailLink } from '../components/detail'
+import { officeText } from '../officeText'
 import { Headline } from '../components/ui'
 import { earn } from '../components/points'
 import '../contribute.css'
@@ -9,7 +10,7 @@ import '../contribute.css'
 // "משתפים ב-zap UP": record a voice note, drop a document or paste a link; the AI drafts a title,
 // summary, bullets, topic and tags; the person edits and sends. Nothing goes out before they do.
 type Purpose = 'internal' | 'external'
-type Mode = 'voice' | 'doc' | 'link'
+type Mode = 'voice' | 'doc' | 'link' | 'text'
 type Draft = { title_he: string; summary_he: string; bullets: string[]; topic_slug: string; tags: string[]; transcript_he?: string; source_url?: string | null }
 type Input = { mode: 'voice' | 'doc' | 'link' | 'text'; data?: string; mime?: string; url?: string; text?: string }
 
@@ -24,113 +25,177 @@ function toBase64(blob: Blob): Promise<string> {
   })
 }
 
+// Feeds that keep publishing: offered as a recurring source after the post goes up.
+function recurringOf(url: string | null | undefined): { kind: string; ref: string; label: string } | null {
+  if (!url) return null
+  const list = url.match(/youtube\.com\/(?:playlist|watch)\?(?:[^#]*&)?list=([\w-]+)/)?.[1]
+  if (list) return { kind: 'youtube_playlist', ref: list, label: 'פלייליסט ביוטיוב' }
+  const ch = url.match(/youtube\.com\/channel\/(UC[\w-]{22})/)?.[1]
+  if (ch) return { kind: 'youtube_channel', ref: ch, label: 'ערוץ יוטיוב' }
+  if (/anchor\.fm\/s\/|feeds\.simplecast|omnycontent|podbean\.com\/.*feed|\/podcast\.rss|itunes|buzzsprout\.com\/\d+\.rss/i.test(url)) return { kind: 'podcast', ref: url, label: 'פודקאסט' }
+  if (/(\/feed\/?$|\/rss\/?$|\.rss$|\.xml$|\/feeds\/)/i.test(url)) return { kind: 'rss', ref: url, label: 'פיד RSS' }
+  return null
+}
+
 export default function Contribute() {
-  const { topics } = useApp()
+  return (
+    <div className="contribute">
+      <Headline light="מספרים בקול," black="ה-AI כותב" hand="בלי לכתוב מאפס" />
+      <ContributeFlow />
+    </div>
+  )
+}
+
+/** The whole "add a post" flow, on its page or in a sheet (האזור שלי). By default it publishes
+ *  straight away once the AI has the draft; "עריכה לפני פרסום" stops to review first. */
+export function ContributeFlow({ embedded }: { embedded?: boolean }) {
+  const { topics, profile } = useApp()
   const [purpose, setPurpose] = useState<Purpose>('internal')
-  const [mode, setMode] = useState<Mode>('voice')
+  const [mode, setMode] = useState<Mode>(embedded ? 'link' : 'voice')
   const [input, setInput] = useState<Input | null>(null)
   const [step, setStep] = useState<'input' | 'thinking' | 'draft' | 'sending' | 'done'>('input')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [team, setTeam] = useState('')
   const [err, setErr] = useState('')
+  const [editFirst, setEditFirst] = useState(false)
+  const [posted, setPosted] = useState<{ id: number; link: string | null } | null>(null)
+  const [srcState, setSrcState] = useState<'idle' | 'busy' | 'done' | 'err'>('idle')
 
   async function makeDraft(src: Input) {
     setInput(src); setErr(''); setStep('thinking')
     try {
       const d = await callFn<Partial<Draft>>('draft', { ...src, purpose })
-      setDraft({
+      const next: Draft = {
         title_he: d.title_he ?? '', summary_he: d.summary_he ?? '', bullets: d.bullets ?? [],
         topic_slug: d.topic_slug ?? '', tags: d.tags ?? [], transcript_he: d.transcript_he, source_url: d.source_url ?? src.url ?? null,
-      })
-      setStep('draft')
+      }
+      setDraft(next)
+      if (editFirst || !next.title_he.trim()) setStep('draft')
+      else await send(next)
     } catch {
-      setErr('ה-AI לא הצליח לקרוא את זה הפעם. אפשר לנסות שוב, או להשתמש בטופס הקצר.')
+      setErr('ה-AI לא הצליח לקרוא את זה הפעם. אפשר לנסות שוב, או לכתוב כמה מילים בטקסט.')
       setStep('input')
     }
   }
 
-  async function send() {
-    if (!draft) return
+  async function send(d: Draft | null = draft) {
+    if (!d) return
     setStep('sending'); setErr('')
     try {
-      await callFn('ingest-internal', {
-        channel: 'form', purpose, team: team || undefined,
-        text: draft.transcript_he || [draft.summary_he, ...draft.bullets].join('\n'),
-        link: draft.source_url ?? undefined,
-        draft: { title_he: draft.title_he, summary_he: draft.summary_he, bullets: draft.bullets.filter(Boolean), topic_slug: draft.topic_slug, tags: draft.tags },
+      const r = await callFn<{ id: number }>('ingest-internal', {
+        channel: 'form', purpose, team: team || profile.role || undefined,
+        text: d.transcript_he || [d.summary_he, ...d.bullets].join('\n'),
+        link: d.source_url ?? undefined,
+        draft: { title_he: d.title_he, summary_he: d.summary_he, bullets: d.bullets.filter(Boolean), topic_slug: d.topic_slug, tags: d.tags },
       })
-      if (purpose === 'internal') earn('post')
+      earn('post')
+      setPosted({ id: r.id, link: d.source_url ?? null })
       setStep('done')
     } catch {
-      setErr('השליחה לא עברה. נסו שוב בעוד רגע.')
+      setErr('הפרסום לא עבר. נסו שוב בעוד רגע.')
       setStep('draft')
     }
   }
 
-  function restart() { setDraft(null); setInput(null); setStep('input'); setErr('') }
+  async function addSource(rec: { kind: string; ref: string; label: string }) {
+    setSrcState('busy')
+    const { error } = await supabase.from('sources').insert({
+      name: draft?.title_he || rec.label, kind: rec.kind, ref: rec.ref, topic_slug: draft?.topic_slug || null,
+      status: profile.is_admin ? 'active' : 'proposed', score: 0,
+      reason_he: `הוצע על ידי ${profile.display_name || profile.email.split('@')[0]} מתוך פוסט ב-zap UP`,
+    })
+    setSrcState(error ? 'err' : 'done')
+  }
+
+  function restart() { setDraft(null); setInput(null); setPosted(null); setSrcState('idle'); setStep('input'); setErr('') }
+
+  if (step === 'done' && posted) {
+    const rec = recurringOf(posted.link)
+    return (
+      <div className={`card done-card${embedded ? ' cf-embedded' : ''}`}>
+        <h2>פורסם, עם הקרדיט שלכם</h2>
+        <p className="muted">{purpose === 'internal' ? 'הפוסט כבר במה קורה ב-zap, ועמיתים יכולים להגיב ולשתף. התמונה מהמקור מתווספת תוך כמה דקות.' : 'זה כבר במה קורה בעולם. מצאו טעות? בכל פריט יש "לדווח על טעות".'}</p>
+        <div className="row">
+          <DetailLink className="btn" kind="item" id={posted.id}>לפתוח את הפוסט</DetailLink>
+          <button className="btn ghost" onClick={restart}>להוסיף עוד משהו</button>
+        </div>
+        {rec && (
+          <div className="cf-source">
+            {srcState === 'done'
+              ? <p className="small">{profile.is_admin ? `נוסף כמקור קבוע (${rec.label}). האיסוף הבא כבר יביא ממנו.` : 'נשלח כהצעה ל-L&D. כשיאשרו, הוא ייאסף באופן קבוע.'}</p>
+              : <>
+                <p className="small">זה {rec.label} שמתעדכן. רוצים שכל פרק או פוסט חדש ממנו ייכנס לבד?</p>
+                <button className="btn ghost sm" disabled={srcState === 'busy'} onClick={() => addSource(rec)}>להוסיף כמקור קבוע</button>
+                {srcState === 'err' && <p className="small err-text">לא הצלחנו להוסיף. אולי הוא כבר ברשימה.</p>}
+              </>}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <div className="contribute">
-      <Headline light="מספרים בקול," black="ה-AI כותב" hand="בלי לכתוב מאפס" />
+    <div className={embedded ? 'cf-embedded' : undefined}>
+      <div className="seg" role="tablist" aria-label="מה משתפים">
+        <button role="tab" aria-selected={purpose === 'internal'} className={purpose === 'internal' ? 'on' : ''} onClick={() => setPurpose('internal')}>
+          פרויקט או השקה שלנו<span className="small">קורה ב-zap</span>
+        </button>
+        <button role="tab" aria-selected={purpose === 'external'} className={purpose === 'external' ? 'on' : ''} onClick={() => setPurpose('external')}>
+          מה קורה בעולם<span className="small">תוכן מבחוץ שכדאי לכולם להכיר</span>
+        </button>
+      </div>
 
-      {step === 'done' ? (
-        <div className="card done-card">
-          <h2>{purpose === 'internal' ? 'עלה ל-קורה ב-zap, עם הקרדיט שלכם' : 'עלה לאוויר, עם הקרדיט שלכם'}</h2>
-          <p className="muted">{purpose === 'internal' ? 'הפוסט כבר באוויר, ועמיתים יכולים להגיב ולשתף.' : 'זה כבר בידע מבחוץ. מצאו טעות? בכל פריט יש "לדווח על טעות".'}</p>
-          <div className="row">
-            <Link className="btn" to={purpose === 'internal' ? '/internal' : '/external'}>לראות בפיד</Link>
-            <button className="btn ghost" onClick={restart}>לשתף עוד משהו</button>
-          </div>
-        </div>
-      ) : (
+      {step === 'input' && (
         <>
-          <div className="seg" role="tablist" aria-label="מה משתפים">
-            <button role="tab" aria-selected={purpose === 'internal'} className={purpose === 'internal' ? 'on' : ''} onClick={() => setPurpose('internal')}>
-              פרויקט או השקה שלנו<span className="small">קורה ב-zap</span>
-            </button>
-            <button role="tab" aria-selected={purpose === 'external'} className={purpose === 'external' ? 'on' : ''} onClick={() => setPurpose('external')}>
-              תוכן מבחוץ<span className="small">שכדאי לכולם להכיר</span>
-            </button>
+          <div className="tabs-line" role="tablist" aria-label="איך משתפים">
+            {([['link', 'קישור'], ['doc', 'קובץ'], ['voice', 'הקלטה'], ['text', 'טקסט']] as [Mode, string][]).map(([m, l]) => (
+              <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{l}</button>
+            ))}
           </div>
-
-          {step === 'input' && (
-            <>
-              <div className="tabs-line" role="tablist" aria-label="איך משתפים">
-                {([['voice', 'הקלטה'], ['doc', 'מסמך'], ['link', 'קישור']] as [Mode, string][]).map(([m, l]) => (
-                  <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{l}</button>
-                ))}
-              </div>
-              <div className="card input-card">
-                {mode === 'voice' && <VoiceInput onReady={makeDraft} />}
-                {mode === 'doc' && <DocInput onReady={makeDraft} onError={setErr} />}
-                {mode === 'link' && <LinkInput onReady={makeDraft} />}
-              </div>
-            </>
-          )}
-
-          {step === 'thinking' && (
-            <div className="card thinking" role="status">
-              <span className="bars" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-              <b>ה-AI קורא ומסכם</b>
-              <span className="small muted">מחלץ כותרת, תקציר, נקודות עיקריות ותחום</span>
-            </div>
-          )}
-
-          {(step === 'draft' || step === 'sending') && draft && (
-            <DraftForm draft={draft} setDraft={setDraft} topics={topics.map((t) => ({ slug: t.slug, name: t.name_he }))}
-              purpose={purpose} team={team} setTeam={setTeam}
-              onSend={send} onRedo={() => input && makeDraft(input)} sending={step === 'sending'} />
-          )}
-
-          {err && <div className="notice err" style={{ marginTop: 12 }}>{err}</div>}
-          <p className="trust small muted">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z" /></svg>
-            החומר נשלח רק לכלי ה-AI שאושר, ושום דבר לא מתפרסם בלי האישור שלכם. מתוכן מבחוץ מסכמים רק מידע פומבי.
-          </p>
-          <p className="small"><Link to="/internal">מעדיפים בלי AI? יש טופס קצר</Link></p>
+          <div className="card input-card">
+            {mode === 'voice' && <VoiceInput onReady={makeDraft} />}
+            {mode === 'doc' && <DocInput onReady={makeDraft} onError={setErr} />}
+            {mode === 'link' && <LinkInput onReady={makeDraft} />}
+            {mode === 'text' && <TextInput onReady={makeDraft} />}
+          </div>
+          <label className="cf-edit">
+            <input type="checkbox" checked={editFirst} onChange={(e) => setEditFirst(e.target.checked)} /> עריכה לפני פרסום
+          </label>
         </>
       )}
+
+      {(step === 'thinking' || (step === 'sending' && !editFirst)) && (
+        <div className="card thinking" role="status">
+          <span className="bars" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+          <b>{step === 'thinking' ? 'ה-AI מכין את הפוסט…' : 'מפרסמים…'}</b>
+          <span className="small muted">כותרת, תקציר, נקודות עיקריות ותחום</span>
+        </div>
+      )}
+
+      {(step === 'draft' || (step === 'sending' && editFirst)) && draft && (
+        <DraftForm draft={draft} setDraft={setDraft} topics={topics.map((t) => ({ slug: t.slug, name: t.name_he }))}
+          purpose={purpose} team={team} setTeam={setTeam}
+          onSend={() => send()} onRedo={() => input && makeDraft(input)} sending={step === 'sending'} />
+      )}
+
+      {err && <div className="notice err" style={{ marginTop: 12 }}>{err}</div>}
+      <p className="trust small muted">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z" /></svg>
+        החומר נשלח רק לכלי ה-AI שאושר. מתוכן מבחוץ מסכמים רק מידע פומבי. כל פוסט אפשר לדווח או למחוק אחר כך.
+      </p>
     </div>
+  )
+}
+
+function TextInput({ onReady }: { onReady: (i: Input) => void }) {
+  const [t, setT] = useState('')
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); if (t.trim().length >= 20) onReady({ mode: 'text', text: t.trim() }) }}>
+      <label className="field"><span>כמה מילים על מה שרוצים לשתף</span>
+        <textarea className="textarea" rows={5} value={t} onChange={(e) => setT(e.target.value)} placeholder="למשל: בנינו דשבורד שחוסך לנו שעה בשבוע, וזה איך" />
+      </label>
+      <button className="btn" disabled={t.trim().length < 20}>לפרסם</button>
+    </form>
   )
 }
 
@@ -211,10 +276,16 @@ function DocInput({ onReady, onError }: { onReady: (i: Input) => void; onError: 
     if (!f) return
     if (f.size > MAX_MB * 1024 * 1024) { onError(`הקובץ גדול מ-${MAX_MB}MB.`); return }
     const name = f.name.toLowerCase()
-    if (/\.(docx?|pptx?)$/.test(name)) { onError('את קובצי Word ו-PowerPoint כדאי לשמור קודם כ-PDF, ואז להעלות.'); return }
+    if (/\.(docx|pptx)$/.test(name)) {
+      try { const text = await officeText(f); if (text.length < 20) throw new Error('empty'); onReady({ mode: 'text', text: text.slice(0, 12000) }) }
+      catch { onError('לא הצלחנו לקרוא את הקובץ. אפשר לשמור אותו כ-PDF ולהעלות.') }
+      return
+    }
+    if (/\.(doc|ppt)$/.test(name)) { onError('את הפורמט הישן של Word ו-PowerPoint כדאי לשמור כ-docx, pptx או PDF.'); return }
+    if (f.type.startsWith('image/')) { onReady({ mode: 'doc', data: await toBase64(f), mime: f.type }); return }
     if (name.endsWith('.pdf') || f.type === 'application/pdf') { onReady({ mode: 'doc', data: await toBase64(f), mime: 'application/pdf' }); return }
     if (/\.(txt|md|markdown)$/.test(name) || f.type.startsWith('text/')) { onReady({ mode: 'text', text: await f.text() }); return }
-    onError('אפשר להעלות PDF, txt או md.')
+    onError('אפשר להעלות PDF, Word, PowerPoint, תמונה, txt או md.')
   }
 
   return (
@@ -222,9 +293,9 @@ function DocInput({ onReady, onError }: { onReady: (i: Input) => void; onError: 
       onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)}
       onDrop={(e) => { e.preventDefault(); setOver(false); take(e.dataTransfer.files[0]) }}>
       <p><b>גוררים לכאן מצגת, מסמך או סיכום</b></p>
-      <p className="small muted">PDF, txt או md, עד {MAX_MB}MB. את Word ו-PowerPoint שומרים קודם כ-PDF.</p>
+      <p className="small muted">PDF, Word, PowerPoint, תמונה, txt או md, עד {MAX_MB}MB.</p>
       <button className="btn ghost sm" onClick={() => ref.current?.click()}>לבחור קובץ</button>
-      <input ref={ref} type="file" accept=".pdf,.txt,.md,text/plain,application/pdf" hidden onChange={(e) => take(e.target.files?.[0])} />
+      <input ref={ref} type="file" accept=".pdf,.docx,.pptx,.txt,.md,image/*,text/plain,application/pdf" hidden onChange={(e) => take(e.target.files?.[0])} />
     </div>
   )
 }

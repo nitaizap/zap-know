@@ -13,7 +13,7 @@ const POPULAR = ['Google Ads', 'GA4', 'רילס', 'GEO', 'NotebookLM', 'פרומ
 export function looksLikeQuestion(q: string) { return QUESTION.test(q.trim()) }
 
 const scopeOf = (path: string) => (path.startsWith('/internal') ? '/internal' : path.startsWith('/me') ? '/me' : path === '/' ? '/' : '/external')
-const LABEL: Record<string, string> = { '/internal': 'בידע מבפנים', '/me': 'בהיסטוריה שלכם', '/': 'בידע מבחוץ', '/external': 'בידע מבחוץ' }
+const LABEL: Record<string, string> = { '/internal': 'במה קורה ב-zap', '/me': 'בהיסטוריה שלכם', '/': 'במה קורה בעולם', '/external': 'במה קורה בעולם' }
 
 export function SearchBox({ topics }: { topics: Topic[] }) {
   const [q, setQ] = useState('')

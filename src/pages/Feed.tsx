@@ -783,9 +783,12 @@ function YouTubeLoop({ vid, list, poster, live, title }: { vid?: string; list?: 
   const [q, setQ] = useState(0)
   const [ok, setOk] = useState(true)
   const [clip, setClip] = useState(false)
+  const [full, setFull] = useState(false)
   const frame = useRef<HTMLIFrameElement>(null)
   const from = useRef(20)
-  const play = live && !saveData
+  const play = live && !saveData && !full
+  // Leaving the card stops the real player and goes back to the loop.
+  useEffect(() => { if (!live) setFull(false) }, [live])
 
   useEffect(() => {
     setClip(false)
@@ -828,6 +831,20 @@ function YouTubeLoop({ vid, list, poster, live, title }: { vid?: string; list?: 
             ? `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&controls=0&playsinline=1&loop=1&playlist=${vid}&start=20&enablejsapi=1&origin=${origin}&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0`
             : `https://www.youtube-nocookie.com/embed/videoseries?list=${list}&autoplay=1&mute=1&controls=0&playsinline=1&loop=1&enablejsapi=1&origin=${origin}&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0`}
           allow="autoplay; encrypted-media; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" />
+      )}
+      {full ? (
+        <>
+          <iframe className="fd-player" title={title}
+            src={vid
+              ? `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&controls=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`
+              : `https://www.youtube-nocookie.com/embed/videoseries?list=${list}&autoplay=1&controls=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`}
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+          <button type="button" className="fd-player-x" onClick={(e) => { e.stopPropagation(); setFull(false) }}>✕ חזרה לפיד</button>
+        </>
+      ) : (
+        <button type="button" className="fd-playbtn" onClick={(e) => { e.stopPropagation(); setFull(true) }} aria-label={`לנגן את הסרטון: ${title}`}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+        </button>
       )}
     </>
   )
@@ -888,6 +905,18 @@ function DocVisual({ item, team, lines, faces, tools, live }: {
 }
 
 // The media layer, best source first. Plain text is the very last resort.
+type Stage = 'still' | 'shot' | 'meta' | 'text'
+const stageMem = new Map<number, Stage>()
+const stageOf = (id: number): Stage | null => {
+  if (stageMem.has(id)) return stageMem.get(id)!
+  try { const v = localStorage.getItem(`zapup.pv.${id}`) as Stage | null; if (v) { stageMem.set(id, v); return v } } catch { /* storage blocked */ }
+  return null
+}
+const remember = (id: number, st: Stage) => {
+  stageMem.set(id, st)
+  try { localStorage.setItem(`zapup.pv.${id}`, st) } catch { /* storage blocked */ }
+}
+
 function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onPlay }: {
   item: FeedItem; active: boolean; near: boolean; lines: string[]; team: TeamLite | null; faces: BoardRow[]; tools: string[]
   playing: boolean; onPlay: () => void
@@ -897,7 +926,8 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
   const vid = pv.vid
   const isDoc = pv.type === 'doc poster'
   const isPage = !vid && !isDoc && item.kind !== 'podcast' && /^https?:\/\//.test(item.source_url) && !/zap-know/.test(item.source_url)
-  const [stage, setStage] = useState<'still' | 'shot' | 'meta' | 'text'>(pv.type === 'source image' ? 'still' : pv.type === 'page capture' ? 'shot' : 'text')
+  const [stage, setStage] = useState<Stage>(() => stageOf(item.id) ?? (pv.type === 'source image' ? 'still' : pv.type === 'page capture' ? 'shot' : 'text'))
+  useEffect(() => { if (stage === 'text') remember(item.id, 'text') }, [stage, item.id])
   const [shotOk, setShotOk] = useState(false)
   const [meta, setMeta] = useState<Meta | null>(null)
   const [artOk, setArtOk] = useState(true)
@@ -949,7 +979,7 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
         <>
           {stage === 'still' && pv.still && (
             <Still src={pv.still} live={live}
-              onLoad={(img) => { if (isPage && img.naturalWidth < 300) { setStage('shot'); return false } }}
+              onLoad={(img) => { if (isPage && img.naturalWidth < 300) { setStage('shot'); return false } remember(item.id, 'still') }}
               onFail={() => setStage(isPage ? 'shot' : 'text')} />
           )}
           {stage === 'shot' && (
@@ -957,7 +987,7 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
               {!shotOk && <span className="st-shim" aria-hidden />}
               {near && (
                 <img className={`fd-shot${shotOk ? ' on' : ''}`} src={pageShot(item.source_url, 1080)} alt="" draggable={false} decoding="async"
-                  onLoad={(e) => { const i = e.currentTarget; if (i.naturalWidth > 300 && i.naturalHeight > 300) setShotOk(true); else setStage('meta') }}
+                  onLoad={(e) => { const i = e.currentTarget; if (i.naturalWidth > 300 && i.naturalHeight > 300) { setShotOk(true); remember(item.id, 'shot') } else setStage('meta') }}
                   onError={() => setStage('meta')} />
               )}
             </>
@@ -965,7 +995,7 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
           {stage === 'meta' && meta?.video && live && !saveData
             ? <video className="fd-mp4" src={meta.video} poster={meta.image ?? undefined} muted loop playsInline autoPlay preload="metadata" />
             : stage === 'meta' && meta?.image
-              ? <Still src={proxied(meta.image)} live={live} onFail={() => setStage('text')} />
+              ? <Still src={proxied(meta.image)} live={live} onLoad={() => { remember(item.id, 'meta') }} onFail={() => setStage('text')} />
               : stage === 'meta' ? <span className="st-shim" aria-hidden /> : null}
           {stage === 'text' && paper}
         </>

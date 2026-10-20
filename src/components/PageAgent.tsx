@@ -25,7 +25,7 @@ function SourceCard({ s }: { s: Src }) {
   const external = !s.url.startsWith('#')
   const chip = s.type === 'doc'
     ? <span className="ag-chip">{s.kind ? DOC_KIND_HE[s.kind] : 'מסמך צוות'}</span>
-    : s.type === 'internal' ? <span className="ag-chip int">פנימי</span> : <span className="ag-chip ext">מבחוץ</span>
+    : s.type === 'internal' ? <span className="ag-chip int">מה קורה ב-zap</span> : <span className="ag-chip ext">מה קורה בעולם</span>
   const body = (<>{chip}<b>{s.title}</b>{s.snippet && <small>{s.snippet}</small>}</>)
   return external
     ? <a className="ag-src" href={s.url} target="_blank" rel="noopener noreferrer">{body}</a>

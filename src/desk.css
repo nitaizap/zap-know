@@ -534,3 +534,42 @@
 .fd-ring-face.me { animation: ring-in .35s cubic-bezier(.2, .9, .3, 1.4); }
 @keyframes ring-in { from { transform: scale(0); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fd-ring-face.me { animation: none; } }
+
+/* ---------- Round 9: still means still; video that really plays ---------- */
+/* No motion on stills: no Ken Burns, no page pan, no document scroll, no pulsing. One fade-in. */
+.st.live .st-img, .fd-media.live .st-img, .fd-media.live .fd-shot.on, .fd-media.live .docpv.big ul, .fd-media .docpv.big ul,
+.dv.live .dv-shape.a, .fd-media.live .pod-art, .fd-pod.on .pod-art, .fd-media.live .fd-thumb { animation: none !important; transform: none !important; }
+.st-img { object-position: center; transition: opacity .3s ease; }
+.fd-shot { object-fit: cover; object-position: top; height: 100%; transition: opacity .3s ease; }
+.st-shim { animation: none; background: #0b2a4a; }
+
+/* ▶ in the middle of a video card starts the real player; ✕ goes back to the feed. */
+.fd-playbtn { position: absolute; z-index: 4; top: 50%; left: 50%; width: 68px; height: 68px; margin: -34px 0 0 -34px; border-radius: 50%; border: 0;
+  background: rgba(255, 255, 255, .94); color: #052b7a; display: grid; place-items: center; cursor: pointer; box-shadow: 0 8px 28px rgba(0, 0, 0, .45); padding-inline-start: 4px; }
+.fd-playbtn:hover { background: #ffc600; color: #001c32; }
+.fd-playbtn:focus-visible { outline: 3px solid #ffc600; outline-offset: 3px; }
+.fd-player { position: absolute; z-index: 5; top: 50%; left: 50%; width: min(100cqw, calc(100cqh * 16 / 9)); aspect-ratio: 16 / 9; height: auto; border: 0;
+  transform: translate(-50%, -50%); background: #000; }
+.fd-player-x { position: absolute; z-index: 6; top: calc(max(8px, env(safe-area-inset-top)) + 104px); inset-inline-start: 12px; min-height: 40px; padding: 0 14px;
+  border-radius: 999px; border: 0; background: #fff; color: #052b7a; font: inherit; font-weight: 900; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); }
+.desk .fd-player-x { top: 14px; }
+.fd-player-x:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; }
+
+/* Lane labels: "מה קורה בעולם" / "מה קורה ב-zap", short forms only on narrow phones. */
+.lbl-short2 { display: none; }
+@media (max-width: 359px) { .lbl-long2 { display: none; } .lbl-short2 { display: inline; } }
+@media (max-width: 420px) { .tk-head .tk-tab { font-size: clamp(12px, 3.3vw, 14px); padding-inline: 4px; } }
+
+/* "+ להוסיף פוסט או מקור" */
+.mc-add { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; }
+.mc-add h2 { margin: 0; font-weight: 900; font-size: 24px; color: #052b7a; }
+.mc-add p { margin: 0; color: #263e51; font-weight: 300; line-height: 1.5; max-width: 30ch; }
+.mc-add-btn { width: 84px; height: 84px; border-radius: 50%; border: 0; background: #ffc600; color: #001c32; display: grid; place-items: center; cursor: pointer; box-shadow: 0 10px 30px rgba(255, 198, 0, .45); }
+.mc-add-btn:focus-visible { outline: 3px solid #052b7a; outline-offset: 3px; }
+.tk-add { background: #ffc600 !important; color: #001c32 !important; border-color: #ffc600 !important; }
+.cf-embedded { padding: 12px 0 8px; }
+.cf-embedded .seg { margin-top: 0; }
+.cf-edit { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; color: #263e51; cursor: pointer; }
+.cf-edit input { width: 18px; height: 18px; accent-color: #052b7a; }
+.cf-source { margin-top: 14px; padding: 12px; border-radius: 12px; background: #fff9e6; border-inline-start: 4px solid #ffc600; }
+.cf-source p { margin: 0 0 8px; }
