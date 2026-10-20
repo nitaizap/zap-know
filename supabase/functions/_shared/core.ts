@@ -29,8 +29,9 @@ globalThis.fetch = async (input: Request | URL | string, init?: RequestInit) => 
     const u = body?.usageMetadata ?? {};
     const model = url.match(/models\/([^:]+)/)?.[1] ?? "";
     const tts = model.includes("tts");
+    const image = model.includes("image");
     const pin = await num(tts ? "price_tts_in" : "price_text_in", tts ? 1 : 0.5);
-    const pout = await num(tts ? "price_tts_out" : "price_text_out", tts ? 20 : 3);
+    const pout = image ? await num("price_img_out", 40) : await num(tts ? "price_tts_out" : "price_text_out", tts ? 20 : 3);
     const inT = Number(u.promptTokenCount ?? 0);
     const outT = Number(u.candidatesTokenCount ?? 0) + Number(u.thoughtsTokenCount ?? 0);
     await admin.from("ai_usage").insert({
