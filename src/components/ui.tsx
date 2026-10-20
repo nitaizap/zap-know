@@ -3,6 +3,7 @@ import { Item, KIND_LABEL, fmtDate, fmtMinutes } from '../lib'
 import { ReactionBar } from './social'
 import '../adopt.css'
 import { DetailLink } from './detail'
+import { TypeBadge } from './TypeBadge'
 import { IHeadphones, ISpark } from './icons'
 
 // Page hero: Light setup line + Black punch line with the hand-drawn navy swoosh.
@@ -79,7 +80,7 @@ export function ItemCard({ item, progress, reasons }: { item: Item; progress?: n
         <Thumb item={item} />
         {item.kind === 'podcast' && <span className="pod-badge" aria-label="פודקאסט"><IHeadphones size={16} /></span>}
         <div className="card-top">
-          <KindBadge kind={item.kind} />
+          <TypeBadge item={item} />
           {reasons?.map((r) => <span key={r} className="reason">{r}</span>)}
         </div>
         <h3>{item.title_he}</h3>

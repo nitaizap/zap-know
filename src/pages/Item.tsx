@@ -10,6 +10,7 @@ import { earn } from '../components/points'
 import { AudioPlayer } from '../components/AudioPlayer'
 import { Remind } from '../components/Remind'
 import { IHeadphones } from '../components/icons'
+import { TypeBadge } from '../components/TypeBadge'
 
 export default function ItemPage() {
   const { id } = useParams()
@@ -138,7 +139,8 @@ export function ItemDetail({ itemId, embedded }: { itemId: number; embedded?: bo
 
   return (
     <article className={embedded ? 'dt-item' : undefined} style={{ maxWidth: 760 }}>
-      <div className="small" style={{ marginTop: 24 }}>
+      <div className="small row" style={{ marginTop: 24, gap: 8 }}>
+        <TypeBadge item={item} />
         {topic && (embedded ? <span className="muted">{topic.name_he}</span> : <Link to={`/topic/${topic.slug}`}>{topic.name_he}</Link>)}
       </div>
       <h1 style={{ fontWeight: 900, fontSize: 'clamp(24px, 5vw, 34px)', lineHeight: 1.2, margin: '8px 0', color: 'var(--navy)' }}>

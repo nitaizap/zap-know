@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { openDetail } from './detail'
+import { TypeBadge } from './TypeBadge'
+import type { Item } from '../lib'
+type Typed = Pick<Item, 'kind'> & { doc_id?: number | null; preview_video_id?: string | null }
 import { useSearchParams } from 'react-router-dom'
 import { callFn, supabase } from '../lib'
 import { DocPreview, previewLines } from './ui'
@@ -13,7 +16,7 @@ import '../ai.css'
 type Src = { type: 'internal' | 'external' | 'doc'; title: string; url: string; snippet?: string; kind?: DocKind; team?: string }
 type Contact = { team: string; name: string | null; email: string | null }
 type AskReply = { answer_he: string; sources?: Src[]; followups?: string[]; contact?: Contact | null }
-type Card = Src & { thumb: string | null; lines: string[]; label: string }
+type Card = Src & { thumb: string | null; lines: string[]; label: string; typed: Typed | null }
 type Msg =
   | { role: 'user'; content: string }
   | { role: 'assistant'; content: string; cards: Card[]; followups: string[]; contact: Contact | null; error?: boolean }
@@ -45,7 +48,8 @@ async function toCards(sources: Src[]): Promise<Card[]> {
     const d = dm.get(idOf(s.url, 'doc') ?? -1)
     const thumb = it?.thumbnail_url || (it?.preview_video_id ? ytThumb(it.preview_video_id) : null)
     const label = s.type === 'doc' ? (s.kind ? DOC_KIND_HE[s.kind] : 'מסמך צוות') : s.type === 'internal' ? 'צוות' : KIND[it?.kind ?? ''] ?? 'מבחוץ'
-    return { ...s, thumb, label, lines: previewLines(d?.body_md || s.snippet || it?.summary_he || '', 3) }
+    const typed: Typed | null = s.type === 'doc' ? { kind: 'internal', doc_id: 1 } : it ? { kind: it.kind as Item['kind'], preview_video_id: it.preview_video_id } : null
+    return { ...s, thumb, label, typed, lines: previewLines(d?.body_md || s.snippet || it?.summary_he || '', 3) }
   })
 }
 
@@ -164,7 +168,7 @@ export function AiSheet() {
                             ? <img src={c.thumb} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none' }} />
                             : <DocPreview title={c.title} lines={c.lines} by={c.team ? `צוות ${c.team}` : undefined} />}
                         </span>
-                        <span className="ai-card-body"><span className="ai-card-kind">{c.label}</span><b>{c.title}</b></span>
+                        <span className="ai-card-body">{c.typed ? <TypeBadge item={c.typed} /> : <span className="ai-card-kind">{c.label}</span>}<b>{c.title}</b></span>
                       </>
                     )
                     return c.url.startsWith('#')

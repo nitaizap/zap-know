@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ITEM_COLS, Item, KIND_LABEL, fmtDate, fmtMinutes, supabase, track, callFn } from '../lib'
+import { ITEM_COLS, Item, KIND_LABEL, supabase, track, callFn } from '../lib'
 import { Comments, ShareSheet, getSocial, react, useSocial } from '../components/social'
-import { BoardRow, PointsPill, earn, rankLine, useRankGap } from '../components/points'
+import { BoardRow, earn, rankLine, useRankGap } from '../components/points'
 import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
-import { useApp } from '../App'
+import { PageNav, useApp } from '../App'
 import '../feed.css'
 import '../tiktok.css'
 import '../desk.css'
@@ -15,6 +15,8 @@ import { AiButton } from '../components/AiSheet'
 import { teamColor, teamInitials } from './Doc'
 import { DocPreview, previewLines } from '../components/ui'
 import { Layer } from '../components/Layer'
+import { TypeBadge } from '../components/TypeBadge'
+import zapLogo from '../assets/zap-group-white.png'
 import { DetailBody, DetailLink, setDetailHost, type Target } from '../components/detail'
 
 // zap UP is a TikTok for work: one full-screen vertical feed (up/down = next/prev), a horizontal
@@ -142,21 +144,17 @@ export default function Feed({ source, head, listTo, agent }: {
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [kept, setKept] = useState<Set<number>>(new Set())
   const [sheet, setSheet] = useState<{ item: FeedItem; kind: 'comments' | 'share' } | null>(null)
-  const [tab, setTab] = useState<PanelTab>('next')
-  const [pinned, setPinned] = useState<Target | null>(null)
+  const [panel, setPanel] = useState<Panel | null>(null)
   const desk = useDesk()
   const scroller = useRef<HTMLDivElement>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout>>()
 
-  const topicName = new Map(topicList.map((t) => [t.slug, t.name_he]))
-
   // On a desktop, "לפתוח" (and any open from the AI or a deep link) lands in this feed's panel.
   useEffect(() => {
     if (!desk) return
-    return setDetailHost((t) => { setPinned(t); setTab('details') })
+    return setDetailHost((t) => setPanel({ kind: 'details', target: t }))
   }, [desk])
-  // Scrolling on: the panel follows the card on screen.
-  useEffect(() => { setPinned(null) }, [active])
+  useEffect(() => { if (!desk) setPanel(null) }, [desk])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setMyId(data.session?.user.id ?? ''))
@@ -268,7 +266,7 @@ export default function Feed({ source, head, listTo, agent }: {
 
   // Comments open beside the card on a desktop, as a sheet on a phone.
   const openComments = useCallback((item: FeedItem) => {
-    if (desk) setTab('comments')
+    if (desk) setPanel((p) => (p?.kind === 'comments' && p.item.id === item.id ? null : { kind: 'comments', item }))
     else setSheet({ item, kind: 'comments' })
   }, [desk])
 
@@ -296,6 +294,7 @@ export default function Feed({ source, head, listTo, agent }: {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
       if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === 'Escape' && panel) { setPanel(null); return }
       if (t.closest('input, textarea, select, [contenteditable], [role="dialog"]')) return
       if (document.querySelector('.ai-back, .sheet-wrap, .fd-sheet-back, .dt-back')) return
       const en = entries[active]
@@ -311,7 +310,7 @@ export default function Feed({ source, head, listTo, agent }: {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [entries, active, goTo, save, hide, keep, openComments])
+  }, [entries, active, goTo, save, hide, keep, openComments, panel])
 
   const authorOf = (it: FeedItem) => {
     const d = it.doc_id ? docs?.get(it.doc_id) : null
@@ -324,37 +323,39 @@ export default function Feed({ source, head, listTo, agent }: {
   }
   const cur = entries[active]
   const backdrop = cur?.t === 'item' ? (cur.item.preview_video_id ? ytStill(cur.item.preview_video_id, 2) : cur.item.thumbnail_url) || null : null
-  const progress = entries.length > 1 ? active / (entries.length - 1) : 0
+
+  const filterEl = (
+    <FilterBar icon value={f} onChange={setF} extra={agent}
+      show={{ topic: topicList, kind: source !== 'internal', len: true, vertical: source !== 'internal', saved: true, lang: true }} />
+  )
 
   return (
-    <div className={`fd-wrap tk-${source}${desk ? ' desk' : ''}`}>
+    <div className={`fd-wrap tk-${source}${desk ? ' desk' : ''}${panel ? ' has-panel' : ''}`}>
       <div className="fd-backdrop" style={backdrop ? { backgroundImage: `url("${backdrop}")` } : undefined} aria-hidden />
       <div className="fd-col">
-        <div className="tk-top">
+        {/* Minimal chrome: the zap logo top right, the tabs, the AI. Pages and me only on a desktop. */}
+        <header className="tk-top">
           <div className="tk-top-row">
             <Link to="/" className="tk-brand" aria-label="zap UP, הבית">
-              <img src="/zap-know/img/zap-group.svg" alt="zap" /><span className="brand-up">UP</span>
+              <img src={zapLogo} alt="zap group" width={96} height={24} /><span className="tk-up">UP</span>
             </Link>
-            <PointsPill />
+            {desk && <PageNav className="tk-pages" />}
             <span className="tk-grow" />
-            <FilterBar icon value={f} onChange={setF} extra={agent}
-              show={{ topic: topicList, kind: source !== 'internal', len: true, vertical: source !== 'internal', saved: true, lang: true }} />
-            {listTo && (
+            {desk && filterEl}
+            {desk && listTo && (
               <Link to={listTo} className="tk-ico" aria-label="תצוגת רשימה">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg>
               </Link>
             )}
             <AiButton />
-            <Link to="/me" className="tk-me" aria-label="האזור שלי">
-              <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} />
-            </Link>
+            {desk && (
+              <Link to="/me" className="tk-me" aria-label="האזור שלי">
+                <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} />
+              </Link>
+            )}
           </div>
-          {head && <div className="tk-head">{head}</div>}
-          {/* Feed position as a thin metro line with a station at the current card. */}
-          {entries.length > 1 && (
-            <div className="tk-metro" aria-hidden><i style={{ width: `${progress * 100}%` }} /><b style={{ insetInlineStart: `${progress * 100}%` }} /></div>
-          )}
-        </div>
+          {(head || !desk) && <div className="tk-head">{head}{!desk && filterEl}</div>}
+        </header>
 
         <div className="fd-scroller" ref={scroller}>
           {items === null && <div className="fd-card fd-empty"><div className="fd-spinner" aria-hidden />טוענים בשבילכם</div>}
@@ -371,8 +372,8 @@ export default function Feed({ source, head, listTo, agent }: {
             if (en.t === 'quote') return <QuoteSlide key={`q${en.q.comment_id}`} q={en.q} index={i} />
             const it = en.item
             return (
-              <FeedCard key={it.id} item={it} index={i} active={i === active} near={near}
-                topicName={topicName.get(it.topic_slug ?? '') ?? ''} lines={linesOf(it)} team={authorOf(it)}
+              <FeedCard key={it.id} item={it} index={i} active={i === active} near={near} bite={source === 'bites'}
+                lines={linesOf(it)} team={authorOf(it)}
                 kept={kept.has(it.id)} onKeep={() => keep(it)} onSave={() => save(it)} onHide={() => hide(it)}
                 onComments={() => openComments(it)} onShare={() => setSheet({ item: it, kind: 'share' })} />
             )
@@ -400,9 +401,19 @@ export default function Feed({ source, head, listTo, agent }: {
         )}
       </div>
 
-      {desk && (
-        <FeedPanel cur={cur} entries={entries} active={active} tab={tab} setTab={setTab} goTo={goTo} myId={myId} pinned={pinned} setPinned={setPinned}
-          team={cur?.t === 'item' ? authorOf(cur.item) : null} topicName={cur?.t === 'item' ? topicName.get(cur.item.topic_slug ?? '') ?? '' : ''} />
+      {/* Desktop: a panel only when something was opened. ✕ or Esc and it's gone. */}
+      {desk && panel && (
+        <aside className="fd-panel" aria-label={panel.kind === 'comments' ? 'תגובות' : 'פרטים'}>
+          <div className="fp-head">
+            <b>{panel.kind === 'comments' ? 'תגובות' : 'פרטים'}</b>
+            <button className="fp-x" onClick={() => setPanel(null)} aria-label="לסגור"><IcoX /></button>
+          </div>
+          <div className="fp-body">
+            {panel.kind === 'comments'
+              ? <Comments key={panel.item.id} item={panel.item} myId={myId} bare />
+              : <DetailBody target={panel.target} onOpen={(t) => setPanel({ kind: 'details', target: t })} />}
+          </div>
+        </aside>
       )}
 
       {sheet?.kind === 'comments' && (
@@ -423,105 +434,11 @@ export default function Feed({ source, head, listTo, agent }: {
   )
 }
 
-const SPECIAL_LABEL = { episode: 'הפרק השבועי שלכם', leaders: 'המובילים החודש', quote: 'עובדים מספרים' } as const
-
-// Desktop only: what's on screen, its comments, and what comes next. Never covers the card.
-type PanelTab = 'details' | 'comments' | 'next'
+type Panel = { kind: 'details'; target: Target } | { kind: 'comments'; item: FeedItem }
 const targetOf = (i: FeedItem): Target => (i.doc_id ? { kind: 'doc', id: i.doc_id } : { kind: 'item', id: i.id })
 
-function FeedPanel({ cur, entries, active, tab, setTab, goTo, myId, team, topicName, pinned, setPinned }: {
-  cur: Entry | undefined; entries: Entry[]; active: number; tab: PanelTab; setTab: (t: PanelTab) => void
-  goTo: (i: number) => void; myId: string; team: TeamLite | null; topicName: string
-  pinned: Target | null; setPinned: (t: Target | null) => void
-}) {
-  const item = cur?.t === 'item' ? cur.item : null
-  const s = useSocial(item?.id ?? -1)
-  const next = entries.map((en, i) => ({ en, i })).slice(active + 1, active + 9)
-  const showComments = !!item && tab === 'comments'
-  const detail = tab === 'details' ? pinned ?? (item ? targetOf(item) : null) : null
-  const panel = useRef<HTMLElement>(null)
-  useEffect(() => { panel.current?.scrollTo({ top: 0 }) }, [detail?.kind, detail?.id])
-
-  if (detail) {
-    return (
-      <aside className="fd-panel" aria-label="פרטים" ref={panel}>
-        <div className="fp-detail">
-          <div className="fp-detail-head">
-            <button onClick={() => { setPinned(null); setTab('next') }}>→ חזרה</button>
-          </div>
-          <div className="fp-detail-body"><DetailBody target={detail} onOpen={(t) => setPinned(t)} /></div>
-        </div>
-      </aside>
-    )
-  }
-  return (
-    <aside className="fd-panel" aria-label="פרטים" ref={panel}>
-      {item ? (
-        <div className="fp-item">
-          <div className="fp-by">
-            {team
-              ? <span className="tk-av" style={{ background: teamColor(team.id) }} aria-hidden>{teamInitials(team.team)}</span>
-              : <span className="tk-av src" aria-hidden>{(item.source_name || 'z').trim().charAt(0).toUpperCase()}</span>}
-            <span>
-              <b><bdi>{team ? `צוות ${team.team}` : item.source_name}</bdi></b>
-              <small>{[fmtDate(item.published_at ?? item.created_at), item.minutes ? fmtMinutes(item.minutes) : null, item.is_demo ? 'דמו' : null].filter(Boolean).join(' · ')}</small>
-            </span>
-          </div>
-          <h2>{item.title_he}</h2>
-          {item.why_he && <p className="fp-why">{item.why_he}</p>}
-          {item.summary_he && item.summary_he !== item.why_he && <p className="fp-sum">{item.summary_he}</p>}
-          <div className="fp-chips">
-            {item.reason && <span className="fp-chip hot">{item.reason}</span>}
-            {item.lang === 'he' && <span className="fp-chip">עברית</span>}
-            {topicName && <span className="fp-chip">{topicName}</span>}
-            <span className="fp-chip">{KIND_LABEL[item.kind]}</span>
-          </div>
-          <div className="fp-actions">
-            <button className="fp-btn" onClick={() => setTab('details')}>לפתוח</button>
-            {!item.doc_id && /^https?:/.test(item.source_url) && (
-              <a className="fp-btn ghost" href={item.source_url} target="_blank" rel="noopener noreferrer" onClick={() => track(item.id, 'click_source')}>למקור ↗</a>
-            )}
-          </div>
-        </div>
-      ) : cur && cur.t !== 'item' ? <div className="fp-item"><h2>{SPECIAL_LABEL[cur.t]}</h2></div> : null}
-
-      <div className="fp-tabs" role="tablist">
-        {item && <button role="tab" aria-selected={false} onClick={() => setTab('details')}>פרטים</button>}
-        {item && (
-          <button role="tab" aria-selected={showComments} className={showComments ? 'on' : ''} onClick={() => setTab('comments')}>
-            תגובות{s ? ` · ${s.comments_count}` : ''}
-          </button>
-        )}
-        <button role="tab" aria-selected={!showComments} className={!showComments ? 'on' : ''} onClick={() => setTab('next')}>הבא בתור</button>
-      </div>
-      <div className="fp-body">
-        {showComments ? <Comments key={item!.id} item={item!} myId={myId} bare /> : (
-          <ol className="fp-next">
-            {next.map(({ en, i }) => {
-              if (en.t !== 'item') {
-                return <li key={i}><button onClick={() => goTo(i)}><span className="fp-th special" aria-hidden>✦</span><span><b>{SPECIAL_LABEL[en.t]}</b></span></button></li>
-              }
-              const th = en.item.preview_video_id ? ytStill(en.item.preview_video_id, 2) : en.item.thumbnail_url
-              return (
-                <li key={i}>
-                  <button onClick={() => goTo(i)}>
-                    <span className="fp-th">{th ? <img src={th} alt="" loading="lazy" decoding="async" /> : <span className="fp-th-doc">{en.item.title_he}</span>}</span>
-                    <span><b>{en.item.title_he}</b><small><bdi>{en.item.source_name}</bdi>{en.item.minutes ? ` · ${fmtMinutes(en.item.minutes)}` : ''}</small></span>
-                  </button>
-                </li>
-              )
-            })}
-            {next.length === 0 && <li className="fp-empty">זה הסוף של הרשימה כרגע.</li>}
-          </ol>
-        )}
-      </div>
-      <p className="fp-keys">↑ ↓ הבא והקודם · L אהבתי · C תגובות · S לשמור · / AI</p>
-    </aside>
-  )
-}
-
-function FeedCard({ item, index, active, near, topicName, lines, team, kept, onKeep, onSave, onHide, onComments, onShare }: {
-  item: FeedItem; index: number; active: boolean; near: boolean; topicName: string; lines: string[]
+function FeedCard({ item, index, active, near, bite, lines, team, kept, onKeep, onSave, onHide, onComments, onShare }: {
+  item: FeedItem; index: number; active: boolean; near: boolean; bite: boolean; lines: string[]
   team: TeamLite | null; kept: boolean; onKeep: () => void; onSave: () => void; onHide: () => void
   onComments: () => void; onShare: () => void
 }) {
@@ -529,8 +446,10 @@ function FeedCard({ item, index, active, near, topicName, lines, team, kept, onK
   const [dx, setDx] = useState(0)
   const [drag, setDrag] = useState(false)
   const [burst, setBurst] = useState<{ n: number; x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState(false)
   const start = useRef<{ x: number; y: number; locked: 'x' | 'y' | null } | null>(null)
   const lastTap = useRef(0)
+  const remind = useRef<(() => void) | null>(null)
   const listen = useListen(item, active)
 
   // Count a view after 2 seconds on screen.
@@ -539,6 +458,15 @@ function FeedCard({ item, index, active, near, topicName, lines, team, kept, onK
     const t = setTimeout(() => { track(item.id, 'open'); earn('open') }, 2000)
     return () => clearTimeout(t)
   }, [active, item.id])
+
+  // The "⋯" menu closes on any outside tap, and when the card leaves the screen.
+  useEffect(() => {
+    if (!menu) return
+    const off = (e: Event) => { if (!(e.target as HTMLElement).closest('.fd-more-wrap')) setMenu(false) }
+    document.addEventListener('pointerdown', off)
+    return () => document.removeEventListener('pointerdown', off)
+  }, [menu])
+  useEffect(() => { if (!active) setMenu(false) }, [active])
 
   const like = () => { if (s?.mine !== 1) react(item.id, 1) }
 
@@ -582,17 +510,16 @@ function FeedCard({ item, index, active, near, topicName, lines, team, kept, onK
 
   const stampSave = Math.max(0, Math.min(1, dx / 120))
   const stampHide = Math.max(0, Math.min(1, -dx / 120))
-  const pub = fmtDate(item.published_at ?? item.created_at)
   const authorName = team ? `צוות ${team.team}` : item.kind === 'internal' ? 'קורה ב-zap' : item.source_name
-  const why = item.why_he || item.summary_he
-  // Light media (a document page, a web capture) gets a dark band behind the text.
+  // Light media (a document page, a web capture) gets a dark band behind the caption.
   const band = !item.preview_video_id && !item.thumbnail_url && item.kind !== 'podcast'
-  const chips = [
-    item.reason ? { label: item.reason, cls: 'hot' } : null,
-    item.lang === 'he' ? { label: 'עברית', cls: 'he' } : null,
-    item.minutes ? { label: fmtMinutes(item.minutes), cls: 'ghost' } : null,
-    topicName ? { label: topicName, cls: 'ghost' } : null,
-  ].filter((c): c is { label: string; cls: string } => !!c).slice(0, 3)
+  // Listening is the main action for podcasts and for text; elsewhere it sits in "⋯".
+  const listenMain = item.kind === 'podcast' || band
+  const listenBtn = (
+    <RailBtn label={listen.label} on={listen.playing} busy={listen.state === 'making'} onClick={listen.toggle}>
+      {listen.state === 'making' ? <span className="listen-wave"><i /><i /><i /><i /></span> : listen.playing ? <IcoPause /> : <IcoHead />}
+    </RailBtn>
+  )
 
   return (
     <section className={`fd-card shape-${shapeOf(item)}`} data-index={index} aria-label={item.title_he}>
@@ -608,32 +535,38 @@ function FeedCard({ item, index, active, near, topicName, lines, team, kept, onK
         <div className="fd-stamp save" style={{ opacity: stampSave }} aria-hidden>שומר לי</div>
         <div className="fd-stamp hide" style={{ opacity: stampHide }} aria-hidden>לא בשבילי</div>
 
-        <div className={`fd-body${band ? ' band' : ''}`}>
-          <div className="tk-author">
-            {team
-              ? <span className="tk-av" style={{ background: teamColor(team.id) }} aria-hidden>{teamInitials(team.team)}</span>
-              : <span className="tk-av src" aria-hidden>{(item.source_name || 'z').trim().charAt(0).toUpperCase()}</span>}
-            <span className="tk-author-name"><bdi>{authorName}</bdi>{pub && <small> · {pub}</small>}{item.is_demo ? <small> · דמו</small> : null}</span>
-          </div>
+        <TypeBadge item={item} bite={bite} className="fd-type" />
+
+        {/* The caption is the way in: tap it to open, in place. */}
+        <DetailLink {...targetOf(item)} className={`fd-cap${band ? ' band' : ''}`} label={`לפתוח: ${item.title_he}`}>
           <h2 className="fd-title">{item.title_he}</h2>
-          {why && <p className="fd-why1">{why}</p>}
-          <div className="fd-foot">
-            {chips.map((c) => <span key={c.label} className={`fd-chip ${c.cls}`}>{c.label}</span>)}
-            <DetailLink className="fd-open" {...targetOf(item)}>לפתוח</DetailLink>
-          </div>
-        </div>
+          <span className="fd-src">
+            <bdi>{authorName}</bdi>{item.lang === 'he' ? ' · עברית' : ''}{item.is_demo ? ' · דמו' : ''}
+            <span className="fd-go" aria-hidden>↗</span>
+          </span>
+        </DetailLink>
       </div>
 
       <div className="fd-rail" aria-label="פעולות">
         <RailBtn label="אהבתי" count={s?.likes ?? item.likes ?? 0} on={s?.mine === 1} pop onClick={() => react(item.id, 1)}><IcoHeart /></RailBtn>
-        <RailBtn label="פחות" on={s?.mine === -1} onClick={() => react(item.id, -1)}><IcoDown /></RailBtn>
         <RailBtn label="תגובות" count={s?.comments_count ?? 0} onClick={onComments}><IcoChat /></RailBtn>
-        <RailBtn label="לשתף" count={s?.shares_count || undefined} onClick={onShare}><IcoShare /></RailBtn>
+        <RailBtn label="לשתף" count={s?.shares_count ?? 0} onClick={onShare}><IcoShare /></RailBtn>
         <RailBtn label={kept ? 'נשמר' : 'לשמור'} on={kept} pop onClick={onKeep}><IcoSave /></RailBtn>
-        <Remind itemId={item.id} trigger={(open) => <RailBtn label="אחר כך" onClick={open}><IClock size={24} /></RailBtn>} />
-        <RailBtn label={listen.label} on={listen.playing} busy={listen.state === 'making'} onClick={listen.toggle}>
-          {listen.state === 'making' ? <span className="listen-wave"><i /><i /><i /><i /></span> : listen.playing ? <IcoPause /> : <IcoHead />}
-        </RailBtn>
+        {listenMain && listenBtn}
+        <div className="fd-more-wrap">
+          <RailBtn label="עוד" on={menu} onClick={() => setMenu((m) => !m)}><IcoMore /></RailBtn>
+          {menu && (
+            <div className="fd-more" role="menu">
+              {!listenMain && (
+                <button role="menuitem" onClick={() => { listen.toggle(); setMenu(false) }}><IcoHead /> {listen.playing ? 'לעצור' : 'להאזין לזה'}</button>
+              )}
+              <button role="menuitem" onClick={() => { setMenu(false); remind.current?.() }}><IClock size={20} /> תזכורת במייל</button>
+              <button role="menuitem" aria-pressed={s?.mine === -1} onClick={() => { react(item.id, -1); setMenu(false) }}><IcoDown /> פחות כאלה</button>
+              <button role="menuitem" onClick={() => { setMenu(false); onHide() }}><IcoX /> לא בשבילי</button>
+            </div>
+          )}
+        </div>
+        <Remind itemId={item.id} trigger={(open) => { remind.current = open; return null }} />
       </div>
     </section>
   )
@@ -885,7 +818,7 @@ function RailBtn({ label, count, on, pop, busy, onClick, children }: {
     <button className={`fd-rail-btn${on ? ' on' : ''}${on && pop ? ' pop' : ''}`} aria-label={count !== undefined ? `${label}, ${count}` : label}
       aria-pressed={on} aria-busy={busy} onClick={(e) => { e.stopPropagation(); onClick() }}>
       <span className="fd-rail-ico">{children}</span>
-      <span className="fd-rail-n">{count !== undefined ? count.toLocaleString('he-IL') : label}</span>
+      {count ? <span className="fd-rail-n">{count.toLocaleString('he-IL')}</span> : null}
     </button>
   )
 }
@@ -899,6 +832,7 @@ const IcoSave = () => <svg {...svg}><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4
 const IcoHead = () => <svg {...svg}><path d="M4 15v-3a8 8 0 0 1 16 0v3M4 15a2 2 0 0 1 2-2h1v6H6a2 2 0 0 1-2-2zM20 15a2 2 0 0 0-2-2h-1v6h1a2 2 0 0 0 2-2z" /></svg>
 const IcoUp = () => <svg {...svg}><path d="M6 15l6-6 6 6" /></svg>
 const IcoDownArrow = () => <svg {...svg}><path d="M6 9l6 6 6-6" /></svg>
+const IcoMore = () => <svg {...svg}><circle cx="5" cy="12" r="1.6" fill="currentColor" /><circle cx="12" cy="12" r="1.6" fill="currentColor" /><circle cx="19" cy="12" r="1.6" fill="currentColor" /></svg>
 const IcoX = () => <svg {...svg}><path d="M18 6 6 18M6 6l12 12" /></svg>
 const IcoPlay = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z" /></svg>
 const IcoPause = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>

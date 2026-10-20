@@ -135,6 +135,11 @@ const PRIMARY = [
   { to: '/me', label: 'האזור שלי', icon: IUser },
 ]
 
+/** The four pages, for the desktop feed's header. */
+export function PageNav({ className }: { className?: string }) {
+  return <nav className={className} aria-label="ניווט ראשי">{PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}>{n.label}</NavLink>)}</nav>
+}
+
 function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[]; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -148,23 +153,6 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
 
   return (
     <div className={`app${imm ? ' imm' : ''}`}>
-      {imm && (
-        <aside className="imm-side" aria-label="ניווט">
-          <NavLink to="/" className="brand" aria-label="zap UP, הבית">
-            <img src="/zap-know/img/zap-group.svg" alt="zap group" />
-            <span className="brand-up">UP</span>
-          </NavLink>
-          <p className="imm-tag">Learn. Level Up. zap.</p>
-          <nav>{PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><n.icon size={22} />{n.label}</NavLink>)}</nav>
-          <AiButton />
-          <PointsPill />
-          <NavLink to="/me" className="imm-me">
-            <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={38} />
-            <span><b>{profile.display_name || profile.email.split('@')[0]}</b><small>{profile.role ?? 'האזור שלי'}</small></span>
-          </NavLink>
-          <p className="imm-keys">→ שומר לי · ← לא בשבילי</p>
-        </aside>
-      )}
       <header className="topbar">
         <div className="container topbar-in">
           <NavLink to="/" className="brand" aria-label="zap UP, הבית">
