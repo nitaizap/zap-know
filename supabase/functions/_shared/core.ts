@@ -116,6 +116,7 @@ export async function llm(messages: Msg[], asJson = false): Promise<string> {
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
+  let lastError = "";
   for (let attempt = 0; attempt < 3; attempt++) {
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -131,6 +132,7 @@ export async function llm(messages: Msg[], asJson = false): Promise<string> {
     );
     // Free tier is rate limited; back off and retry.
     if (r.status === 429 || r.status === 503) {
+      lastError = `${r.status}: ${(await r.text()).slice(0, 300)}`;
       await new Promise((res) => setTimeout(res, 4000 * (attempt + 1)));
       continue;
     }
@@ -138,7 +140,7 @@ export async function llm(messages: Msg[], asJson = false): Promise<string> {
     const d = await r.json();
     return d.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
   }
-  throw new Error("gemini rate limited");
+  throw new Error(`gemini rate limited ${lastError}`);
 }
 
 export function parseJson<T>(s: string): T {
