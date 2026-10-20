@@ -1,0 +1,16 @@
+project_id = "lfiwdqcysgwvzzfuuszf"
+
+# These functions authenticate callers themselves (session, Zapier secret, cron secret
+# or the Standard Webhooks signature), so the gateway JWT check is off.
+[functions.ask]
+verify_jwt = false
+[functions.ingest-internal]
+verify_jwt = false
+[functions.send-email]
+verify_jwt = false
+[functions.collect]
+verify_jwt = false
+[functions.weekly]
+verify_jwt = false
+[functions.linkcheck]
+verify_jwt = false
