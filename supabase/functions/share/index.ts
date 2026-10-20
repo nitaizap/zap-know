@@ -28,13 +28,13 @@ Deno.serve(async (req) => {
   const link = `${SITE}#/item/${item.id}`;
   if (b.channel !== "link") {
     const from = me?.display_name ?? me?.email ?? "מישהו מ-zap";
-    const lines = [`${from} חושב/ת שזה שווה לך: "${item.title_he}"`, ...(item.why_he ? [item.why_he] : []), ...(b.note ? [`במילים שלו/ה: ${b.note}`] : [])];
+    const lines = [`המלצה מ-${from}: "${item.title_he}"`, ...(item.why_he ? [item.why_he] : []), ...(b.note ? [`בהערה: ${b.note}`] : [])];
     const channelBox = Deno.env.get("CHANNEL_EMAIL") ?? me?.email ?? "";
     await notify({
       kind: "share",
       to: b.channel === "colleague" ? to!.email : channelBox,
-      subject: `${from} שיתף/ה איתך מ-zap UP: ${item.title_he}`,
-      html: mail("שיתפו איתך משהו", lines, [{ label: "לפתוח ב-zap UP", url: link }]),
+      subject: `המלצה מ-${from} ב-zap UP: ${item.title_he}`,
+      html: mail("שיתפו איתכם משהו", lines, [{ label: "לפתוח ב-zap UP", url: link }]),
       teams_text: `${lines.join("\n")}
 ${link}`,
       teams_to: b.channel === "colleague" ? to!.email : "channel",

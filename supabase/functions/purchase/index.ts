@@ -46,8 +46,8 @@ Deno.serve(async (req) => {
     const { data: who } = await admin.from("profiles").select("email").eq("user_id", p.user_id).single();
     if (who) {
       const text = status === "approved"
-        ? `המנהל/ת אישר/ה את "${p.title}". אפשר לקנות עכשיו עם הכרטיס של zap UP.`
-        : `"${p.title}" לא אושר הפעם. שווה לדבר עם המנהל/ת, או לחפש חלופה ב-zap UP.`;
+        ? `הבקשה ל"${p.title}" אושרה. אפשר לקנות עכשיו עם הכרטיס של zap UP.`
+        : `"${p.title}" לא אושר הפעם. שווה לדבר על זה עם מי שמנהל אתכם, או לחפש חלופה ב-zap UP.`;
       await notify({
         kind: "decision", to: who.email,
         subject: status === "approved" ? `אושר: ${p.title}` : `לא אושר הפעם: ${p.title}`,
@@ -56,8 +56,8 @@ Deno.serve(async (req) => {
       });
     }
     return status === "approved"
-      ? page("אישרתם, תודה", `"${p.title}" אושר. העובד/ת מקבל/ת הודעה ויכול/ה לקנות עכשיו.`)
-      : page("סירבתם, תודה", `העובד/ת יקבל/תקבל הודעה ש"${p.title}" לא אושר הפעם.`);
+      ? page("אישרתם, תודה", `"${p.title}" אושר. שלחנו עדכון, ואפשר כבר לקנות.`)
+      : page("קיבלנו, תודה", `שלחנו עדכון ש"${p.title}" לא אושר הפעם.`);
   }
 
   const user = await zapUser(req);
@@ -88,12 +88,12 @@ Deno.serve(async (req) => {
     const who = me!.display_name ?? me!.email;
     const lines = [
       `${who} רוצה ללמוד "${b.title}" (${price} ${budget.currency}).`,
-      `נשארו בתקציב החודשי ${budget.remaining} ${budget.currency}, אז צריך את האישור שלך על ההפרש.`,
+      `נשארו בתקציב החודשי ${budget.remaining} ${budget.currency}, אז צריך אישור על ההפרש.`,
       ...(b.reason ? [`למה: ${b.reason}`] : []),
     ];
     await notify({
       kind: "request", to: me!.manager_email!,
-      subject: `${who} מבקש/ת אישור ללמידה: ${b.title}`,
+      subject: `בקשת אישור ללמידה מ-${who}: ${b.title}`,
       html: mail("בקשת אישור ללמידה", lines, [
         { label: "לאשר", url: link("approve") },
         { label: "לא הפעם", url: link("decline"), primary: false },

@@ -322,3 +322,32 @@
   .fd-scroller { scroll-behavior: auto; }
   .fd-spinner { animation-duration: 2s; }
 }
+
+/* Phone polish: one scrollable row of tabs, text clear of the action rail, nothing cut. */
+.fd-tabs {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  padding-inline: 12px;
+  scrollbar-width: none;
+  pointer-events: auto;
+}
+.fd-tabs::-webkit-scrollbar { display: none; }
+.fd-tab { flex: 0 0 auto; white-space: nowrap; min-height: 40px; }
+.fd-time { display: inline-flex; align-items: center; gap: 6px; }
+.fd-filter { flex: 0 0 auto; }
+.fd-title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.fd-summary { -webkit-line-clamp: 2; }
+.fd-rail { gap: 10px; }
+.fd-rail-ico { width: 44px; height: 44px; }
+@media (min-width: 720px) {
+  .fd-tabs { justify-content: center; }
+  .fd-summary { -webkit-line-clamp: 3; }
+}
+@media (max-width: 719px) {
+  /* Phones: a calmer card. The "why" line lives on the item page; the rail is tighter. */
+  .fd-why { display: none; }
+  .fd-rail { gap: 8px; bottom: 90px; }
+  .fd-rail-ico { width: 42px; height: 42px; }
+  .fd-rail-n { font-size: 11px; }
+}

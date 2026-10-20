@@ -119,7 +119,7 @@ export default function ItemPage() {
   }, [item, location.hash])
 
   if (item === undefined) return <div style={{ marginTop: 28 }}><Skeletons n={1} /></div>
-  if (item === null) return <Empty>הפריט הזה כבר לא זמין. אולי הקישור שלו נשבר, או שהוא בבדיקה.</Empty>
+  if (item === null) return <Empty>התוכן הזה כבר לא זמין. אולי הקישור שלו נשבר, או שהוא אצלנו בבדיקה.</Empty>
 
   const lessons = item.lesson_plan ?? []
   const pct = lessons.length ? done.length / lessons.length : 0
@@ -154,7 +154,7 @@ export default function ItemPage() {
         <a className="btn" href={item.source_url} target="_blank" rel="noopener noreferrer" onClick={() => track(itemId, 'click_source')}>
           {item.kind === 'course' ? 'לקורס המקורי ←' : 'למקור ←'}
         </a>
-        <button className="btn ghost" onClick={toggleSave}>{saved ? 'שמור אצלכם ✓' : 'לשמור לאחר כך'}</button>
+        <button className="btn ghost" onClick={toggleSave}>{saved ? 'נשמר ✓' : 'לשמור לאחר כך'}</button>
         <button className={`btn ghost${later ? ' on' : ''}`} onClick={toggleLater} aria-pressed={later}>
           <IHeadphones size={18} /> {later ? 'בתור ההאזנה שלכם' : 'להאזין אחר כך'}
         </button>
@@ -176,7 +176,7 @@ export default function ItemPage() {
               </label>
               <div className="row">
                 <button className="btn green" disabled={buying} onClick={purchase}>{buying ? 'בודקים תקציב' : `לאשר רכישה של ${fmtMoney(price.price, price.currency)}`}</button>
-                <button className="btn ghost" onClick={() => setBuyOpen(false)}>ביטול</button>
+                <button className="btn ghost" onClick={() => setBuyOpen(false)}>לבטל</button>
               </div>
             </div>
           )}
@@ -184,7 +184,7 @@ export default function ItemPage() {
           {buyErr && <div className="notice err" style={{ marginTop: 10 }}>משהו נתקע בדרך. נסו שוב עוד רגע.</div>}
           {bought && <BuyResult result={bought} url={item.source_url} />}
           <div className="small muted" style={{ marginTop: 10 }}>
-            עד גובה התקציב החודשי זה מאושר מיד. מעל זה, הבקשה הולכת ישר למנהל/ת. <Link to="/budget">התקציב שלי ←</Link>
+            עד גובה התקציב החודשי זה מאושר מיד. מעל זה, הבקשה הולכת ישר למי שמנהל אתכם. <Link to="/budget">התקציב שלי ←</Link>
           </div>
         </section>
       )}
@@ -214,7 +214,7 @@ export default function ItemPage() {
 
       <div style={{ marginTop: 24 }}>
         {reported ? (
-          <div className="notice ok">תודה. העברנו את הפריט לבדיקה, והוא יחזור אחרי שנתקן.</div>
+          <div className="notice ok">תודה. הדיווח הגיע לצוות L&D, והם יבדקו את זה.</div>
         ) : reportOpen ? (
           <form className="card" onSubmit={sendReport}>
             <label className="field">
@@ -222,12 +222,12 @@ export default function ItemPage() {
               <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="למשל: התקציר לא תואם לקורס, או שהקישור לא עובד" />
             </label>
             <div className="row">
-              <button className="btn red" disabled={!note.trim()}>שליחה</button>
-              <button type="button" className="btn ghost" onClick={() => setReportOpen(false)}>ביטול</button>
+              <button className="btn red" disabled={!note.trim()}>לשלוח</button>
+              <button type="button" className="btn ghost" onClick={() => setReportOpen(false)}>לבטל</button>
             </div>
           </form>
         ) : (
-          <button className="chip" onClick={() => setReportOpen(true)}>⚑ דווח על טעות</button>
+          <button className="chip" onClick={() => setReportOpen(true)}>⚑ לדווח על טעות</button>
         )}
       </div>
     </article>

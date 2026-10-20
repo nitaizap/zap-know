@@ -208,7 +208,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
                 ))}
               </div>
             </>}
-            <h3 className="ob-q">המייל של המנהל/ת הישיר/ה <span className="ob-opt">לא חובה</span></h3>
+            <h3 className="ob-q">המייל של מי שמנהל אתכם <span className="ob-opt">לא חובה</span></h3>
             <p className="ob-help">צריך אותו רק כשרוצים לקנות משהו מעל תקציב הלמידה, לאישור בקליק. בגרסה המלאה הוא מגיע אוטומטית מ-M365.</p>
             <input className="input" dir="ltr" placeholder={`name${ALLOWED_DOMAIN}`} value={manager} onChange={(e) => setManager(e.target.value)} />
             {!managerOk(manager) && <p className="ob-error">המייל צריך להסתיים ב-{ALLOWED_DOMAIN}</p>}
@@ -219,7 +219,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
               {AVATAR_COLORS.slice(0, 6).map((c, i) => <span key={c} style={{ background: c, ['--i' as string]: i } as React.CSSProperties} />)}
             </div>
             <Avatar face={{ user_id: session.user.id, name: name || first, ...look, avatar_color: color }} size={84} className="ob-avatar-big" />
-            <h1 className="ob-title center"><span className="ob-light">הכל מוכן,</span> {first}</h1>
+            <h1 className="ob-title center"><span className="ob-light">הכול מוכן,</span> {first}</h1>
             <p className="ob-hand">עוד זאפ קטן ואתם בפנים</p>
             <div className="ob-summary">
               <div><span>תחום</span><strong>{role}{vertical ? ` · ${vertical}` : ''}{sen ? ` · ${sen.label}` : ''}</strong></div>

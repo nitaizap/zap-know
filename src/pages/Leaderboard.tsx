@@ -21,7 +21,7 @@ export default function Leaderboard() {
 
   const top = rows?.[0]?.points || 1
   const podium = (rows ?? []).slice(0, 3)
-  const unit = scope === 'teams' ? 'נק\' לחבר/ה' : 'נק\''
+  const unit = scope === 'teams' ? 'נק\' בממוצע' : 'נק\''
 
   return (
     <div style={{ position: 'relative' }}>
@@ -44,7 +44,7 @@ export default function Leaderboard() {
         {period === 'month'
           ? 'הטבלה החודשית מתאפסת ב-1 לחודש. שלושת המובילים מקבלים תוספת לתקציב הלמידה.'
           : 'כל הנקודות מאז שהתחלנו. הרמות שלכם נשמרות לתמיד.'}
-        {scope === 'teams' ? ' צוותים מדורגים לפי ממוצע לחבר/ה פעיל/ה, כדי שגם צוות קטן יכול לנצח.' : ''}
+        {scope === 'teams' ? ' את הצוותים מדרגים לפי ממוצע הנקודות של מי שפעיל בהם, כדי שגם צוות קטן יוכל לנצח.' : ''}
       </p>
 
       {rows === undefined && <div style={{ marginTop: 18 }}><Skeletons n={3} /></div>}
@@ -86,7 +86,7 @@ export default function Leaderboard() {
 
       {me && rows && rows.length > 0 && scope === 'people' && !rows.some((r) => r.is_me) && (
         <div className="notice info" style={{ marginTop: 12 }}>
-          {me.month > 0 ? `יש לכם ${me.month} נקודות החודש. עוד קצת וזה בטבלה.` : 'עוד אין לכם נקודות החודש. שיעור, תגובה או שיתוף, וזה מתחיל.'}
+          {me.month > 0 ? `יש לכם ${me.month} נקודות החודש. עוד קצת ואתם עולים בטבלה.` : 'עוד אין לכם נקודות החודש. שיעור, תגובה או שיתוף, וזה מתחיל.'}
         </div>
       )}
 

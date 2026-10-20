@@ -13,10 +13,10 @@ const EARN: Record<EarnKind, { pts: number; cap: number | null; label: string }>
   course_done: { pts: 30, cap: null, label: 'קורס שהושלם' },
   share: { pts: 4, cap: 5, label: 'שיתוף' },
   comment: { pts: 3, cap: 5, label: 'תגובה' },
-  post: { pts: 20, cap: 3, label: 'פרסום בקורה ב-zap' },
+  post: { pts: 20, cap: 3, label: 'פרסום ב"קורה ב-zap"' },
   open: { pts: 1, cap: 10, label: 'פתיחה' },
   save: { pts: 1, cap: 5, label: 'שמירה' },
-  react: { pts: 1, cap: 5, label: 'תגובה לפריט' },
+  react: { pts: 1, cap: 5, label: 'לייק או דיסלייק' },
 }
 
 export const RULES: { what: string; pts: number; cap: string | null }[] = [
@@ -26,7 +26,7 @@ export const RULES: { what: string; pts: number; cap: string | null }[] = [
   { what: 'שיתוף', pts: 4, cap: 'עד 5 ביום' },
   { what: 'תגובה', pts: 3, cap: 'עד 5 ביום' },
   { what: 'לייק או תגובה של עמיתים על פוסט שלכם', pts: 2, cap: 'עד 20 ביום' },
-  { what: 'פתיחת פריט', pts: 1, cap: 'עד 10 ביום' },
+  { what: 'פתיחת קורס או עדכון', pts: 1, cap: 'עד 10 ביום' },
   { what: 'שמירה', pts: 1, cap: 'עד 5 ביום' },
   { what: 'לייק או דיסלייק', pts: 1, cap: 'עד 5 ביום' },
 ]
@@ -45,12 +45,12 @@ export const BADGES: { name: string; how: string; ico: string }[] = [
   { name: 'משתפים ידע', how: '5 שיתופים עם עמיתים', ico: '↗' },
   { name: 'קול בשיחה', how: '10 תגובות', ico: '💬' },
   { name: 'קורה אצלי', how: 'מפרסמים פרויקט ב"קורה ב-zap"', ico: '⚑' },
-  { name: 'מגיבים ראשונים', how: 'מגיבים ראשונים על 3 פריטים', ico: '⚡' },
+  { name: 'מגיבים ראשונים', how: 'מגיבים ראשונים על 3 קורסים או עדכונים', ico: '⚡' },
 ]
 
 const LEDGER_LABEL: Record<string, string> = {
-  lessons: 'שיעורים', course_done: 'קורס שהושלם', share: 'שיתוף', comment: 'תגובה', post: 'פרסום בקורה ב-zap',
-  post_liked: 'לייק על פוסט שלכם', post_commented: 'תגובה על פוסט שלכם', open: 'פתיחת פריט', save: 'שמירה', react: 'לייק או דיסלייק',
+  lessons: 'שיעורים', course_done: 'קורס שהושלם', share: 'שיתוף', comment: 'תגובה', post: 'פרסום ב"קורה ב-zap"',
+  post_liked: 'לייק על פוסט שלכם', post_commented: 'תגובה על פוסט שלכם', open: 'פתיחת קורס או עדכון', save: 'שמירה', react: 'לייק או דיסלייק',
 }
 
 export type MyPoints = {
@@ -171,7 +171,7 @@ export function RulesPanel() {
         </tbody>
       </table>
       <p className="small muted" style={{ margin: '10px 0 0' }}>
-        דיסלייק אף פעם לא מוריד נקודות למישהו. הכי הרבה נקודות מקבלים על למידה ועל שיתוף ידע.
+        הכי הרבה נקודות מקבלים על למידה ועל שיתוף ידע. דיסלייק אף פעם לא מוריד נקודות לאף אחד.
       </p>
       <p className="small" style={{ margin: '8px 0 0' }}>
         <b>מה זה נותן:</b> רמות ותגים, שלושת המובילים של החודש מקבלים תוספת לתקציב הלמידה, והמובילים מקבלים קרדיט בפרק השבועי.
@@ -193,7 +193,7 @@ export function PointsDashboard() {
       <LevelBar p={p} />
       <div className="tiles" style={{ marginTop: 14 }}>
         <div className="tile"><span className="tile-num">{p.month.toLocaleString('he-IL')}</span><span className="tile-label">נקודות החודש</span></div>
-        <div className="tile"><span className="tile-num">{p.all.toLocaleString('he-IL')}</span><span className="tile-label">מאז ומעולם</span></div>
+        <div className="tile"><span className="tile-num">{p.all.toLocaleString('he-IL')}</span><span className="tile-label">מאז שהתחלתם</span></div>
         <Link to="/leaderboard" className="tile tile-link">
           <span className="tile-num">{p.rank_month ? `#${p.rank_month}` : '–'}</span>
           <span className="tile-label">{p.rank_month ? `מקום ${p.rank_month} החודש` : 'עוד לא בטבלה'}</span>

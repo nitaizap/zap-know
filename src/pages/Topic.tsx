@@ -24,7 +24,7 @@ export default function TopicPage() {
     loadFeed(200, slug).then(setRanked)
   }, [slug])
 
-  if (!topic) return <Empty>הנושא הזה לא קיים.</Empty>
+  if (!topic) return <Empty>לא מצאנו את הנושא הזה.</Empty>
 
   if (topic.status === 'soon') {
     return (
@@ -32,7 +32,7 @@ export default function TopicPage() {
         <Headline light={topic.name_he} black="בקרוב כאן" hand="שווה לחכות" />
         <div className="card">
           <p>{topic.blurb_he}</p>
-          <p className="muted small" style={{ marginTop: 8 }}>אנחנו כבר בוחרים מקורות לנושא הזה. ברגע שהם מאושרים, התוכן מגיע לכאן לבד.</p>
+          <p className="muted small" style={{ marginTop: 8 }}>אנחנו כבר בוחרים מקורות לנושא הזה. ברגע שנאשר אותם, התוכן יגיע לכאן לבד.</p>
         </div>
       </div>
     )
@@ -48,7 +48,7 @@ export default function TopicPage() {
       <FilterBar value={f} onChange={setF} total={shown?.length} show={{ kind: true, len: true, vertical: true, saved: true }} />
       {shown === null ? <Skeletons n={6} /> : shown.length ? (
         <div className="grid three">{shown.map((i) => <ItemCard key={i.id} item={i} reasons={f.sort === 'top' ? reasonChips(rowOf.get(i.id)).slice(0, 1) : undefined} />)}</div>
-      ) : <Empty>אין כאן עדיין תוכן שמתאים לסינון.</Empty>}
+      ) : <Empty>אין כאן עדיין תוכן שמתאים לסינון. אפשר לנסות סינון אחר.</Empty>}
     </div>
   )
 }

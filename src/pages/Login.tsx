@@ -33,7 +33,7 @@ export default function Login() {
     setBusy(true); setMsg(null)
     const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'email' })
     setBusy(false)
-    if (error) setMsg({ kind: 'err', text: 'הקוד לא עבד. בדקו שהעתקתם את כולו, או בקשו קוד חדש.' })
+    if (error) setMsg({ kind: 'err', text: 'הקוד לא עבד. אולי הוא כבר לא בתוקף, או שנשלח אחריו קוד חדש. אפשר לבקש קוד חדש.' })
   }
 
   return (
@@ -57,7 +57,7 @@ export default function Login() {
                 <input className="input" type="email" dir="ltr" placeholder={`name${ALLOWED_DOMAIN}`} value={email}
                   onChange={(e) => setEmail(e.target.value)} required autoFocus />
               </label>
-              <button className="btn block" disabled={busy}>{busy ? 'שולחים' : 'שלחו לי קוד'}</button>
+              <button className="btn block" disabled={busy}>{busy ? 'שולחים' : 'לשלוח לי קוד'}</button>
             </form>
           ) : (
             <form onSubmit={verify}>
@@ -66,9 +66,9 @@ export default function Login() {
                 <input className="input" inputMode="numeric" autoComplete="one-time-code" dir="ltr" value={code}
                   onChange={(e) => setCode(e.target.value)} required autoFocus />
               </label>
-              <button className="btn block" disabled={busy}>{busy ? 'בודקים' : 'כניסה'}</button>
+              <button className="btn block" disabled={busy}>{busy ? 'בודקים' : 'להיכנס'}</button>
               <button type="button" className="btn ghost block" style={{ marginTop: 8 }}
-                onClick={() => { setStep('email'); setCode(''); setMsg(null) }}>החלפת מייל</button>
+                onClick={() => { setStep('email'); setCode(''); setMsg(null) }}>להחליף מייל</button>
             </form>
           )}
           {msg && <div className={`notice ${msg.kind}`} style={{ marginTop: 12 }}>{msg.text}</div>}

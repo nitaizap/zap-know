@@ -194,7 +194,7 @@ export function EpisodeCard({ items, loading, audioUrl, sent }: { items: Item[];
       {audioUrl && (
         <div className="episode-audio"><IHeadphones size={18} /><audio controls src={audioUrl} /></div>
       )}
-      <p className="episode-foot">{sent ? 'הפרק הזה נשלח גם ב-Teams ובמייל.' : 'כל שבוע מגיע פרק חדש ב-Teams ובמייל, לפי הנושאים שבחרתם.'}</p>
+      <p className="episode-foot">{sent ? 'הפרק הזה נשלח גם במייל.' : 'כל יום ראשון מגיע פרק חדש במייל, לפי הנושאים שבחרתם.'}</p>
     </section>
   )
 }

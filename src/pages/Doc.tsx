@@ -249,7 +249,7 @@ export default function Doc() {
             לכתוב ל{team.contact_name ?? `צוות ${team.team}`}
           </a>
         )}
-        <Remind docId={doc.id} trigger={(open) => <button type="button" className="doc-btn ghost" onClick={open}>שלחו לי את זה ב...</button>} />
+        <Remind docId={doc.id} trigger={(open) => <button type="button" className="doc-btn ghost" onClick={open}>לקבל את זה במייל</button>} />
       </div>
 
       <article className="doc-body">

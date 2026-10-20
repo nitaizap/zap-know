@@ -92,7 +92,7 @@ export default function Home() {
     }
     const sharedBy = new Map(rows.filter((r) => r.shared_by).map((r) => [r.id, r.shared_by!]))
     const inbox = shares.flatMap((x) => (inboxItems.has(x.item_id)
-      ? [{ id: x.id, item: inboxItems.get(x.item_id)!, note: x.note, by: sharedBy.get(x.item_id) ?? 'עמית/ה' }] : []))
+      ? [{ id: x.id, item: inboxItems.get(x.item_id)!, note: x.note, by: sharedBy.get(x.item_id) ?? 'מישהו מהצוות' }] : []))
     return { forYou, inbox }
   }
 

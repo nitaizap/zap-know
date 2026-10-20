@@ -100,8 +100,8 @@ export default function App() {
           <footer className="footer">
             <div className="footer-brand"><b>zap UP</b> <bdi dir="ltr">Learn. Level Up. zap.</bdi></div>
             <p>
-              <bdi dir="ltr">zap KNOW</bdi>, מרכז הלמידה והידע של zap. התקצירים נכתבים ב-AI מתוך מידע פומבי, וכל פריט מוביל למקור.
-              מצאתם טעות? בכל פריט יש "דווח על טעות".
+              מרכז הלמידה והידע של zap. ה-AI מסכם מידע פומבי, וכל קורס ועדכון מוביל למקור.
+              מצאתם טעות? בכל קורס ועדכון יש "לדווח על טעות".
             </p>
           </footer>
         </main>
@@ -130,7 +130,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
   const secondary = [
     { to: '/me', label: 'האזור שלי', icon: IUser },
     { to: '/drive', label: 'אני בדרך', icon: ICar },
-    { to: '/library', label: 'מאגר', icon: IBook },
+    { to: '/library', label: 'חיפוש', icon: IBook },
     { to: '/internal', label: 'קורה ב-zap', icon: INews },
     { to: '/ask', label: 'שאלו את zap UP', icon: IChat },
     { to: '/teams', label: 'איך עובדים פה', icon: IUsers },
@@ -154,7 +154,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
               {more && (
                 <div className="more-menu" role="menu">
                   {secondary.map((n) => <NavLink key={n.to} to={n.to} role="menuitem"><n.icon size={18} />{n.label}</NavLink>)}
-                  <button role="menuitem" onClick={() => supabase.auth.signOut()}><ILogout size={18} />יציאה</button>
+                  <button role="menuitem" onClick={() => supabase.auth.signOut()}><ILogout size={18} />לצאת</button>
                 </div>
               )}
             </div>
@@ -175,7 +175,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
           <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="תפריט">
             <div className="drawer-head">
               <span className="brand"><img src="/zap-know/img/zap-group.svg" alt="zap group" /><span className="brand-up">UP</span></span>
-              <button className="icon-btn" aria-label="סגירה" onClick={() => setOpen(false)}><IClose /></button>
+              <button className="icon-btn" aria-label="לסגור" onClick={() => setOpen(false)}><IClose /></button>
             </div>
             <div className="drawer-me">
               <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={40} />
@@ -185,7 +185,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
               {[...PRIMARY, ...secondary].map((n) => (
                 <NavLink key={n.to} to={n.to} end={'end' in n ? Boolean(n.end) : undefined}><n.icon />{n.label}</NavLink>
               ))}
-              <button onClick={() => supabase.auth.signOut()}><ILogout />יציאה</button>
+              <button onClick={() => supabase.auth.signOut()}><ILogout />לצאת</button>
             </nav>
           </aside>
         </div>

@@ -192,7 +192,7 @@ export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; top
         </div>
       ))}
 
-      {group('needs', 'מה אני צריך/ה עכשיו', <NeedsPicker needs={needs} setNeeds={setNeeds} note={note} setNote={setNote} />)}
+      {group('needs', 'מה אתם צריכים עכשיו', <NeedsPicker needs={needs} setNeeds={setNeeds} note={note} setNote={setNote} />)}
 
       {group('how', 'איך נוח לי ללמוד', <>
         <h4 className="ob-sub">פורמטים</h4><Multi options={FORMAT_OPTIONS} values={formats} onChange={setFormats} />
@@ -215,7 +215,7 @@ export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; top
           onPick={(l) => setChannel(CHANNEL_OPTIONS.find((c) => c.label === l)!.value)} />
         <h4 className="ob-sub">ביום</h4>
         <Chips options={DAY_OPTIONS} value={DAY_OPTIONS[day]} onPick={(d) => setDay(DAY_OPTIONS.indexOf(d))} />
-        <label className="field"><span className="small muted">המייל של המנהל/ת הישיר/ה (לאישורי תקציב)</span>
+        <label className="field"><span className="small muted">המייל של מי שמנהל אתכם (לאישורי תקציב)</span>
           <input className="input" dir="ltr" placeholder={`name${ALLOWED_DOMAIN}`} value={manager} onChange={(e) => setManager(e.target.value)} /></label>
         {!managerOk(manager) && <div className="small" style={{ color: 'var(--red)' }}>המייל צריך להסתיים ב-{ALLOWED_DOMAIN}</div>}
       </>)}

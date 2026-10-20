@@ -176,7 +176,7 @@ h1, h2, h3, h4 { line-height: 1.3; }
 .hero { position: relative; padding: var(--s8) 0 var(--s5); margin-bottom: var(--s2); isolation: isolate; }
 .hero-texture { position: absolute; inset: 0 calc(50% - 50vw); z-index: -1; pointer-events: none; overflow: hidden; }
 .hero .metro { position: absolute; inset-inline-end: calc(-1 * var(--s4)); width: 260px; height: 112px; z-index: -1; opacity: .95; }
-@media (max-width: 640px) { .hero .metro { width: 170px; height: 74px; } }
+@media (max-width: 640px) { .hero .metro { width: 120px; height: 52px; top: auto !important; bottom: -6px; opacity: .8; } }
 .hero-link { display: inline-flex; margin-top: var(--s3); font-weight: 700; font-size: var(--fs-sm); text-decoration: none; }
 .hero-link:hover { text-decoration: underline; }
 .headline { margin: 0; max-width: 760px; }

@@ -131,7 +131,7 @@ export default function Drive() {
             <h1>{now.item.title_he}</h1>
             <span className="small">{now.item.source_name}</span>
             {now.state === 'making' && <p className="drive-making">נועה ועידו מתכוננים, עוד כמה שניות</p>}
-            {now.state === 'failed' && <p className="drive-making">את זה לא הצלחנו להכין. ממשיכים לפריט הבא.</p>}
+            {now.state === 'failed' && <p className="drive-making">את זה לא הצלחנו להכין. ממשיכים הלאה.</p>}
           </div>
 
           {now.src && (

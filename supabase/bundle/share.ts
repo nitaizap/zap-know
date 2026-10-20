@@ -135,9 +135,9 @@ export async function log(job: string, ok: boolean, detail: unknown) {
   }
 }
 
-export const VOICE = `את/ה כותב/ת בשם zap UP (zap KNOW), מרכז הלמידה והידע של עובדי zap, בעברית זאפית (zap One Tone, עולם פנים ארגוני).
+export const VOICE = `כותבים בשם zap UP (zap KNOW), מרכז הלמידה והידע של עובדי zap, בעברית זאפית (zap One Tone, עולם פנים ארגוני).
 - פשוטה, חכמה, ישירה, אנושית, מקדמת. מדברים כמו קולגה, לא כמו HR.
-- העיקר קודם: מה זה → מה זה נותן לך → מה עושים עכשיו.
+- העיקר קודם: מה זה → מה זה נותן לכם → מה עושים עכשיו.
 - בתוכן ידע: בהירות לפני שובבות. רעיון אחד במשפט, קול פעיל, בלי סלנג כשהדיוק חשוב.
 - zap תמיד באותיות קטנות. בלי "..." בכלל, לכל היותר "!" אחד. בלי מילים גדולות ובלי הבטחות.
 - פנייה ברבים או ניטרלית מגדרית ("מי שרוצה", "כולם מוזמנים").
@@ -239,13 +239,13 @@ Deno.serve(async (req) => {
   const link = `${SITE}#/item/${item.id}`;
   if (b.channel !== "link") {
     const from = me?.display_name ?? me?.email ?? "מישהו מ-zap";
-    const lines = [`${from} חושב/ת שזה שווה לך: "${item.title_he}"`, ...(item.why_he ? [item.why_he] : []), ...(b.note ? [`במילים שלו/ה: ${b.note}`] : [])];
+    const lines = [`המלצה מ-${from}: "${item.title_he}"`, ...(item.why_he ? [item.why_he] : []), ...(b.note ? [`בהערה: ${b.note}`] : [])];
     const channelBox = Deno.env.get("CHANNEL_EMAIL") ?? me?.email ?? "";
     await notify({
       kind: "share",
       to: b.channel === "colleague" ? to!.email : channelBox,
-      subject: `${from} שיתף/ה איתך מ-zap UP: ${item.title_he}`,
-      html: mail("שיתפו איתך משהו", lines, [{ label: "לפתוח ב-zap UP", url: link }]),
+      subject: `המלצה מ-${from} ב-zap UP: ${item.title_he}`,
+      html: mail("שיתפו איתכם משהו", lines, [{ label: "לפתוח ב-zap UP", url: link }]),
       teams_text: `${lines.join("\n")}
 ${link}`,
       teams_to: b.channel === "colleague" ? to!.email : "channel",

@@ -59,9 +59,9 @@ export default function Internal() {
         <label className="field"><span>קישור (לא חובה)</span>
           <input className="input" dir="ltr" type="url" value={form.link} onChange={set('link')} placeholder="https://" />
         </label>
-        <button className="btn" disabled={state === 'sending'}>{state === 'sending' ? 'שולחים' : 'שליחה'}</button>
-        {state === 'ok' && <div className="notice ok" style={{ marginTop: 10 }}>קיבלנו. ה-AI מסכם, צוות L&D מאשר, והפרויקט עולה לכאן.</div>}
-        {state === 'err' && <div className="notice err" style={{ marginTop: 10 }}>השליחה לא עברה. נסו שוב, או פרסמו בערוץ ה-Teams של קורה ב-zap.</div>}
+        <button className="btn" disabled={state === 'sending'}>{state === 'sending' ? 'שולחים' : 'לשלוח'}</button>
+        {state === 'ok' && <div className="notice ok" style={{ marginTop: 10 }}>קיבלנו. ה-AI מסכם, והפרויקט עולה לכאן תוך דקה.</div>}
+        {state === 'err' && <div className="notice err" style={{ marginTop: 10 }}>השליחה לא עברה. נסו שוב, או פרסמו בערוץ "קורה ב-zap" ב-Teams.</div>}
       </form>
     </div>
   )

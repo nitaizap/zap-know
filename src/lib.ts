@@ -115,7 +115,7 @@ export const CATEGORY_LABEL: Record<PurchaseCategory, string> = {
 
 export const STATUS_LABEL: Record<PurchaseStatus, string> = {
   auto_approved: 'אושר אוטומטית',
-  pending_manager: 'מחכה למנהל/ת',
+  pending_manager: 'מחכה לאישור',
   approved: 'אושר',
   declined: 'לא אושר',
   purchased: 'נקנה',

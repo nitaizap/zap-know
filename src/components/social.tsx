@@ -144,9 +144,9 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
         try { await navigator.clipboard.writeText(r.link); copied = true } catch { /* show it instead */ }
         setDone(copied ? { msg: 'הקישור הועתק. אפשר להדביק איפה שרוצים.' } : { msg: 'הנה הקישור:', link: r.link })
       } else if (channel === 'teams') {
-        setDone({ msg: 'נשלח לערוץ קורה ב-zap ב-Teams.' })
+        setDone({ msg: 'נשלח לערוץ "קורה ב-zap" ב-Teams.' })
       } else {
-        setDone({ msg: `נשלח ל${to?.name}. זה יופיע אצלם בבית, וגם ב-Teams ובמייל.` })
+        setDone({ msg: `נשלח ל${to?.name}. זה יחכה בבית שלהם ב-zap UP, וגם במייל.` })
       }
     } catch {
       setErr('השיתוף לא עבר. נסו שוב עוד רגע.')
@@ -159,7 +159,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
       <div className="sheet card" role="dialog" aria-label="שיתוף" onClick={(e) => e.stopPropagation()}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h3 style={{ margin: 0 }}>שיתוף</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="סגירה"><IClose /></button>
+          <button className="icon-btn" onClick={onClose} aria-label="לסגור"><IClose /></button>
         </div>
         <p className="small muted" style={{ margin: '4px 0 12px' }}>{item.title_he}</p>
 
@@ -167,12 +167,12 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
           <>
             <div className="notice ok">{done.msg}</div>
             {done.link && <input className="input" dir="ltr" readOnly value={done.link} onFocus={(e) => e.target.select()} style={{ marginTop: 8 }} />}
-            <button className="btn block" style={{ marginTop: 12 }} onClick={onClose}>סגירה</button>
+            <button className="btn block" style={{ marginTop: 12 }} onClick={onClose}>לסגור</button>
           </>
         ) : mode === 'pick' ? (
           <div className="sheet-opts">
             <button className="btn ghost block" onClick={() => setMode('colleague')}>לעמית או עמיתה</button>
-            <button className="btn ghost block" disabled={busy} onClick={() => send('teams')}>לערוץ קורה ב-zap ב-Teams</button>
+            <button className="btn ghost block" disabled={busy} onClick={() => send('teams')}>לערוץ "קורה ב-zap" ב-Teams</button>
             <button className="btn ghost block" disabled={busy} onClick={() => send('link')}>להעתיק קישור</button>
           </div>
         ) : (
@@ -195,7 +195,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
                       </button>
                     </li>
                   ))}
-                  {people.length === 0 && <li className="small muted" style={{ padding: 8 }}>לא מצאנו. אולי הם עוד לא נכנסו ל-zap UP.</li>}
+                  {people.length === 0 && <li className="small muted" style={{ padding: 8 }}>לא מצאנו. אולי עוד לא נכנסו ל-zap UP.</li>}
                 </ul>
               </>
             )}
@@ -205,7 +205,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
             </label>
             <div className="row">
               <button className="btn" disabled={!to || busy} onClick={() => send('colleague')}>{busy ? 'שולחים' : 'לשלוח'}</button>
-              <button className="btn ghost" onClick={() => setMode('pick')}>חזרה</button>
+              <button className="btn ghost" onClick={() => setMode('pick')}>לחזור</button>
             </div>
           </>
         )}
@@ -257,7 +257,7 @@ export function Comments({ item, myId }: { item: Item; myId: string }) {
 
   return (
     <section id="comments" className="card" style={{ marginTop: 24 }}>
-      <h2 style={{ fontWeight: 900, fontSize: 19, margin: '0 0 10px' }}>מה חושבים עליו פה</h2>
+      <h2 style={{ fontWeight: 900, fontSize: 19, margin: '0 0 10px' }}>מה אומרים פה</h2>
       {list.length === 0 && <p className="small muted">עוד אין תגובות. מי פותח?</p>}
       <ul className="comments">
         {list.map((c) => (
@@ -268,11 +268,11 @@ export function Comments({ item, myId }: { item: Item; myId: string }) {
               <span className="small muted">{new Date(c.at).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
               <span style={{ marginInlineStart: 'auto' }} />
               {c.user_id === myId ? (
-                <button className="linkbtn small" onClick={() => remove(c.id)}>מחיקה</button>
+                <button className="linkbtn small" onClick={() => remove(c.id)}>למחוק</button>
               ) : reported.includes(c.id) ? (
-                <span className="small muted">דווח, תודה</span>
+                <span className="small muted">קיבלנו, תודה</span>
               ) : (
-                <button className="linkbtn small" onClick={() => report(c.id)}>דיווח</button>
+                <button className="linkbtn small" onClick={() => report(c.id)}>לדווח</button>
               )}
             </div>
             <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{c.body}</p>
@@ -299,7 +299,7 @@ export async function loadFeed(limit: number, topic?: string | null, kind?: stri
 export function reasonChips(r?: FeedRow | null): string[] {
   if (!r) return []
   const out: string[] = []
-  if (r.shared_by) out.push(`${r.shared_by} שיתף/ה איתך`)
+  if (r.shared_by) out.push(`המלצה מ-${r.shared_by}`)
   if (r.popular_with) out.push(`פופולרי אצל ${r.popular_with}`)
   return out
 }

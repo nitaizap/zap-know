@@ -48,7 +48,7 @@ export function Remind({ itemId, docId, trigger: renderTrigger }: {
 
   const trigger = renderTrigger
     ? renderTrigger(() => setOpen(true))
-    : <button className="btn ghost" onClick={() => setOpen(true)}><IClock size={18} /> שלחו לי את זה ב...</button>
+    : <button className="btn ghost" onClick={() => setOpen(true)}><IClock size={18} /> לקבל את זה במייל</button>
 
   return (
     <>

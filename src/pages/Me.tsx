@@ -30,7 +30,7 @@ const ACTION: Record<Action, { ico: string; label: string }> = {
 }
 
 const FILTERS: { key: Action | null; label: string }[] = [
-  { key: null, label: 'הכל' },
+  { key: null, label: 'הכול' },
   { key: 'open', label: 'נפתח' },
   { key: 'save', label: 'נשמר' },
   { key: 'like', label: 'לייק' },
@@ -115,15 +115,15 @@ export default function Me() {
 
   return (
     <div>
-      <Headline light="כל מה שראיתם, שמרתם ולמדתם," black="האזור שלי" hand="הכל נשמר" />
+      <Headline light="כל מה שראיתם, שמרתם ולמדתם," black="האזור שלי" hand="הכול נשמר" />
 
       <div className="chips" style={{ marginTop: 4 }}>
-        <Link to="/leaderboard" className="chip">🏆 הטבלה</Link>
+        <Link to="/leaderboard" className="chip">הטבלה</Link>
         <Link to="/internal" className="chip">קורה ב-zap</Link>
-        <Link to="/teams" className="chip">איך עובדים פה</Link>
-        <Link to="/library" className="chip">המאגר</Link>
+        <Link to="/teams" className="chip">הצוותים</Link>
+        <Link to="/library" className="chip">חיפוש</Link>
         <Link to="/budget" className="chip">התקציב שלי</Link>
-        {profile.is_admin && <Link to="/admin" className="chip">אישורים</Link>}
+        {profile.is_admin && <Link to="/admin" className="chip">ניהול</Link>}
       </div>
 
       <PointsDashboard />
@@ -172,7 +172,7 @@ export default function Me() {
 
         <Link to={`/ask?q=${encodeURIComponent('ראיתי כתבה ש-GEO הוא הדבר הבא, איפה היא?')}`} className="card link hint-card" style={{ marginTop: 14 }}>
           <b>לא זוכרים איפה זה היה?</b>
-          <span className="small">תשאלו את zap UP, למשל: "ראיתי כתבה ש-GEO הוא הדבר הבא". הוא מחפש גם בהיסטוריה שלכם.</span>
+          <span className="small">שאלו את zap UP, למשל: "ראיתי כתבה ש-GEO הוא הדבר הבא". הוא מחפש גם בהיסטוריה שלכם.</span>
         </Link>
 
         <div style={{ marginTop: 18 }}>
@@ -292,7 +292,7 @@ function MyReminders() {
       ])
       const it = new Map(((its.data as { id: number; title_he: string }[] | null) ?? []).map((x) => [x.id, x.title_he]))
       const dc = new Map(((docs.data as { id: number; title: string }[] | null) ?? []).map((x) => [x.id, x.title]))
-      setList(rs.map((r) => ({ ...r, title: (r.item_id ? it.get(r.item_id) : dc.get(r.doc_id!)) ?? 'פריט' })))
+      setList(rs.map((r) => ({ ...r, title: (r.item_id ? it.get(r.item_id) : dc.get(r.doc_id!)) ?? 'משהו ששמרתם' })))
     })
   }, [])
   if (!list || list.length === 0) return null

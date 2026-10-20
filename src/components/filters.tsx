@@ -92,7 +92,7 @@ export function FilterBar({ value, onChange, show, total }: { value: Filters; on
         סינון ומיון
         {active > 0 && <span className="fbar-count">{active}</span>}
       </button>
-      <span className="fbar-sum">{sortLabel}{total !== undefined ? ` · ${total} פריטים` : ''}</span>
+      <span className="fbar-sum">{sortLabel}{total !== undefined ? ` · ${total === 1 ? "תוצאה אחת" : `${total} תוצאות`}` : ''}</span>
       {active > 0 && <button className="fbar-clear" onClick={() => onChange({ ...NO_FILTERS, sort: value.sort })}>ניקוי</button>}
 
       {open && (
@@ -100,7 +100,7 @@ export function FilterBar({ value, onChange, show, total }: { value: Filters; on
           <div className="sheet card fsheet" role="dialog" aria-label="סינון ומיון" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <h3 style={{ margin: 0 }}>סינון ומיון</h3>
-              <button className="icon-btn" aria-label="סגירה" onClick={() => setOpen(false)}><IClose /></button>
+              <button className="icon-btn" aria-label="לסגור" onClick={() => setOpen(false)}><IClose /></button>
             </div>
 
             <Group label="מיון">
