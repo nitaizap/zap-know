@@ -181,7 +181,10 @@ async function budgetOf(userId: string) {
   const { data: rows } = await admin.from("purchases").select("price,status").eq("user_id", userId).eq("month", month);
   const spent = (rows ?? []).filter((r) => ["auto_approved", "approved", "purchased"].includes(r.status))
     .reduce((a, r) => a + Number(r.price), 0);
-  return { ...b, spent, remaining: Number(b.monthly_amount) - spent };
+  // Last month's leaderboard winners get extra budget (set by L&D).
+  const { data: bonus } = await admin.rpc("budget_bonus_for", { p_user: userId });
+  const total = Number(b.monthly_amount) + Number(bonus ?? 0);
+  return { ...b, spent, remaining: total - spent };
 }
 
 Deno.serve(async (req) => {

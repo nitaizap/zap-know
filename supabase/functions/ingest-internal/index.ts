@@ -41,8 +41,15 @@ ${text.slice(0, 6000)}`,
     );
     const auto = (Deno.env.get("INTERNAL_AUTO_APPROVE") ?? "true") === "true";
     const sourceUrl = b.link?.startsWith("http") ? b.link : `https://zap-know.internal/${channel}/${Date.now()}`;
+    // The author earns points for the post: the form knows the user, Zapier passes the sender's email.
+    let author = user?.id ?? null;
+    if (!author && b.author?.includes("@")) {
+      const { data: who } = await admin.from("profiles").select("user_id").ilike("email", b.author.trim()).maybeSingle();
+      author = who?.user_id ?? null;
+    }
     const { data, error } = await admin.from("items").insert({
       kind: "internal",
+      author_user: author,
       topic_slug: (topics ?? []).some((t) => t.slug === out.topic_slug) ? out.topic_slug : null,
       verticals: out.verticals ?? [],
       title_he: out.title_he,

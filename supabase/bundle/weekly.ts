@@ -278,6 +278,13 @@ async function episodes(onlyEmail?: string) {
   if (onlyEmail) q = q.eq("email", onlyEmail);
   const { data: people } = await q;
   const audio = (Deno.env.get("EPISODE_AUDIO") ?? "true") === "true";
+  // Shout-out: the month's leading people and team, mentioned in every episode.
+  const lead = await admin.rpc("leaderboard_public", { p_scope: "people", p_limit: 3 });
+  const leadTeam = await admin.rpc("leaderboard_public", { p_scope: "teams", p_limit: 1 });
+  const shout = [
+    ...((lead.data ?? []) as { name: string; points: number }[]).map((x) => `${x.name} (${x.points} נק')`),
+  ].join(", ");
+  const shoutTeam = ((leadTeam.data ?? []) as { name: string }[])[0]?.name;
   const sent: string[] = [];
   for (const p of people ?? []) {
     const topics = p.topics?.length ? p.topics : ["digital-marketing"];
@@ -302,7 +309,8 @@ script_he: אותו תוכן כתסריט לאודיו של כ-2 דקות, מש�
 JSON בלבד.
 
 פריטים:
-${picks.map((i) => `- ${i.title_he}: ${i.why_he ?? ""}`).join("\n")}`,
+${picks.map((i) => `- ${i.title_he}: ${i.why_he ?? ""}`).join("\n")}
+${shout ? `שורת סיום קצרה וחמה שמפרגנת למובילים של החודש בטבלת הנקודות: ${shout}${shoutTeam ? `, והצוות המוביל: ${shoutTeam}` : ""}.` : ""}`,
       },
     ], true));
     let audioUrl: string | null = null;
