@@ -23,7 +23,7 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 - Secrets live only in Supabase Edge Function Secrets. Never in code, docs or chat.
 
 ## Product shape (owner-approved, round 4)
-- Two destinations: בית (feed_all; lanes בזאפ · בעולם · בשבילך (default) · בקצרה) and האזור שלי (my cards first, then שמרתי · אחר כך · היסטוריה). /external and /internal redirect into the home lanes.
+- Two destinations: בית (feed_all; lanes בשבילך (default) · בזאפ · בעולם · בקצרה) and האזור שלי (my cards first, then שמרתי · אחר כך · היסטוריה). /external and /internal redirect into the home lanes.
 - One fixed 9:16 frame for every post (desktop: stage height, width = height*9/16). On the media only: one type badge (`components/TypeBadge.tsx`), a 2-line title, one source line, the rail.
 - Opening never navigates: `components/detail.tsx` (openDetail / DetailLink). Desktop feed = side panel, phone = full-height sheet; /item/:id and /doc/:id = the feed with it open. Sources open in a new tab.
 - Preview chain (LiveMedia in `src/pages/Feed.tsx`): YouTube loop (id derived from any YouTube URL) → source image → thum.io page capture → microlink og:image/og:video/embedded YouTube (localStorage cache, 6 calls per visit) → text. Podcasts: show art. Team docs: the DocVisual poster. Never AI-generated thumbnails.
