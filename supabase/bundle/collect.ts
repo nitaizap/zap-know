@@ -1,9 +1,7 @@
-import { XMLParser } from "npm:fast-xml-parser@4.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-
 // Shared helpers for zap KNOW edge functions.
 // LLM provider is a setting: demo runs on the Gemini free tier (public content and
 // demo data only); production switches LLM_PROVIDER=openrouter for internal data.
+import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 export const admin = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -245,9 +243,11 @@ export function weekStart(d = new Date()) {
   return x.toISOString().slice(0, 10);
 }
 
+// ---- collect ----
 // Collection + AI processing. Runs on a schedule (pg_cron) and pulls only from allowed,
 // public sources: YouTube RSS, publisher RSS, the edX catalog API and the Skillshop catalog.
 // Only public metadata (title, description, lesson titles) is summarized, never course content.
+import { XMLParser } from "npm:fast-xml-parser@4.5.0";
 
 type Source = { id: number; name: string; kind: string; ref: string; topic_slug: string };
 type Raw = {
@@ -448,7 +448,12 @@ Deno.serve(async (req) => {
   const max = Number(new URL(req.url).searchParams.get("max") ?? 10);
   await sendDueReminders().catch((e) => log("reminders", false, { error: String(e) }));
   const perRun = Number(new URL(req.url).searchParams.get("sources") ?? 3);
+  // Each source is pulled once a day: the 10-minute cron keeps reminders on time and picks up
+  // new sources right away, but skips any source pulled in the last `pull_every_hours` (default 24).
+  const everyH = Number(await setting("pull_every_hours", "24"));
+  const since = new Date(Date.now() - everyH * 3600_000).toISOString();
   const { data: sources } = await admin.from("sources").select("id,name,kind,ref,topic_slug").eq("status", "active")
+    .or(`last_pulled_at.is.null,last_pulled_at.lt.${since}`)
     .order("last_pulled_at", { ascending: true, nullsFirst: true }).limit(perRun);
   const report = { sources: 0, new_items: 0, failures: [] as string[] };
 

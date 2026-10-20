@@ -203,7 +203,12 @@ Deno.serve(async (req) => {
   const max = Number(new URL(req.url).searchParams.get("max") ?? 10);
   await sendDueReminders().catch((e) => log("reminders", false, { error: String(e) }));
   const perRun = Number(new URL(req.url).searchParams.get("sources") ?? 3);
+  // Each source is pulled once a day: the 10-minute cron keeps reminders on time and picks up
+  // new sources right away, but skips any source pulled in the last `pull_every_hours` (default 24).
+  const everyH = Number(await setting("pull_every_hours", "24"));
+  const since = new Date(Date.now() - everyH * 3600_000).toISOString();
   const { data: sources } = await admin.from("sources").select("id,name,kind,ref,topic_slug").eq("status", "active")
+    .or(`last_pulled_at.is.null,last_pulled_at.lt.${since}`)
     .order("last_pulled_at", { ascending: true, nullsFirst: true }).limit(perRun);
   const report = { sources: 0, new_items: 0, failures: [] as string[] };
 
