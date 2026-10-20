@@ -75,10 +75,10 @@ export default function Contribute() {
 
       {step === 'done' ? (
         <div className="card done-card">
-          <h2>{purpose === 'internal' ? 'עלה ל-קורה ב-zap, עם הקרדיט שלכם' : 'נשלח לאישור קצר'}</h2>
-          <p className="muted">{purpose === 'internal' ? 'הפוסט כבר באוויר, ועמיתים יכולים להגיב ולשתף.' : 'אחרי אישור של צוות L&D הוא יעלה לספרייה, עם הקרדיט שלכם.'}</p>
+          <h2>{purpose === 'internal' ? 'עלה ל-קורה ב-zap, עם הקרדיט שלכם' : 'עלה לאוויר, עם הקרדיט שלכם'}</h2>
+          <p className="muted">{purpose === 'internal' ? 'הפוסט כבר באוויר, ועמיתים יכולים להגיב ולשתף.' : 'זה כבר בידע מבחוץ. מצאו טעות? בכל פריט יש "לדווח על טעות".'}</p>
           <div className="row">
-            {purpose === 'internal' && <Link className="btn" to="/internal">לראות ב-קורה ב-zap</Link>}
+            <Link className="btn" to={purpose === 'internal' ? '/internal' : '/external'}>לראות בפיד</Link>
             <button className="btn ghost" onClick={restart}>לשתף עוד משהו</button>
           </div>
         </div>

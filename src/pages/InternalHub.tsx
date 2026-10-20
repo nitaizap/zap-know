@@ -5,6 +5,8 @@ import { ITEM_COLS, Item, supabase } from '../lib'
 import { Empty, Headline, ItemCard, Skeletons } from '../components/ui'
 import { PageAgent } from '../components/PageAgent'
 import { IClose } from '../components/icons'
+import { openAi } from '../components/AiSheet'
+import Feed from './Feed'
 import { DOC_KIND_HE, DemoNote, teamColor, teamInitials, type AgentTeam, type DocKind, type TeamDoc } from './Doc'
 import '../calm.css'
 import '../lean.css'
@@ -84,19 +86,29 @@ export default function InternalHub() {
   }
   const loading = teams === null || docs === null || posts === null
   const anyDemo = (teams ?? []).some((t) => t.is_demo)
+  const starters = mine
+    ? [`איך צוות ${mine.team} עובד ביום-יום?`, 'איך צוות ה-PPC עובד עם GA4?', 'באילו כלי AI הצוותים משתמשים?']
+    : ['איך צוות ה-PPC עובד עם GA4?', 'באילו כלי AI הצוותים משתמשים?', 'מי אחראי על הדשבורדים בחברה?']
+
+  // Default: the same full-screen feed, my team's posts and documents first.
+  if (params.get('view') !== 'list') {
+    return <Feed source="internal" head={<span className="tk-title">ידע מבפנים</span>} listTo="/internal?view=list"
+      agent={<PageAgent mode="internal" teams={teams ?? []} placeholder="שאלו את העמוד, למשל: איך צוות ה-PPC עובד עם GA4?" starters={starters} />} />
+  }
 
   return (
     <div>
       <div className="page-head">
         <Headline light="איך עובדים אצלנו, ומה קורה עכשיו," black="ידע מבפנים" />
-        <Link to="/contribute" className="btn">משתפים</Link>
+        <span className="row" style={{ gap: 8 }}>
+          <Link to="/internal" className="tool-pill" aria-label="חזרה לפיד">▶ פיד</Link>
+          <Link to="/contribute" className="btn">משתפים</Link>
+        </span>
       </div>
 
       <PageAgent mode="internal" teams={teams ?? []}
-        placeholder="שאלו את הדף הזה, למשל: איך צוות ה-PPC עובד עם GA4?"
-        starters={mine
-          ? [`איך צוות ${mine.team} עובד ביום-יום?`, 'איך צוות ה-PPC עובד עם GA4?', 'באילו כלי AI הצוותים משתמשים?']
-          : ['איך צוות ה-PPC עובד עם GA4?', 'באילו כלי AI הצוותים משתמשים?', 'מי אחראי על הדשבורדים בחברה?']} />
+        placeholder="שאלו את העמוד, למשל: איך צוות ה-PPC עובד עם GA4?"
+        starters={starters} />
 
       <div className="page-tools">
         <div className="seg2 seg-scroll" role="tablist" aria-label="מה להציג">
@@ -157,7 +169,7 @@ export default function InternalHub() {
                       </div>
                       <p>{t.summary_he}</p>
                       <div className="teamcard-actions">
-                        <Link className="btn" to={`/internal?team=${t.id}`} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>לשאול את הצוות</Link>
+                        <button className="btn" onClick={() => openAi('', { teamId: t.id })}>לשאול את הצוות</button>
                         <Link className="textlink" to={`/teams/${t.id}`}>לפרופיל</Link>
                       </div>
                     </div>

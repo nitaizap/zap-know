@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useApp } from '../App'
 import { ITEM_COLS, Item, TeamProfile, supabase } from '../lib'
@@ -11,7 +11,7 @@ import { ICar } from '../components/icons'
 import { ExpertCard, WatchButton } from './Topic'
 import '../lean.css'
 
-const Feed = lazy(() => import('./Feed'))
+import Feed from './Feed'
 
 // ידע מבחוץ: courses, news and podcasts. Tailored by default (my topics, my role, what colleagues
 // like), a feed view for swiping, and one filter bar for anything manual.
@@ -85,22 +85,18 @@ export default function External() {
     }
   }
 
+  const agent = <PageAgent mode="external" placeholder="שאלו את העמוד, למשל: מאיפה מתחילים עם GEO?"
+    starters={['מאיפה מתחילים עם GEO?', 'קורס קצר על Google Ads למתחילים', 'מה חדש השבוע ב-AI לשיווק?']} />
+
+  if (view === 'feed') return <Feed source="external" head={<span className="tk-title">ידע מבחוץ</span>} listTo="/external?view=list" agent={agent} />
+
   return (
     <div>
       <div className="page-head">
         <Headline light="קורסים, עדכונים ופודקאסטים," black="ידע מבחוץ" />
-        <div className="seg2" role="tablist" aria-label="תצוגה">
-          <button role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>רשימה</button>
-          <button role="tab" aria-selected={view === 'feed'} className={view === 'feed' ? 'on' : ''} onClick={() => setView('feed')}>פיד</button>
-        </div>
+        <button className="tool-pill" onClick={() => setView('feed')} aria-label="חזרה לפיד">▶ פיד</button>
       </div>
-
-      <PageAgent mode="external" placeholder="שאלו את הדף הזה, למשל: מאיפה מתחילים עם GEO?"
-        starters={['מאיפה מתחילים עם GEO?', 'קורס קצר על Google Ads למתחילים', 'מה חדש השבוע ב-AI לשיווק?']} />
-
-      {view === 'feed' ? (
-        <Suspense fallback={<Skeletons n={2} />}><Feed /></Suspense>
-      ) : (
+      {(
         <>
           <div className="page-tools">
             <input className="input grow" placeholder="חיפוש בתוך הדף" value={q} onChange={(e) => onType(e.target.value)} aria-label="חיפוש" />
@@ -109,7 +105,7 @@ export default function External() {
             <Link to="/drive" className="tool-pill"><ICar size={16} /> אני בדרך</Link>
           </div>
 
-          <FilterBar value={f} onChange={onFilters} total={shown?.length}
+          <FilterBar value={f} onChange={onFilters} total={shown?.length} extra={agent}
             show={{ topic: topics, kind: true, len: true, vertical: true, saved: true, lang: true, level: true, tools: toolsPresent }} />
 
           {topic && (

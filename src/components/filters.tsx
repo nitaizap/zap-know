@@ -71,18 +71,28 @@ export function applyFilters<T extends Item>(items: T[], f: Filters, opts: { sav
     (!f.level || i.level === f.level) &&
     (!f.tool || !!i.tools?.includes(f.tool)))
   const when = (i: Item) => new Date(i.published_at || i.created_at).getTime()
+  // Hebrew first on ties; in a ranked feed, a Hebrew item moves up two places.
+  const he = (i: Item) => (i.lang === 'he' ? 1 : 0)
   switch (f.sort) {
-    case 'new': return out.sort((a, b) => when(b) - when(a))
-    case 'short': return out.sort((a, b) => (a.minutes ?? 1e6) - (b.minutes ?? 1e6))
-    case 'long': return out.sort((a, b) => (b.minutes ?? -1) - (a.minutes ?? -1))
-    case 'liked': return out.sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0) || b.opens - a.opens)
-    default: return opts.rank ? out.sort((a, b) => (opts.rank!.get(a.id) ?? 1e9) - (opts.rank!.get(b.id) ?? 1e9)) : out
+    case 'new': return out.sort((a, b) => when(b) - when(a) || he(b) - he(a))
+    case 'short': return out.sort((a, b) => (a.minutes ?? 1e6) - (b.minutes ?? 1e6) || he(b) - he(a))
+    case 'long': return out.sort((a, b) => (b.minutes ?? -1) - (a.minutes ?? -1) || he(b) - he(a))
+    case 'liked': return out.sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0) || he(b) - he(a) || b.opens - a.opens)
+    default: {
+      if (opts.rank) return out.sort((a, b) => (opts.rank!.get(a.id) ?? 1e9) - (opts.rank!.get(b.id) ?? 1e9) || he(b) - he(a))
+      const pos = new Map(out.map((i, n) => [i.id, n - 2.5 * he(i)]))
+      return out.sort((a, b) => pos.get(a.id)! - pos.get(b.id)!)
+    }
   }
 }
 
 type Show = { topic?: Topic[]; kind?: boolean; len?: boolean; vertical?: boolean; saved?: boolean; lang?: boolean; level?: boolean; tools?: string[] }
 
-export function FilterBar({ value, onChange, show, total }: { value: Filters; onChange: (f: Filters) => void; show: Show; total?: number }) {
+export function FilterBar({ value, onChange, show, total, icon, extra }: {
+  value: Filters; onChange: (f: Filters) => void; show: Show; total?: number
+  icon?: boolean            // feed overlay: one round icon instead of the pill row
+  extra?: React.ReactNode   // top of the sheet: the page's "שאלו את העמוד" bar
+}) {
   const [open, setOpen] = useState(false)
   const active = [value.topic, value.kind, value.len, value.vertical, value.lang, value.level, value.tool].filter(Boolean).length + (value.saved ? 1 : 0)
   const sortLabel = SORTS.find((s) => s.v === value.sort)?.label
@@ -96,7 +106,14 @@ export function FilterBar({ value, onChange, show, total }: { value: Filters; on
   }, [open])
 
   return (
-    <div className="fbar">
+    <div className={icon ? 'fbar-ico' : 'fbar'}>
+      {icon ? (
+        <button className={`tk-ico${active ? ' on' : ''}`} onClick={() => setOpen(true)} aria-haspopup="dialog"
+          aria-label={active ? `סינון ומיון, ${active} פעילים` : 'סינון ומיון'}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+          {active > 0 && <span className="tk-ico-n">{active}</span>}
+        </button>
+      ) : <>
       <button className={`fbar-pill ${active ? 'on' : ''}`} onClick={() => setOpen(true)} aria-haspopup="dialog">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
         סינון ומיון
@@ -104,6 +121,7 @@ export function FilterBar({ value, onChange, show, total }: { value: Filters; on
       </button>
       <span className="fbar-sum">{sortLabel}{total !== undefined ? ` · ${total === 1 ? "תוצאה אחת" : `${total} תוצאות`}` : ''}</span>
       {active > 0 && <button className="fbar-clear" onClick={() => onChange({ ...NO_FILTERS, sort: value.sort })}>ניקוי</button>}
+      </>}
 
       {open && (
         <div className="sheet-wrap" onClick={() => setOpen(false)}>
@@ -112,6 +130,7 @@ export function FilterBar({ value, onChange, show, total }: { value: Filters; on
               <h3 style={{ margin: 0 }}>סינון ומיון</h3>
               <button className="icon-btn" aria-label="לסגור" onClick={() => setOpen(false)}><IClose /></button>
             </div>
+            {extra}
 
             <Group label="מיון">
               {SORTS.map((s) => <Chip key={s.v} on={value.sort === s.v} onClick={() => set({ sort: s.v })}>{s.label}</Chip>)}

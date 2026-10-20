@@ -222,7 +222,7 @@ export default function Doc() {
       <header className="doc-head">
         <div className="doc-meta">
           <span className="ag-chip">{DOC_KIND_HE[doc.kind] ?? doc.kind}</span>
-          {team && <Link to={`/internal?team=${team.id}`}>צוות {team.team}</Link>}
+          {team && <Link to={`/teams/${team.id}`}>צוות {team.team}</Link>}
           <span>עודכן ב-{fmtDate(doc.updated_at)}</span>
           {doc.is_demo && <DemoNote />}
         </div>

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
 import { KIND_LABEL, Item, supabase } from '../lib'
-import { Empty, Headline, Skeletons, clip } from '../components/ui'
+import { Empty, Skeletons, clip } from '../components/ui'
 import { PrefsPanel } from '../components/prefs'
-import { PointsDashboard } from '../components/points'
+import { PointsDashboard, useMyPoints } from '../components/points'
+import { Avatar } from '../components/Avatar'
 import { PageAgent } from '../components/PageAgent'
 import Leaderboard from './Leaderboard'
 import BudgetPage from './Budget'
@@ -54,6 +55,14 @@ const TILES: { key: keyof Stats; label: string }[] = [
   { key: 'in_progress', label: 'בתהליך' },
   { key: 'completed', label: 'הושלמו' },
 ]
+
+type MeTab = 'history' | 'points' | 'budget' | 'settings'
+const ME_TABS: { key: MeTab; label: string }[] = [
+  { key: 'history', label: 'היסטוריה' }, { key: 'points', label: 'נקודות וטבלה' }, { key: 'budget', label: 'תקציב' }, { key: 'settings', label: 'הגדרות' },
+]
+// Old addresses (/me#leaderboard, /me#prefs) land on their tab.
+const tabOfHash = (h: string): MeTab =>
+  ({ '#points': 'points', '#leaderboard': 'points', '#budget': 'budget', '#prefs': 'settings', '#more': 'settings', '#settings': 'settings' } as Record<string, MeTab>)[h] ?? 'history'
 
 const dayKey = (s: string) => new Date(s).toDateString()
 
@@ -116,15 +125,37 @@ export default function Me() {
   }, [rows])
 
   const topicName = (slug: string | null) => topics.find((t) => t.slug === slug)?.name_he
+  const loc = useLocation()
+  const nav = useNavigate()
+  const tab = tabOfHash(loc.hash)
+  const pts = useMyPoints()
+  const name = profile.display_name || profile.email.split('@')[0]
 
   return (
-    <div>
-      <Headline light="מה ראיתם, איפה אתם עומדים, ומה הלאה," black="האזור שלי" />
+    <div className="me-page">
+      <header className="me-hero">
+        <Avatar face={{ ...profile, name }} size={92} className="me-hero-av" />
+        <h1>{name}</h1>
+        <p className="me-hero-sub">{profile.role ? `צוות ${profile.role}` : 'zap'}{pts ? <> · <b>{pts.level.name}</b></> : null}</p>
+        <div className="me-stats">
+          <span><b>{pts ? pts.month.toLocaleString('he-IL') : '·'}</b>נקודות החודש</span>
+          <span><b>{stats?.saved ?? '·'}</b>נשמרו</span>
+          <span><b>{stats?.liked ?? '·'}</b>לייקים</span>
+          <span><b>{stats?.comments ?? '·'}</b>תגובות</span>
+        </div>
+        <Link to="/contribute" className="btn">משתפים משהו</Link>
+      </header>
 
-      <PageAgent mode="me" placeholder='שאלו את הדף הזה, למשל: "ראיתי כתבה ש-GEO הוא הדבר הבא"'
-        starters={['ראיתי כתבה ש-GEO הוא הדבר הבא, איפה היא?', 'מה כדאי לי ללמוד עכשיו?', 'איך אני עולה מקום בטבלה?']} />
+      <div className="me-tabs" role="tablist" aria-label="האזור שלי">
+        {ME_TABS.map((t) => (
+          <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? 'on' : ''}
+            onClick={() => nav({ hash: t.key === 'history' ? '' : t.key }, { replace: true })}>{t.label}</button>
+        ))}
+      </div>
 
-      <Fold id="history" title="מה ראיתם" sub="כל מה שפתחתם, שמרתם ולמדתם" defaultOpen>
+      {tab === 'history' && <section className="me-panel">
+        <PageAgent mode="me" placeholder='שאלו את העמוד, למשל: "ראיתי כתבה ש-GEO הוא הדבר הבא"'
+          starters={['ראיתי כתבה ש-GEO הוא הדבר הבא, איפה היא?', 'מה כדאי לי ללמוד עכשיו?', 'איך אני עולה מקום בטבלה?']} />
         {progress.length > 0 && (
           <div className="lane" style={{ marginBottom: 16 }}>
             {progress.slice(0, 3).map((r) => (
@@ -176,9 +207,9 @@ export default function Me() {
             </div>
           ))}
         </div>
-      </Fold>
+      </section>}
 
-      <Fold id="points" title="הנקודות שלי" sub="רמה, תגים ומה צברתם לאחרונה" defaultOpen>
+      {tab === 'points' && <section className="me-panel">
         <PointsDashboard />
         <WeekTime goal={(profile as { weekly_time?: string | null }).weekly_time ?? null} />
         {stats && (
@@ -191,44 +222,21 @@ export default function Me() {
             ))}
           </div>
         )}
-      </Fold>
-
-      <Fold id="leaderboard" title="הטבלה" sub="אנשים וצוותים, החודש וכל הזמנים">
+        <h2 className="me-h2">הטבלה</h2>
         <Leaderboard embedded />
-      </Fold>
+      </section>}
 
-      <Fold id="budget" title="תקציב הלמידה" sub="קורס, ספר או כנס, בלי טפסים">
-        <BudgetPage embedded />
-      </Fold>
+      {tab === 'budget' && <section className="me-panel"><BudgetPage embedded /></section>}
 
-      <Fold id="more" title="עוד אצלי" sub="תזכורות, הפודקאסט האישי וההעדפות">
+      {tab === 'settings' && <section className="me-panel">
         <MyReminders />
         <MyPodcast />
         <div id="prefs" style={{ marginTop: 16 }}>
           <PrefsPanel profile={profile} topics={topics} onSaved={setProfile} />
         </div>
-        {profile.is_admin && <p style={{ marginTop: 16 }}><Link className="textlink" to="/admin">לניהול ואישורים</Link></p>}
-      </Fold>
+        {profile.is_admin && <p style={{ marginTop: 16 }}><Link className="textlink" to="/admin">לניהול</Link></p>}
+      </section>}
     </div>
-  )
-}
-
-// A collapsible section; opens by itself when the URL points at it (/me#budget).
-function Fold({ id, title, sub, defaultOpen, children }: { id: string; title: string; sub?: string; defaultOpen?: boolean; children: React.ReactNode }) {
-  const loc = useLocation()
-  const hit = loc.hash === `#${id}`
-  const [open, setOpen] = useState(!!defaultOpen || hit)
-  const ref = useRef<HTMLDetailsElement>(null)
-  useEffect(() => {
-    if (!hit) return
-    setOpen(true)
-    setTimeout(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
-  }, [hit])
-  return (
-    <details id={id} ref={ref} className="fold" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
-      <summary><span>{title}{sub && <span className="sub">{sub}</span>}</span></summary>
-      <div className="fold-body">{open && children}</div>
-    </details>
   )
 }
 

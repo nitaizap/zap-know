@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useApp } from '../App'
-import { CATEGORY_LABEL, ITEM_COLS, Item, Purchase, Source, fmtDate, fmtMoney, supabase } from '../lib'
-import { Empty, Headline, ItemMeta } from '../components/ui'
+import { CATEGORY_LABEL, Purchase, Source, fmtDate, fmtMoney, supabase } from '../lib'
+import { Empty, Headline } from '../components/ui'
 import { StatusChip } from '../components/budget'
 import '../calm.css'
 import '../adopt.css'
@@ -9,7 +9,8 @@ import '../adopt.css'
 type Report = { id: number; item_id: number; note: string | null; resolved: boolean; at: string }
 type Run = { id: number; job: string; ok: boolean; detail: unknown; at: string }
 type BudgetSettings = { monthly_amount: number; currency: string; rollover: boolean; is_placeholder: boolean }
-type Tab = 'overview' | 'queue' | 'sources' | 'reports' | 'budget' | 'log'
+type Tab = 'overview' | 'reports' | 'sources' | 'budget' | 'log'
+type Reported = { id: number; title_he: string; summary_he: string | null; source_url: string; status: string }
 type Kpis = {
   pending: number; collected_week: number; by_source: { source_name: string; n: number }[]; sources_active: number
   broken_week: number; ai_runs_week: number; failures_week: number; reports_open: number
@@ -21,7 +22,6 @@ const COST_PER_AI_RUN = 0.01
 const MONTHLY_CAP = 50
 const OWNER = 'nitaiz@d.co.il'
 
-const SECONDS_PER_ITEM = 30
 
 // A short human line for a run's details, instead of raw JSON.
 function runLine(r: Run) {
@@ -37,16 +37,12 @@ export default function Admin() {
   const [tab, setTab] = useState<Tab>('overview')
   const [kpis, setKpis] = useState<Kpis | null>(null)
   const [kpisFailed, setKpisFailed] = useState(false)
-  const [confirmAll, setConfirmAll] = useState(false)
-  const [approvedAll, setApprovedAll] = useState<number | null>(null)
-  const [queue, setQueue] = useState<Item[] | null>(null)
   const [sources, setSources] = useState<Source[]>([])
   const [reports, setReports] = useState<Report[]>([])
   const [runs, setRuns] = useState<Run[]>([])
-  const [editing, setEditing] = useState(false)
+  const [reported, setReported] = useState<Map<number, Reported>>(new Map())
+  const [editing, setEditing] = useState<number | null>(null)
   const [draft, setDraft] = useState({ title_he: '', summary_he: '' })
-  const [dx, setDx] = useState(0)
-  const startX = useRef<number | null>(null)
   const [settings, setSettings] = useState<BudgetSettings | null>(null)
   const [amount, setAmount] = useState('')
   const [rollover, setRollover] = useState(false)
@@ -54,15 +50,17 @@ export default function Admin() {
   const [purchases, setPurchases] = useState<Purchase[]>([])
 
   async function load() {
-    const [q, s, r, l] = await Promise.all([
-      supabase.from('items').select(ITEM_COLS).eq('status', 'pending').order('created_at').limit(100),
+    const [s, r, l] = await Promise.all([
       supabase.from('sources').select('*').eq('status', 'proposed').order('score', { ascending: false }),
       supabase.from('reports').select('*').eq('resolved', false).order('at', { ascending: false }).limit(50),
       supabase.from('run_log').select('*').order('at', { ascending: false }).limit(30),
     ])
-    setQueue((q.data as Item[]) ?? [])
     setSources((s.data as Source[]) ?? [])
-    setReports((r.data as Report[]) ?? [])
+    const reps = (r.data as Report[]) ?? []
+    setReports(reps)
+    const ids = [...new Set(reps.map((x) => x.item_id))]
+    if (ids.length) supabase.from('items').select('id,title_he,summary_he,source_url,status').in('id', ids)
+      .then(({ data }) => setReported(new Map(((data as Reported[]) ?? []).map((i) => [i.id, i]))))
     setRuns((l.data as Run[]) ?? [])
     supabase.rpc('admin_kpis').then(({ data, error }) => { if (!error && data) setKpis(data as Kpis); else setKpisFailed(true) })
 
@@ -91,29 +89,23 @@ export default function Admin() {
 
   if (!profile.is_admin) return <Empty>המסך הזה פתוח לצוות L&amp;D בלבד.</Empty>
 
-  const current = queue?.[0]
-
-  async function decide(status: 'approved' | 'rejected', patch?: Partial<Item>) {
-    if (!current) return
-    setQueue((q) => (q ? q.slice(1) : q))
-    setEditing(false); setDx(0)
-    await supabase.from('items').update({ status, ...(patch ?? {}) }).eq('id', current.id)
-    if (status === 'approved') {
-      await supabase.from('reports').update({ resolved: true }).eq('item_id', current.id)
-      setReports((r) => r.filter((x) => x.item_id !== current.id))
-    }
+  // Publishing is automatic; this is where reported items get fixed, hidden, or closed.
+  const resolve = async (itemId: number) => {
+    await supabase.from('reports').update({ resolved: true }).eq('item_id', itemId)
+    setReports((r) => r.filter((x) => x.item_id !== itemId))
   }
-
-  async function approveAll() {
-    setConfirmAll(false)
-    const { data, error } = await supabase.rpc('approve_all_pending')
-    if (!error) { setApprovedAll(Number(data ?? 0)); setQueue([]) }
+  async function saveFix(itemId: number) {
+    await supabase.from('items').update({ title_he: draft.title_he, summary_he: draft.summary_he }).eq('id', itemId)
+    setEditing(null)
+    resolve(itemId)
   }
-
-  function startEdit() {
-    if (!current) return
-    setDraft({ title_he: current.title_he, summary_he: current.summary_he ?? '' })
-    setEditing(true)
+  async function hideItem(itemId: number) {
+    await supabase.from('items').update({ status: 'rejected' }).eq('id', itemId)
+    resolve(itemId)
+  }
+  function startEdit(it: Reported) {
+    setDraft({ title_he: it.title_he, summary_he: it.summary_he ?? '' })
+    setEditing(it.id)
   }
 
   async function setSource(id: number, status: 'active' | 'dropped') {
@@ -121,28 +113,14 @@ export default function Admin() {
     await supabase.from('sources').update({ status }).eq('id', id)
   }
 
-  const onDown = (x: number) => { if (!editing) startX.current = x }
-  const onMove = (x: number) => { if (startX.current !== null) setDx(x - startX.current) }
-  const onUp = () => {
-    if (startX.current === null) return
-    startX.current = null
-    // RTL: swipe left = approve (forward), swipe right = reject.
-    if (dx < -110) decide('approved')
-    else if (dx > 110) decide('rejected')
-    else setDx(0)
-  }
-
-  const left = queue?.length ?? 0
-  const minutes = Math.max(1, Math.ceil((left * SECONDS_PER_ITEM) / 60))
   const approvedSum = purchases.filter((p) => ['auto_approved', 'approved', 'purchased'].includes(p.status)).reduce((a, p) => a + Number(p.price), 0)
   const pendingCount = purchases.filter((p) => p.status === 'pending_manager').length
   const failed = runs.filter((r) => !r.ok).length
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: 'overview', label: 'תמונת מצב' },
-    { id: 'queue', label: 'לאשר', count: left },
+    { id: 'reports', label: 'דיווחים ותיקונים', count: new Set(reports.map((r) => r.item_id)).size },
     { id: 'sources', label: 'מקורות', count: sources.length },
-    { id: 'reports', label: 'דיווחים', count: reports.length },
     ...(settings ? [{ id: 'budget' as Tab, label: 'תקציב' }] : []),
     { id: 'log', label: 'יומן', count: failed || undefined },
   ]
@@ -160,79 +138,7 @@ export default function Admin() {
       </nav>
 
 
-      {tab === 'overview' && (kpis === null ? (kpisFailed ? <div className="empty-calm"><b>תמונת המצב עוד לא זמינה</b>היא תופיע אחרי עדכון הנתונים הבא. בינתיים אפשר לאשר בלשונית לאשר.</div> : <div className="skeleton" />) : <Overview k={kpis} onQueue={() => setTab('queue')} />)}
-
-      {tab === 'queue' && approvedAll !== null && (
-        <div className="notice ok" style={{ marginTop: 12 }}>אישרתם {approvedAll} פריטים. הם כבר באוויר.</div>
-      )}
-      {tab === 'queue' && (queue === null ? <div className="skeleton" /> : !current ? (
-        <div className="empty-calm"><b>אין מה לאשר</b>כל הכבוד, סיימתם לשבוע הזה.</div>
-      ) : (
-        <div className="swipe-wrap">
-          <div className="swipe-progress">
-            <span>עוד {left} · בערך {minutes} דק'</span>
-            <span>שמאלה לאשר · ימינה לדחות</span>
-          </div>
-          <div
-            className="card swipe-card"
-            style={{
-              transform: `translateX(${dx}px) rotate(${dx / 30}deg)`,
-              borderColor: dx < -60 ? 'var(--green)' : dx > 60 ? 'var(--red)' : undefined,
-              transition: startX.current === null ? 'transform .25s' : 'none',
-            }}
-            onPointerDown={(e) => onDown(e.clientX)}
-            onPointerMove={(e) => onMove(e.clientX)}
-            onPointerUp={onUp}
-            onPointerCancel={onUp}
-            onPointerLeave={() => startX.current !== null && onUp()}
-          >
-            {editing ? (
-              <div onPointerDown={(e) => e.stopPropagation()}>
-                <label className="field"><span>כותרת</span>
-                  <input className="input" value={draft.title_he} onChange={(e) => setDraft({ ...draft, title_he: e.target.value })} />
-                </label>
-                <label className="field"><span>תקציר</span>
-                  <textarea className="textarea" style={{ minHeight: 200 }} value={draft.summary_he} onChange={(e) => setDraft({ ...draft, summary_he: e.target.value })} />
-                </label>
-              </div>
-            ) : (
-              <>
-                <ItemMeta item={current} />
-                <h3>{current.title_he}</h3>
-                {current.title_orig && <div className="small muted" dir="auto">{current.title_orig}</div>}
-                <p style={{ marginTop: 12, lineHeight: 1.65 }}>{current.summary_he}</p>
-                {reports.some((r) => r.item_id === current.id) && (
-                  <div className="notice err small" style={{ marginTop: 12 }}>
-                    דיווח: {reports.filter((r) => r.item_id === current.id).map((r) => r.note).join(' / ')}
-                  </div>
-                )}
-                <a className="textlink" style={{ display: 'inline-block', marginTop: 12 }} href={current.source_url}
-                  target="_blank" rel="noopener noreferrer" onPointerDown={(e) => e.stopPropagation()}>
-                  לבדוק במקור ←
-                </a>
-              </>
-            )}
-          </div>
-          <div className="swipe-actions">
-            <button className="btn ghost" onClick={() => decide('rejected')}>לדחות</button>
-            {editing
-              ? <button className="btn ghost" onClick={() => decide('approved', draft)}>לשמור ולאשר</button>
-              : <button className="btn ghost" onClick={startEdit}>לתקן</button>}
-            <button className="btn green" onClick={() => decide('approved')}>לאשר</button>
-          </div>
-          <div className="approve-all">
-            {confirmAll ? (
-              <>
-                <span>לאשר את כל {left} הפריטים שנשארו, בלי לעבור עליהם?</span>
-                <button className="btn green" onClick={approveAll}>כן, לאשר הכול</button>
-                <button className="btn ghost" onClick={() => setConfirmAll(false)}>לבטל</button>
-              </>
-            ) : (
-              <button className="linkbtn" onClick={() => setConfirmAll(true)}>לאשר את כל מה שנשאר</button>
-            )}
-          </div>
-        </div>
-      ))}
+      {tab === 'overview' && (kpis === null ? (kpisFailed ? <div className="empty-calm"><b>תמונת המצב עוד לא זמינה</b>היא תופיע אחרי עדכון הנתונים הבא. בינתיים אפשר לעבור על הדיווחים.</div> : <div className="skeleton" />) : <Overview k={kpis} onReports={() => setTab('reports')} />)}
 
       {tab === 'sources' && (sources.length === 0 ? (
         <div className="empty-calm"><b>אין הצעות חדשות</b>ברגע שה-AI ימצא מקור ששווה לבדוק, הוא יופיע כאן.</div>
@@ -252,15 +158,38 @@ export default function Admin() {
       ))}
 
       {tab === 'reports' && (reports.length === 0 ? (
-        <div className="empty-calm"><b>אין דיווחים פתוחים</b>פריט ששני אנשים דיווחו עליו חוזר לתור האישור.</div>
+        <div className="empty-calm"><b>אין דיווחים פתוחים</b>כל מה שנאסף עולה לאוויר לבד. מה שמדווח כטעות מגיע לכאן.</div>
       ) : (
         <ul className="simple-list">
-          {reports.map((r) => (
-            <li key={r.id}>
-              <span className="dot wait" />
-              <span className="grow">{r.note || 'בלי הערה'}<span className="sub">פריט #{r.item_id} · {fmtDate(r.at)}</span></span>
-            </li>
-          ))}
+          {[...new Set(reports.map((r) => r.item_id))].map((id) => {
+            const it = reported.get(id)
+            const notes = reports.filter((r) => r.item_id === id)
+            return (
+              <li key={id} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                <span className="grow">
+                  <b>{it?.title_he ?? `פריט #${id}`}</b>{it?.status === 'rejected' ? <span className="sub">מוסתר</span> : null}
+                  <span className="sub">{notes.map((r) => `"${r.note || 'בלי הערה'}" · ${fmtDate(r.at)}`).join('  ·  ')}</span>
+                </span>
+                {editing === id && it ? (
+                  <div className="card" style={{ padding: 12 }}>
+                    <label className="field"><span>כותרת</span><input className="input" value={draft.title_he} onChange={(e) => setDraft({ ...draft, title_he: e.target.value })} /></label>
+                    <label className="field" style={{ marginTop: 8 }}><span>תקציר</span><textarea className="input" rows={4} value={draft.summary_he} onChange={(e) => setDraft({ ...draft, summary_he: e.target.value })} /></label>
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button className="btn" onClick={() => saveFix(id)}>לשמור תיקון</button>
+                      <button className="btn ghost" onClick={() => setEditing(null)}>ביטול</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    {it && <button className="btn" onClick={() => startEdit(it)}>לתקן טקסט</button>}
+                    <button className="btn ghost" onClick={() => hideItem(id)}>להסתיר</button>
+                    <button className="linkbtn" onClick={() => resolve(id)}>הכול תקין, לסגור</button>
+                    {it && <a className="textlink" href={it.source_url} target="_blank" rel="noopener noreferrer">למקור</a>}
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       ))}
 
@@ -326,16 +255,15 @@ export default function Admin() {
   )
 }
 
-function Overview({ k, onQueue }: { k: Kpis; onQueue: () => void }) {
-  const minutes = Math.max(1, Math.ceil((k.pending * SECONDS_PER_ITEM) / 60))
+function Overview({ k, onReports }: { k: Kpis; onReports: () => void }) {
   const cost = k.ai_runs_week * COST_PER_AI_RUN
   const max = Math.max(1, ...k.by_source.map((s) => s.n))
   return (
     <>
-      <p className="ov-lead">האוטומציה עושה את העבודה. כאן רק מאשרים, מתקנים או דוחים.</p>
+      <p className="ov-lead">האוטומציה עושה את העבודה, והכול עולה לאוויר לבד. כאן רק מתקנים מה שדווח.</p>
       <div className="stat-row">
-        <button className="stat stat-btn" onClick={onQueue}>
-          <b>{k.pending}</b><span>מחכים לאישור{k.pending ? ` · בערך ${minutes} דק'` : ''}</span>
+        <button className="stat stat-btn" onClick={onReports}>
+          <b>{k.reports_open}</b><span>דיווחים פתוחים</span>
         </button>
         <div className="stat"><b>{k.collected_week}</b><span>נאספו השבוע, מ-{k.sources_active} מקורות</span></div>
         <div className="stat"><b>{k.broken_week}</b><span>קישורים שבורים שירדו</span></div>

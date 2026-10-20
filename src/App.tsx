@@ -15,6 +15,7 @@ import { PointsPill, Toaster } from './components/points'
 import { IBook, IClose, IHome, ILogout, IMenu, IShield, IUser, IUsers } from './components/icons'
 import { Avatar } from './components/Avatar'
 import { SearchBox } from './components/SearchBox'
+import { AiButton, AiSheet } from './components/AiSheet'
 
 const Doc = lazy(() => import('./pages/Doc'))
 const Drive = lazy(() => import('./pages/Drive'))
@@ -111,6 +112,7 @@ export default function App() {
           </footer>
         </main>
       </Shell>
+      <AiSheet />
       <Toaster />
     </AppCtx.Provider>
   )
@@ -128,12 +130,26 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
   const [open, setOpen] = useState(false)
   const [menu, setMenu] = useState(false)
   const loc = useLocation()
+  const [params] = useSearchParams()
+  // Feed pages own the whole screen.
+  const imm = loc.pathname === '/' || (['/external', '/internal'].includes(loc.pathname) && params.get('view') !== 'list')
   useEffect(() => { setOpen(false); setMenu(false) }, [loc.pathname])
   // A new page starts at the top; /me#section scrolls itself.
   useEffect(() => { if (!loc.hash) window.scrollTo(0, 0) }, [loc.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="app">
+    <div className={`app${imm ? ' imm' : ''}`}>
+      {imm && (
+        <aside className="imm-side" aria-label="ניווט">
+          <NavLink to="/" className="brand" aria-label="zap UP, הבית">
+            <img src="/zap-know/img/zap-group.svg" alt="zap group" />
+            <span className="brand-up">UP</span>
+          </NavLink>
+          <nav>{PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><n.icon size={22} />{n.label}</NavLink>)}</nav>
+          <AiButton />
+          <p className="imm-keys">↑ ↓ הבא והקודם · → שומר לי · ← לא בשבילי · / לשאול את ה-AI</p>
+        </aside>
+      )}
       <header className="topbar">
         <div className="container topbar-in">
           <NavLink to="/" className="brand" aria-label="zap UP, הבית">
@@ -146,6 +162,7 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
           </nav>
 
           <SearchBox topics={topics} />
+          <AiButton />
 
           <div className="topbar-end">
             <PointsPill />
@@ -188,6 +205,7 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
 
       {children}
 
+      <AiButton fab />
       <nav className="tabbar" aria-label="ניווט">
         {PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><n.icon size={22} /><span>{n.label}</span></NavLink>)}
       </nav>

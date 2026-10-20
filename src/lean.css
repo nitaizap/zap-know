@@ -75,3 +75,21 @@
 
 .standing { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 720px) { .standing { grid-template-columns: 1fr; } }
+
+/* האזור שלי: a social profile, four tabs. */
+.me-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 28px 0 14px; }
+.me-hero-av { box-shadow: 0 0 0 4px #fff, 0 0 0 7px var(--yellow, #ffc600); border-radius: 50%; }
+.me-hero h1 { margin: 10px 0 0; font-size: 26px; font-weight: 900; color: var(--navy, #052b7a); }
+.me-hero-sub { margin: 0; color: var(--dark-60, #5a6b7b); font-size: 15px; }
+.me-stats { display: flex; justify-content: center; gap: 22px; margin: 12px 0 8px; flex-wrap: wrap; }
+.me-stats span { display: flex; flex-direction: column; align-items: center; font-size: 13px; color: var(--dark-60, #5a6b7b); }
+.me-stats b { font-size: 22px; font-weight: 900; color: var(--dark, #001c32); font-variant-numeric: tabular-nums; }
+.me-tabs { position: sticky; top: var(--topbar-h, 64px); z-index: 5; display: flex; background: var(--surface, #fff); border-bottom: 1px solid var(--line, #e6e8eb); overflow-x: auto; scrollbar-width: none; }
+.me-tabs::-webkit-scrollbar { display: none; }
+.me-tabs button { flex: 1 0 auto; border: 0; background: none; font: inherit; font-weight: 700; font-size: 15px; color: var(--dark-60, #5a6b7b); padding: 14px 14px 12px; cursor: pointer; position: relative; min-height: 48px; white-space: nowrap; }
+.me-tabs button.on { color: var(--navy, #052b7a); font-weight: 900; }
+.me-tabs button.on::after { content: ''; position: absolute; bottom: -1px; inset-inline: 18%; height: 3px; border-radius: 3px; background: var(--navy, #052b7a); }
+.me-panel { padding: 18px 0 8px; animation: me-in .2s ease-out; }
+.me-h2 { margin: 24px 0 10px; font-size: 20px; }
+@keyframes me-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .me-panel { animation: none; } }

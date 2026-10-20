@@ -54,7 +54,7 @@ export function PageAgent({ mode, placeholder, starters, teams, defaultTeamId }:
   teams?: AgentTeam[]              // internal page: optional team chips to scope the question
   defaultTeamId?: number | null
 }) {
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -62,7 +62,6 @@ export function PageAgent({ mode, placeholder, starters, teams, defaultTeamId }:
   const [teamId, setTeamId] = useState<number | null>(params.get('team') ? Number(params.get('team')) : (defaultTeamId ?? null))
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const asked = useRef(false)
   const open = msgs.length > 0 || busy
 
   // "לשאול את הצוות" links land here with ?team=; follow it while staying on the page.
@@ -110,15 +109,7 @@ export function PageAgent({ mode, placeholder, starters, teams, defaultTeamId }:
     }
   }, [busy, msgs, mode, teamId])
 
-  // ?ask= (header search, deep links) asks once.
-  useEffect(() => {
-    const q = params.get('ask')
-    if (!q || asked.current) return
-    asked.current = true
-    const next = new URLSearchParams(params); next.delete('ask')
-    setParams(next, { replace: true })
-    send(q)
-  }, [params, send, setParams])
+  // ?ask= deep links go to the one AI sheet (AiSheet), not to page agents.
 
   useEffect(() => {
     const on = (e: Event) => send(String((e as CustomEvent).detail ?? ''))

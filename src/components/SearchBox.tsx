@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { Topic } from '../lib'
-import { askThisPage } from './PageAgent'
+import { openAi } from './AiSheet'
 import '../contribute.css'
 
 // One box for both intents, scoped to the page you're on: a question goes to that page's agent,
@@ -38,9 +38,7 @@ export function SearchBox({ topics }: { topics: Topic[] }) {
     setOpen(false); setQ('')
     const enc = encodeURIComponent(t)
     if (looksLikeQuestion(t)) {
-      // Already on a page with an agent: ask it in place.
-      if (['/internal', '/me', '/external'].includes(loc.pathname) || loc.pathname === '/') { askThisPage(t); window.scrollTo({ top: 0, behavior: 'smooth' }); return }
-      nav(`/external?ask=${enc}`)
+      openAi(t)
       return
     }
     if (scope === '/me') { nav(`/me?q=${enc}#history`); return }
@@ -52,8 +50,8 @@ export function SearchBox({ topics }: { topics: Topic[] }) {
       <form role="search" onSubmit={(e) => { e.preventDefault(); go(q) }}>
         <svg className="sbox-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>
         <input className="sbox-in" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)}
-          placeholder="מה רוצים ללמוד היום?" aria-label="חיפוש, או שאלה ל-zap UP" />
-        {q.trim() && <span className="sbox-hint small">{looksLikeQuestion(q) ? 'נשאל את הדף' : `נחפש ${LABEL[scope]}`}</span>}
+          placeholder="שאלו את ה-AI או חפשו" aria-label="שאלו את ה-AI או חפשו" />
+        {q.trim() && <span className="sbox-hint small">{looksLikeQuestion(q) ? 'נשאל את ה-AI' : `נחפש ${LABEL[scope]}`}</span>}
       </form>
       {open && (
         <div className="sbox-drop" role="dialog" aria-label="הצעות">
@@ -67,7 +65,7 @@ export function SearchBox({ topics }: { topics: Topic[] }) {
           <div className="chips" style={{ margin: '6px 0 0' }}>
             {POPULAR.map((k) => <button key={k} className="chip" onClick={() => go(k)}><bdi>{k}</bdi></button>)}
           </div>
-          <div className="small muted sbox-tip">טיפ: שאלה, כמו "איך מתחילים עם GEO?", הולכת ישר לסוכן של הדף.</div>
+          <div className="small muted sbox-tip">טיפ: שאלה, כמו "איך מתחילים עם GEO?", הולכת ישר ל-AI. מקש / פותח אותו מכל מקום.</div>
         </div>
       )}
     </div>
