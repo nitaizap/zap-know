@@ -525,3 +525,29 @@ table.log th { color: var(--muted); font-weight: 700; }
 
 .media-hero { margin: var(--s5) 0; border-radius: var(--radius-lg); overflow: hidden; background: var(--navy-5); box-shadow: var(--shadow-2); aspect-ratio: 16 / 9; }
 .media-hero img, .media-hero iframe { width: 100%; height: 100%; display: block; object-fit: cover; border: 0; }
+
+/* ============ Calm pass: bigger type, more air, one accent per section ============ */
+body { font-size: 16px; }
+.home > * + * { margin-top: var(--s6); }
+.home h2.section { margin-top: var(--s12); }
+.hero { padding: var(--s10) 0 var(--s6); }
+.headline .black { font-size: clamp(34px, 7vw, 52px); }
+.card { padding: var(--s6); }
+.itemcard h3 { font-size: 18px; }
+.cardlink { padding: var(--s6) var(--s6) var(--s4); }
+.thumb { margin: calc(-1 * var(--s6)) calc(-1 * var(--s6)) var(--s5); }
+.card-top { min-height: 0; margin-bottom: 8px; }
+.kind, .kind-course, .kind-news, .kind-internal { background: var(--navy-5); color: var(--navy-80); }
+.reactbar.compact { border-top: 0; padding: 0 var(--s4) var(--s3); }
+.reactbar.compact .rb { min-height: 32px; padding: 4px 8px; }
+.episode { padding: var(--s8); }
+.episode-list { gap: var(--s4); }
+.name-prompt h3, .inbox-card h3 { margin: 0 0 4px; }
+.name-prompt .row { margin-top: var(--s3); }
+.inbox { list-style: none; padding: 0; margin: var(--s2) 0 0; }
+.cta-row { display: flex; justify-content: center; margin-top: var(--s6); }
+.cta-row .btn { min-width: 200px; }
+.more-links { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); justify-content: center; margin-top: var(--s10); padding-top: var(--s6); border-top: 1px solid var(--line); }
+.more-links a { color: var(--dark-60); text-decoration: none; font-weight: 600; font-size: var(--fs-sm); }
+.more-links a:hover { color: var(--navy); }
+.teaser { margin-top: var(--s10); }

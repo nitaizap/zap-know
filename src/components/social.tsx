@@ -77,25 +77,26 @@ export async function react(id: number, value: 1 | -1) {
   }
 }
 
-export function ReactionBar({ item, onComments }: { item: Item; onComments?: () => void }) {
+// compact (cards): just like + share, counts stay quiet. Full bar on the item page.
+export function ReactionBar({ item, onComments, compact }: { item: Item; onComments?: () => void; compact?: boolean }) {
   const s = useSocial(item.id)
   const [sharing, setSharing] = useState(false)
   if (!s || item.kind === 'internal') return null
   const stop = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation() }
   return (
     <>
-      <div className="reactbar">
+      <div className={`reactbar${compact ? ' compact' : ''}`}>
         <button className={`rb ${s.mine === 1 ? 'on' : ''}`} aria-label={`אהבתי, ${s.likes}`} aria-pressed={s.mine === 1}
-          onClick={(e) => { stop(e); react(item.id, 1) }}><IThumbUp size={18} /><span>{s.likes}</span></button>
-        <button className={`rb ${s.mine === -1 ? 'on neg' : ''}`} aria-label={`לא בשבילי, ${s.dislikes}`} aria-pressed={s.mine === -1}
-          onClick={(e) => { stop(e); react(item.id, -1) }}><IThumbDown size={18} /><span>{s.dislikes}</span></button>
-        {onComments ? (
+          onClick={(e) => { stop(e); react(item.id, 1) }}><IThumbUp size={18} />{(!compact || s.likes > 0) && <span>{s.likes}</span>}</button>
+        {!compact && <button className={`rb ${s.mine === -1 ? 'on neg' : ''}`} aria-label={`לא בשבילי, ${s.dislikes}`} aria-pressed={s.mine === -1}
+          onClick={(e) => { stop(e); react(item.id, -1) }}><IThumbDown size={18} /><span>{s.dislikes}</span></button>}
+        {compact ? null : onComments ? (
           <button className="rb" aria-label={`תגובות, ${s.comments_count}`} onClick={(e) => { stop(e); onComments() }}><IComment size={18} /><span>{s.comments_count}</span></button>
         ) : (
           <Link className="rb" aria-label={`תגובות, ${s.comments_count}`} to={`/item/${item.id}#comments`}><IComment size={18} /><span>{s.comments_count}</span></Link>
         )}
         <button className="rb share" aria-label={`שיתוף${s.shares_count ? `, שותף ${s.shares_count} פעמים` : ''}`} title="שיתוף"
-          onClick={(e) => { stop(e); setSharing(true) }}><IShare size={18} />{s.shares_count ? <span>{s.shares_count}</span> : null}</button>
+          onClick={(e) => { stop(e); setSharing(true) }}><IShare size={18} />{!compact && s.shares_count ? <span>{s.shares_count}</span> : null}</button>
       </div>
       {sharing && <ShareSheet item={item} onClose={() => setSharing(false)} />}
     </>

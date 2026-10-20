@@ -20,9 +20,15 @@ import Leaderboard from './pages/Leaderboard'
 import { PointsPill, Toaster } from './components/points'
 import { IBook, IChat, IClose, IGrid, IHome, ILogout, IMenu, INews, IPlay, IShield, ITrophy, IUser, IUsers, IWallet } from './components/icons'
 
-// The TikTok-style feed lives in its own file (built separately); the route appears once it exists.
-const feedModules = import.meta.glob('./pages/Feed.tsx')
-const Feed = feedModules['./pages/Feed.tsx'] ? lazy(feedModules['./pages/Feed.tsx'] as () => Promise<{ default: React.ComponentType }>) : null
+// Pages built separately load lazily; a route appears only once its file exists.
+const pageModules = import.meta.glob(['./pages/Feed.tsx', './pages/TeamAgent.tsx', './pages/Doc.tsx'])
+const lazyPage = (path: string) =>
+  pageModules[path] ? lazy(pageModules[path] as () => Promise<{ default: React.ComponentType }>) : null
+const Feed = lazyPage('./pages/Feed.tsx')
+const TeamAgent = lazyPage('./pages/TeamAgent.tsx')
+const Doc = lazyPage('./pages/Doc.tsx')
+const page = (P: React.ComponentType | null) =>
+  P ? <Suspense fallback={<div className="skeleton" style={{ marginTop: 28 }} />}><P /></Suspense> : <Home />
 
 type Ctx = {
   session: Session
@@ -71,7 +77,9 @@ export default function App() {
         <main className="container main">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/feed" element={Feed ? <Suspense fallback={<div className="skeleton" style={{ marginTop: 28 }} />}><Feed /></Suspense> : <Home />} />
+            <Route path="/feed" element={page(Feed)} />
+            <Route path="/agent" element={page(TeamAgent)} />
+            <Route path="/doc/:id" element={page(Doc)} />
             <Route path="/topics" element={<Topics />} />
             <Route path="/topic/:slug" element={<TopicPage />} />
             <Route path="/library" element={<Library />} />
@@ -105,11 +113,9 @@ export default function App() {
 const PRIMARY = [
   { to: '/', label: 'הבית', icon: IHome, end: true },
   { to: '/feed', label: 'פיד', icon: IPlay },
+  { to: '/agent', label: 'שאלו את הצוותים', icon: IUsers },
   { to: '/topics', label: 'נושאים', icon: IGrid },
-  { to: '/library', label: 'מאגר', icon: IBook },
-  { to: '/internal', label: 'קורה ב-zap', icon: INews },
   { to: '/leaderboard', label: 'הטבלה', icon: ITrophy },
-  { to: '/ask', label: 'שאלו', icon: IChat },
 ]
 
 function Shell({ profile, children }: { profile: Profile; children: React.ReactNode }) {
@@ -120,6 +126,9 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
 
   const secondary = [
     { to: '/me', label: 'האזור שלי', icon: IUser },
+    { to: '/library', label: 'מאגר', icon: IBook },
+    { to: '/internal', label: 'קורה ב-zap', icon: INews },
+    { to: '/ask', label: 'שאלו את zap UP', icon: IChat },
     { to: '/teams', label: 'איך עובדים פה', icon: IUsers },
     { to: '/budget', label: 'התקציב שלי', icon: IWallet },
     ...(profile.is_admin ? [{ to: '/admin', label: 'אישורים וניהול', icon: IShield }] : []),
@@ -184,7 +193,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
       <nav className="tabbar" aria-label="ניווט">
         <NavLink to="/feed"><IPlay size={22} /><span>פיד</span></NavLink>
         <NavLink to="/" end><IHome size={22} /><span>הבית</span></NavLink>
-        <NavLink to="/ask"><IChat size={22} /><span>שאלו</span></NavLink>
+        <NavLink to="/agent"><IUsers size={22} /><span>צוותים</span></NavLink>
         <NavLink to="/leaderboard"><ITrophy size={22} /><span>הטבלה</span></NavLink>
         <NavLink to="/me"><IUser size={22} /><span>שלי</span></NavLink>
       </nav>

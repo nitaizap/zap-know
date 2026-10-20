@@ -93,7 +93,7 @@ export function ItemCard({ item, progress, reasons }: { item: Item; progress?: n
           <span>{fmtDate(item.published_at || item.created_at)}</span>
         </div>
       </Link>
-      <ReactionBar item={item} />
+      <ReactionBar item={item} compact />
     </article>
   )
 }
@@ -151,7 +151,7 @@ export function EpisodeCard({ items, loading, audioUrl, sent }: { items: Item[];
     <section className="episode">
       <div className="episode-head">
         <span className="hand">הפרק השבועי שלכם</span>
-        <h2>3 דברים ששווה להכיר השבוע</h2>
+        <h2>מה שווה להכיר השבוע</h2>
       </div>
       {loading ? <p className="episode-empty">אוספים בשבילכם</p> : items.length === 0 ? (
         <p className="episode-empty">עוד אין תוכן מאושר בנושאים שבחרתם. הוא מגיע עם האיסוף הבא.</p>
