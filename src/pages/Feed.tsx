@@ -575,7 +575,7 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
   const others = likers.filter((l) => l.user_id !== myId)
   const meFace: Liker = { item_id: item.id, user_id: myId, display_name: profile.display_name || 'אתם', avatar_url: profile.avatar_url ?? null,
     avatar_style: profile.avatar_style ?? null, avatar_color: profile.avatar_color ?? null, team: profile.role, is_demo: false, liked_at: '', total: 0 }
-  const stack = (iLike ? [meFace, ...others] : others).slice(0, 3)
+  const stack = (iLike ? [meFace, ...others] : others).slice(0, 4)
   const total = Math.max(stack.length, (likers[0]?.total ?? 0) + (iLike && !serverMe ? 1 : 0) - (!iLike && serverMe ? 1 : 0))
   const firstName = (n: string) => n.replace(/\s*\(דמו\)/, '').split(/\s+/)[0]
   const likeLine = !stack.length ? null
@@ -689,9 +689,15 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
         <div className="fd-likewrap">
         <RailBtn label="אהבתי" count={s?.likes ?? item.likes ?? 0} on={s?.mine === 1} pop onClick={() => react(item.id, 1)}><IcoHeart /></RailBtn>
         {stack.length > 0 && (
-          <button type="button" className="fd-stack" onClick={(e) => { e.stopPropagation(); onLikers() }} aria-label={`${likeLine}. מי אהב`}>
-            {stack.map((l) => <Face key={l.user_id} face={{ ...l, name: l.display_name }} size={24} />)}
-          </button>
+          // The faces sit on a ring around the heart (2, 10, 4, 8 o'clock), on its edge, never over it.
+          <span className="fd-ring">
+            {stack.map((l, n) => (
+              <button key={l.user_id} type="button" className={`fd-ring-face s${n}${l.user_id === myId ? ' me' : ''}`} tabIndex={n === 0 ? 0 : -1}
+                aria-label={n === 0 ? `${likeLine}. מי אהב` : undefined} onClick={(e) => { e.stopPropagation(); onLikers() }}>
+                <Face face={{ ...l, name: l.display_name }} size={24} />
+              </button>
+            ))}
+          </span>
         )}
         </div>
         <RailBtn label="תגובות" count={s?.comments_count ?? 0} onClick={onComments}><IcoChat /></RailBtn>
