@@ -9,6 +9,39 @@ export const admin = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+// Hard AI spending cap. Every request to Gemini, from any function, passes through here:
+// it is refused once recorded spend reaches app_settings.ai_cap_usd, and every response's
+// token usage is recorded at deliberately high prices, so the real bill stays under the cap.
+const realFetch = globalThis.fetch.bind(globalThis);
+async function num(key: string, fallback: number) {
+  const { data } = await admin.from("app_settings").select("value").eq("key", key).maybeSingle();
+  const n = Number(data?.value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+globalThis.fetch = async (input: Request | URL | string, init?: RequestInit) => {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (!url.includes("generativelanguage.googleapis.com")) return realFetch(input, init);
+  const cap = await num("ai_cap_usd", 4.5);
+  const { data: spent } = await admin.rpc("ai_spent");
+  if (Number(spent ?? 0) >= cap) throw new Error(`ai_budget_reached: ${spent} >= ${cap} USD`);
+  const res = await realFetch(input, init);
+  try {
+    const body = await res.clone().json();
+    const u = body?.usageMetadata ?? {};
+    const model = url.match(/models\/([^:]+)/)?.[1] ?? "";
+    const tts = model.includes("tts");
+    const pin = await num(tts ? "price_tts_in" : "price_text_in", tts ? 1 : 0.5);
+    const pout = await num(tts ? "price_tts_out" : "price_text_out", tts ? 20 : 3);
+    const inT = Number(u.promptTokenCount ?? 0);
+    const outT = Number(u.candidatesTokenCount ?? 0) + Number(u.thoughtsTokenCount ?? 0);
+    await admin.from("ai_usage").insert({
+      fn: Deno.env.get("SB_FUNCTION_NAME") ?? new URL(url).pathname.split("/").pop(),
+      model, in_tokens: inT, out_tokens: outT, cost_usd: (inT * pin + outT * pout) / 1_000_000,
+    });
+  } catch { /* non-JSON or error body: nothing to record */ }
+  return res;
+};
+
 export const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
