@@ -371,5 +371,11 @@ Deno.serve(async (req) => {
     }
   }
   await log("collect", report.failures.length === 0, report);
+  // New items get their thumbnails right away (fire and forget).
+  if (report.new_items > 0) {
+    fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/thumbs?max=${report.new_items}`, {
+      method: "POST", headers: { "x-cron-secret": Deno.env.get("CRON_SECRET") ?? "" },
+    }).catch(() => {});
+  }
   return json(report);
 });
