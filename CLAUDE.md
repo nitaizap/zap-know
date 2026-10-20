@@ -58,4 +58,7 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 - Work on a branch and open a PR; or agree file ownership before starting. Pull with
   `git pull --rebase --autostash` before every push.
 - Announce SQL patches by number (next free: `patch-026`). Never edit an applied patch; add a new one.
+- Ranking lives in `feed_v2()` (patch-025: personal + team + platform scores, lanes for_you|zap|world|quick|trending|team,
+  returns id, score, lane, reason_he, reason_kind, popular_with, shared_by). `items.platform_score` refreshes every 30 min.
+- All Supabase SQL-editor tabs share one saved snippet: setting the editor text in one tab can replace another tab's query.
 - Commit messages end with the Co-Authored-By / Claude-Session lines your session gives you.
