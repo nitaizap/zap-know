@@ -2,11 +2,13 @@
 // public sources: YouTube RSS, publisher RSS, the edX catalog API and the Skillshop catalog.
 // Only public metadata (title, description, lesson titles) is summarized, never course content.
 import { XMLParser } from "npm:fast-xml-parser@4.5.0";
-import { admin, cors, json, llm, log, parseJson, VOICE } from "../_shared/core.ts";
+import { admin, cors, json, llm, log, mail, notify, parseJson, VOICE } from "../_shared/core.ts";
 
 type Source = { id: number; name: string; kind: string; ref: string; topic_slug: string };
 type Raw = {
-  kind: "course" | "news";
+  kind: "course" | "news" | "podcast";
+  audio?: string;
+  minutes?: number;
   title: string;
   description: string;
   lessons: string[];
@@ -65,6 +67,27 @@ async function pull(s: Source): Promise<Raw[]> {
         published: e.pubDate ?? e.published ?? e.updated,
       })).filter((r: Raw) => r.url);
     }
+    case "podcast": {
+      const raw = await fetchText(s.ref);
+      const blocks = raw.match(/<item[\s>][\s\S]*?<\/item>/g)?.slice(0, 4) ?? [];
+      return blocks.map((b) => {
+        const e = xml.parse(b.replace(/<content:encoded>[\s\S]*?<\/content:encoded>/g, "")).item ?? {};
+        const dur = String(e["itunes:duration"] ?? "");
+        const parts = dur.split(":").map(Number).filter((n) => !Number.isNaN(n));
+        const secs = parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2]
+          : parts.length === 2 ? parts[0] * 60 + parts[1] : Number(dur) || 0;
+        return {
+          kind: "podcast" as const,
+          title: strip(e.title),
+          description: strip(e.description ?? e["itunes:summary"]).slice(0, 1500),
+          lessons: [],
+          url: typeof e.link === "string" && e.link.startsWith("http") ? e.link : e.enclosure?.url,
+          audio: e.enclosure?.url,
+          minutes: secs ? Math.max(1, Math.round(secs / 60)) : undefined,
+          published: e.pubDate,
+        };
+      }).filter((r: Raw) => r.url);
+    }
     case "edx": {
       const c = await (await fetch(`https://courses.edx.org/api/courses/v1/courses/${encodeURIComponent(s.ref)}/`)).json();
       return [{
@@ -100,7 +123,7 @@ async function process(s: Source, r: Raw) {
     { role: "system", content: VOICE },
     {
       role: "user",
-      content: `סכמו את ה${r.kind === "course" ? "קורס" : "עדכון"} הזה לעובדי zap. מבוסס רק על המידע הפומבי שלמטה.
+      content: `סכמו את ה${r.kind === "course" ? "קורס" : r.kind === "podcast" ? "פרק" : "עדכון"} הזה לעובדי zap. מבוסס רק על המידע הפומבי שלמטה.
 title_he: כותרת בעברית, עד 9 מילים (שמות כלים ומוצרים נשארים באנגלית).
 summary_he: ${r.kind === "course" ? "3 משפטים: על מה הקורס, למי הוא מתאים, מה יוצאים איתו" : "2 משפטים: מה חדש ומה זה אומר בפועל"}.
 why_he: משפט אחד, למה שווה לעובד ב-zap (שיווק, השוואת מחירים, עסקים קטנים).
@@ -128,14 +151,41 @@ ${r.lessons.length ? `שיעורים:\n${r.lessons.map((l, i) => `${i + 1}. ${l}
     published_at: r.published ? new Date(r.published).toISOString() : null,
     summarized_at: new Date().toISOString(),
     status: "pending",
+    ...(r.audio ? { audio_url: r.audio } : {}),
+    ...(r.minutes ? { minutes: r.minutes } : {}),
   });
   if (error && !String(error.message).includes("duplicate")) throw error;
+}
+
+async function sendDueReminders() {
+  const site = Deno.env.get("SITE_URL") ?? "https://nitaizap.github.io/zap-know/";
+  const { data: due } = await admin.from("reminders").select("id,user_id,item_id,doc_id,note")
+    .is("sent_at", null).lte("send_at", new Date().toISOString()).limit(50);
+  for (const r of due ?? []) {
+    const [{ data: who }, { data: item }, { data: doc }] = await Promise.all([
+      admin.from("profiles").select("email,display_name").eq("user_id", r.user_id).single(),
+      r.item_id ? admin.from("items").select("title_he,why_he").eq("id", r.item_id).single() : Promise.resolve({ data: null }),
+      r.doc_id ? admin.from("team_docs").select("title,summary_he").eq("id", r.doc_id).single() : Promise.resolve({ data: null }),
+    ]);
+    const title = item?.title_he ?? doc?.title ?? "משהו ששמרתם";
+    const link = r.item_id ? `${site}#/item/${r.item_id}` : `${site}#/doc/${r.doc_id}`;
+    if (who?.email) {
+      await notify({
+        kind: "reminder", to: who.email, subject: `תזכורת מ-zap UP: ${title}`,
+        html: mail("ביקשתם שנזכיר", [title, item?.why_he ?? doc?.summary_he ?? "", ...(r.note ? [`הערה שלכם: ${r.note}`] : [])].filter(Boolean),
+          [{ label: "לפתוח עכשיו", url: link }]),
+      });
+    }
+    await admin.from("reminders").update({ sent_at: new Date().toISOString() }).eq("id", r.id);
+  }
+  if (due?.length) await log("reminders", true, { sent: due.length });
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.headers.get("x-cron-secret") !== Deno.env.get("CRON_SECRET")) return json({ error: "forbidden" }, 403);
   const max = Number(new URL(req.url).searchParams.get("max") ?? 10);
+  await sendDueReminders().catch((e) => log("reminders", false, { error: String(e) }));
   const perRun = Number(new URL(req.url).searchParams.get("sources") ?? 3);
   const { data: sources } = await admin.from("sources").select("id,name,kind,ref,topic_slug").eq("status", "active")
     .order("last_pulled_at", { ascending: true, nullsFirst: true }).limit(perRun);
