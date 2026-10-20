@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   const user = await zapUser(req);
   if (!user) return json({ error: "login required" }, 401);
   const { question, history = [], mode, team_id } = await req.json() as {
-    question: string; history?: Hist[]; mode?: "internal" | "all"; team_id?: number;
+    question: string; history?: Hist[]; mode?: "internal" | "external" | "me" | "all"; team_id?: number;
   };
   if (!question?.trim()) return json({ error: "empty question" }, 400);
 
@@ -57,8 +57,13 @@ Deno.serve(async (req) => {
     `[D${d.id}] (${d.kind}, צוות ${teamName(d.team_id)}) ${d.title}${"\n"}${d.body_md.slice(0, 2200)}`
   ).join("\n\n") || "אין מסמך שמתאים במיוחד.";
   const docIndex = (docs ?? []).map((d) => `[D${d.id}] צוות ${teamName(d.team_id)}: ${d.title} — ${d.summary_he}`).join("\n");
+  // Each page has its own agent: same knowledge, a different first place to look.
   const focus = mode === "internal"
-    ? "המצב: סוכן הידע הפנימי. השאלה היא על איך צוותים ב-zap עובדים. עונים קודם מהמסמכים ומפרופילי הצוותים, ומוסיפים פריט חיצוני רק אם הוא באמת עוזר."
+    ? "המצב: הסוכן של עמוד הידע מבפנים. השאלה היא על איך צוותים ב-zap עובדים. עונים קודם מהמסמכים ומפרופילי הצוותים, ומוסיפים פריט חיצוני רק אם הוא באמת עוזר."
+    : mode === "external"
+    ? "המצב: הסוכן של עמוד הידע מבחוץ. ממליצים על 1-3 פריטים מהקטלוג (קורסים, עדכונים, פודקאסטים) שמתאימים לשאלה, ומסבירים במשפט למה. מפרופילי צוותים רק אם זה באמת עוזר."
+    : mode === "me"
+    ? "המצב: הסוכן של האזור האישי. עונים קודם מההיסטוריה האישית (מה נפתח, נשמר, סומן), ואחר כך מציעים צעד הבא אחד מהקטלוג."
     : "";
 
   const system = `${VOICE}
