@@ -31,8 +31,9 @@ import { DetailBody, DetailLink, setDetailHost, type Target } from '../component
 // On a desktop the feed is a stage: the card in the middle, its rail beside it, and a panel
 // with the details, comments and what's next, so nothing ever covers the card.
 
-export type FeedSource = 'all' | 'external' | 'internal' | 'bites' | 'saved' | 'later' | 'history'
-type FeedItem = Item & { reason?: string | null }
+export type FeedSource = 'all' | 'external' | 'internal' | 'bites' | 'trending' | 'team' | 'saved' | 'later' | 'history'
+export type ReasonKind = 'personal' | 'team' | 'platform' | 'share' | 'explore'
+type FeedItem = Item & { reason?: string | null; reason_kind?: ReasonKind | null }
 type TeamLite = { id: number; team: string }
 type DocLite = { id: number; team_id: number; body_md?: string | null; tools?: string[] | null }
 type Episode = { week: string; body_he: string; audio_url: string | null; items: Item[]; segments?: string[] }
@@ -43,6 +44,7 @@ type Entry =
   | { t: 'leaders'; rows: BoardRow[] }
   | { t: 'quote'; q: Quote }
   | { t: 'card'; key: string; node: React.ReactNode }
+  | { t: 'hot'; lane: 'trending' | 'team'; items: FeedItem[] }
 
 // Who liked a card (item_likers, patch-019): my team first, then the most recent.
 export type Liker = { item_id: number; user_id: string; display_name: string; avatar_url: string | null; avatar_style: string | null
@@ -57,6 +59,20 @@ async function fetchItems(ids: number[]): Promise<FeedItem[]> {
 
 const reasonOf = (r: { shared_by?: string | null; popular_with?: string | null }) =>
   r.shared_by ? `המלצה מ-${r.shared_by}` : r.popular_with ? `פופולרי אצל ${r.popular_with}` : null
+
+// The three-level ranking (patch-025): personal, team and platform scores, per lane, with a reason.
+type V2Lane = 'for_you' | 'zap' | 'world' | 'quick' | 'trending' | 'team'
+async function rankedV2(lane: V2Lane, limit = 40, maxMinutes?: number): Promise<FeedItem[] | null> {
+  const { data, error } = await supabase.rpc('feed_v2', { p_limit: limit, p_lane: lane, ...(maxMinutes ? { p_max_minutes: maxMinutes } : {}) })
+  if (error) return null
+  const rows = (data ?? []) as { id: number; reason_he: string | null; reason_kind: ReasonKind | null; popular_with: string | null; shared_by: string | null }[]
+  const why = new Map(rows.map((r) => [r.id, r]))
+  return (await fetchItems(rows.map((r) => r.id))).map((i) => {
+    const r = why.get(i.id)
+    return { ...i, reason: r?.reason_kind === 'explore' ? 'אולי יפתיע אתכם' : r?.reason_he ?? reasonOf(r ?? {}), reason_kind: r?.reason_kind ?? null }
+  })
+}
+const MINUTES: Record<string, number> = { '15 דקות': 10, 'שעה': 15, '2-3 שעות': 20, 'יותר': 30 }
 
 async function ranked(rpc: 'feed' | 'feed_all', limit: number): Promise<FeedItem[] | null> {
   const { data, error } = await supabase.rpc(rpc, { p_limit: limit })
@@ -151,12 +167,13 @@ const EMPTY: Partial<Record<FeedSource, [string, string]>> = {
   history: ['ההיסטוריה עוד ריקה', 'כל מה שתפתחו, תאהבו או תגיבו עליו יופיע כאן.'],
 }
 
-export default function Feed({ source, head, listTo, agent, q = '', chip, prefix, carousel }: {
+export default function Feed({ source, head, listTo, agent, q = '', chip, prefix, carousel, onLane }: {
   source: FeedSource
   q?: string                   // search inside the personal lanes
   chip?: React.ReactNode       // the profile chip, on האזור שלי
   prefix?: { key: string; node: React.ReactNode }[]   // my own cards, before the feed (האזור שלי)
   carousel?: React.ReactNode   // instead of a feed: one slide holding a horizontal carousel (שלי)
+  onLane?: (lane: 'trending' | 'team') => void   // open "חם ב-zap" / "חם בצוות שלכם" as a feed
   head?: React.ReactNode       // tabs or the page name, in the slim top overlay
   listTo?: string              // the list view, behind a small icon
   agent?: React.ReactNode      // "שאלו את העמוד", inside the filter sheet
@@ -238,9 +255,16 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
     let alive = true
     setItems(null); setActive(0); setMore('idle')
     const load = async (): Promise<FeedItem[]> => {
-      if (source === 'internal') return loadInternal(myTeamId, profile.topics, docs)
-      if (source === 'bites') return loadBites()
       if (source === 'saved' || source === 'later' || source === 'history') return loadMine(source, q)
+      // feed_v2 for every home lane; the older ranking only if it fails.
+      const lane: V2Lane | null = source === 'all' ? 'for_you' : source === 'internal' ? 'zap' : source === 'external' ? 'world'
+        : source === 'bites' ? 'quick' : source === 'trending' ? 'trending' : source === 'team' ? 'team' : null
+      if (lane) {
+        const v2 = await rankedV2(lane, 40, lane === 'quick' ? MINUTES[profile.weekly_time ?? ''] ?? 7 : undefined)
+        if (v2 && v2.length) return v2
+      }
+      if (source === 'internal' || source === 'team') return loadInternal(myTeamId, profile.topics, docs)
+      if (source === 'bites') return loadBites()
       if (source === 'all') {
         const mixed = await ranked('feed_all', 40)
         if (mixed && mixed.length) return mixed
@@ -254,6 +278,13 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
     return () => { alive = false }
   }, [source, q, JSON.stringify(f), saved, docs, myTeamId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // "חם ב-zap" and "חם בצוות שלכם": their top 3, as cards inside בשבילך.
+  const [hot, setHot] = useState<{ trending: FeedItem[]; team: FeedItem[] }>({ trending: [], team: [] })
+  useEffect(() => {
+    if (source !== 'all') return
+    Promise.all([rankedV2('trending', 3), rankedV2('team', 3)]).then(([t, m]) => setHot({ trending: t ?? [], team: m ?? [] }))
+  }, [source])
+
   // Specials go between items: the episode third, leaders sixth, a colleague's words every sixth after.
   const entries = useMemo<Entry[]>(() => {
     const out: Entry[] = (prefix ?? []).map((p) => ({ t: 'card', key: p.key, node: p.node }))
@@ -263,9 +294,11 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
       if (n === 1 && episode) out.push({ t: 'episode', ep: episode })
       else if (n === 4 && leaders) out.push({ t: 'leaders', rows: leaders })
       else if (n >= 7 && (n - 7) % 6 === 0 && qn < quotes.length) out.push({ t: 'quote', q: quotes[qn++] })
+      if (n === 8 && hot.trending.length) out.push({ t: 'hot', lane: 'trending', items: hot.trending })
+      else if (n === 18 && hot.team.length) out.push({ t: 'hot', lane: 'team', items: hot.team })
     }
     return out
-  }, [items, episode, leaders, quotes, prefix])
+  }, [items, episode, leaders, quotes, prefix, hot])
   const entriesRef = useRef<Entry[]>([])
   entriesRef.current = entries
 
@@ -460,6 +493,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
             if (en.t === 'card') return (
               <section key={en.key} className="fd-card" data-index={i}><div className="fd-inner tk-special tk-mine">{en.node}</div></section>
             )
+            if (en.t === 'hot') return <HotSlide key={`hot-${en.lane}`} lane={en.lane} items={en.items} index={i} onOpen={onLane} />
             if (en.t === 'episode') return <EpisodeSlide key="ep" ep={en.ep} index={i} />
             if (en.t === 'leaders') return <LeadersSlide key="lead" index={i} />
             if (en.t === 'quote') return <QuoteSlide key={`q${en.q.comment_id}`} q={en.q} index={i} />
@@ -687,6 +721,7 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
 
         {/* The caption is the way in: tap it to open, in place. */}
         <DetailLink {...targetOf(item)} className={`fd-cap${band ? ' band' : ''}`} label={`לפתוח: ${item.title_he}`}>
+          {item.reason && <span className={`fd-reason k-${item.reason_kind ?? 'personal'}`}><ReasonIcon kind={item.reason_kind ?? 'personal'} />{item.reason}</span>}
           <h2 className="fd-title">{item.title_he}</h2>
           <span className="fd-src">
             <bdi>{authorName}</bdi>{item.lang === 'he' ? ' · עברית' : ''}{item.is_demo ? ' · דמו' : ''}
@@ -1039,8 +1074,16 @@ function useListen(item: FeedItem, active: boolean) {
   useEffect(() => () => { audio.current?.pause() }, [])
   useEffect(() => { if (!active && audio.current && !audio.current.paused) { audio.current.pause(); setPlaying(false) } }, [active])
 
+  const counted = useRef(false)
   const play = (url: string) => {
-    if (!audio.current) { audio.current = new Audio(url); audio.current.onended = () => setPlaying(false) }
+    if (!audio.current) {
+      audio.current = new Audio(url)
+      audio.current.onended = () => setPlaying(false)
+      // A listen counts (for the ranking) once 30 seconds have played.
+      const a = audio.current
+      const start = item.kind === 'podcast' ? 60 : 0
+      a.ontimeupdate = () => { if (!counted.current && a.currentTime - start >= 30) { counted.current = true; track(item.id, 'listen') } }
+    }
     audio.current.play().then(() => setPlaying(true), () => setPlaying(false))
   }
   const toggle = async () => {
@@ -1143,3 +1186,40 @@ const IcoPlay = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="curr
 const IcoPause = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
 
 export { KIND_LABEL }
+
+// A small icon per reason: ✦ personal, people for the team, a flame for zap-wide, an arrow for a share, a compass for explore.
+function ReasonIcon({ kind }: { kind: ReasonKind }) {
+  const p = { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true }
+  if (kind === 'team') return <svg {...p}><circle cx="9" cy="8" r="3.5" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .7 3 2.6 3 6" /></svg>
+  if (kind === 'platform') return <svg {...p}><path d="M12 22c4 0 7-2.7 7-6.5 0-3.5-2.5-5.5-3.5-8.5-1.5 2-2 3-3.5 3.5C12 7 11 4 8.5 2 8.5 6 5 8.5 5 13.5 5 19 8 22 12 22z" /></svg>
+  if (kind === 'share') return <svg {...p}><path d="M14 5l7 7-7 7M21 12H9a6 6 0 0 0-6 6" /></svg>
+  if (kind === 'explore') return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg>
+  return <svg {...p} fill="currentColor" stroke="none"><path d="M12 2.5l2.1 6.2 6.4 2.3-6.4 2.3L12 19.5l-2.1-6.2L3.5 11l6.4-2.3z" /></svg>
+}
+
+// "חם ב-zap" / "חם בצוות שלכם" inside בשבילך: the lane's top 3; tap to open the whole lane.
+function HotSlide({ lane, items, index, onOpen }: { lane: 'trending' | 'team'; items: FeedItem[]; index: number; onOpen?: (l: 'trending' | 'team') => void }) {
+  const title = lane === 'trending' ? 'חם ב-zap' : 'חם בצוות שלכם'
+  return (
+    <section className="fd-card" data-index={index} aria-label={title}>
+      <div className={`fd-inner tk-special tk-hot ${lane}`}>
+        <span className="tk-kicker">{lane === 'trending' ? <ReasonIcon kind="platform" /> : <ReasonIcon kind="team" />} {title}</span>
+        <h2>{lane === 'trending' ? 'מה כולם ב-zap פותחים השבוע' : 'מה הצוות שלכם אוהב השבוע'}</h2>
+        <ol className="tk-hot-list">
+          {items.map((i) => {
+            const th = i.preview_video_id ? ytStill(i.preview_video_id, 2) : i.thumbnail_url ? proxied(i.thumbnail_url, 360) : null
+            return (
+              <li key={i.id}>
+                <DetailLink kind={i.doc_id ? 'doc' : 'item'} id={i.doc_id ?? i.id}>
+                  <span className="tk-hot-th">{th ? <img src={th} alt="" loading="lazy" decoding="async" /> : <TypeBadge item={i} />}</span>
+                  <span className="tk-hot-t">{i.title_he}</span>
+                </DetailLink>
+              </li>
+            )
+          })}
+        </ol>
+        {onOpen && <button type="button" className="tk-big-play" onClick={() => onOpen(lane)}>לכל ה{lane === 'trending' ? 'חם ב-zap' : 'חם בצוות'} ←</button>}
+      </div>
+    </section>
+  )
+}

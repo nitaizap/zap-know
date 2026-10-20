@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { callFn, supabase } from '../lib'
+import { useEffect, useRef, useState } from 'react'
+import { callFn, supabase, track } from '../lib'
 import '../listen.css'
 
 type Line = { speaker: string; text: string }
@@ -11,6 +11,7 @@ export function Listen({ kind, id }: { kind: 'item' | 'doc'; id: number }) {
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [res, setRes] = useState<Result | null>(null)
   const [showText, setShowText] = useState(false)
+  const counted = useRef(false)  // a listen counts once 30 seconds have played
 
   // The transcript arrives first; the voice is made in the background, so poll for it.
   useEffect(() => {
@@ -63,7 +64,8 @@ export function Listen({ kind, id }: { kind: 'item' | 'doc'; id: number }) {
   return (
     <div className="listen listen-ready">
       {res?.audio_url
-        ? <audio className="listen-audio" controls autoPlay src={res.audio_url} />
+        ? <audio className="listen-audio" controls autoPlay src={res.audio_url}
+            onTimeUpdate={(e) => { if (kind === 'item' && !counted.current && e.currentTarget.currentTime >= 30) { counted.current = true; track(id, 'listen') } }} />
         : <div className="listen-loading" role="status"><span className="listen-wave" aria-hidden="true"><i /><i /><i /><i /></span>מקליטים את השיחה, בינתיים אפשר לקרוא אותה</div>}
       <button className="listen-toggle" onClick={() => setShowText((v) => !v)}>
         {showText ? 'להסתיר את התמליל' : 'לקרוא את התמליל'}

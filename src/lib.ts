@@ -199,7 +199,7 @@ export async function callFn<T>(name: string, body: unknown): Promise<T> {
   return (await res.json()) as T
 }
 
-export function track(itemId: number, type: 'open' | 'save' | 'click_source') {
+export function track(itemId: number, type: 'open' | 'save' | 'click_source' | 'listen') {
   supabase.rpc('track', { p_item: itemId, p_type: type }).then(() => {}, () => {})
 }
 

@@ -649,3 +649,25 @@ button.tk-me { padding: 0; background: none; cursor: pointer; }
 .fd-toolchip { position: absolute; z-index: 4; inset-inline-end: 12px; top: calc(max(8px, env(safe-area-inset-top)) + 104px); }
 .desk .fd-toolchip { top: 16px; }
 .fd-toolchip .dv-tool { width: 40px; height: 40px; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); }
+
+/* Why this card: one small line above the title. */
+.fd-reason { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 4px; font-size: 12.5px; font-weight: 700; color: #fff; opacity: .95; }
+.fd-reason svg { flex: none; }
+.fd-reason.k-platform svg { color: #ff5c9e; }
+.fd-reason.k-team svg { color: #00ab12; }
+.fd-reason.k-personal svg { color: #ffc600; }
+.fd-reason.k-explore svg { color: #fff; }
+
+/* "חם ב-zap" / "חם בצוות שלכם" cards and the way back. */
+.tk-hot { background: linear-gradient(160deg, #052b7a, #001c32); }
+.tk-hot.team { background: linear-gradient(160deg, #485cc7, #001c32); }
+.tk-hot .tk-kicker { display: inline-flex; align-items: center; gap: 6px; }
+.tk-hot-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.tk-hot-list a { display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; background: rgba(255, 255, 255, .1); border-radius: 14px; padding: 8px; }
+.tk-hot-th { width: 84px; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; flex: none; background: rgba(255, 255, 255, .15); display: grid; place-items: center; }
+.tk-hot-th img { width: 100%; height: 100%; object-fit: cover; }
+.tk-hot-t { font-weight: 700; font-size: 15px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tk-back { flex: none !important; background: rgba(0, 28, 50, .6) !important; }
+.tk-tab.on[data-lane="hot"] { background: #ff5c9e; color: #001c32; text-shadow: none; }
+.tk-tab.on[data-lane="team"] { background: #00ab12; color: #001c32; text-shadow: none; }
+.hot-links { display: flex; gap: 8px; flex-wrap: wrap; }
