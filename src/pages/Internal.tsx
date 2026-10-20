@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import { ITEM_COLS, Item, callFn, supabase } from '../lib'
 import { Empty, Headline, ItemCard, Skeletons } from '../components/ui'
 import { earn } from '../components/points'
+import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
 
 export default function Internal() {
   const [items, setItems] = useState<Item[] | null>(null)
+  const [f, setF] = useFilters('internal', { sort: 'new' })
+  const saved = useSavedIds(f.saved)
   const [form, setForm] = useState({ title: '', team: '', what: '', link: '' })
   const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
 
@@ -35,9 +38,10 @@ export default function Internal() {
       <Headline light="מה צוותים אחרים בנו," black="קורה ב-zap" hand="מי עושה זאפ על זה?" />
       <p className="muted">פרויקטים, חידושים ואוטומציות מתוך zap. כל פרויקט מגיע מערוץ ה-Teams, מקבוצת המייל או מהטופס כאן, ו-AI מסכם אותו בשבילכם.</p>
 
-      <section style={{ marginTop: 16 }}>
+      <FilterBar value={f} onChange={setF} total={items ? applyFilters(items, f, { saved }).length : undefined} show={{ len: true, vertical: true, saved: true }} />
+      <section>
         {items === null ? <Skeletons n={4} /> : items.length ? (
-          <div className="grid two">{items.map((i) => <ItemCard key={i.id} item={i} />)}</div>
+          <div className="grid two">{applyFilters(items, f, { saved }).map((i) => <ItemCard key={i.id} item={i} />)}</div>
         ) : <Empty>עוד אין פרויקטים. אולי שלכם יהיה הראשון?</Empty>}
       </section>
 

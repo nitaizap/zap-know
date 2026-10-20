@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { Listen } from '../components/Listen'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fmtDate, supabase } from '../lib'
 import '../agent.css'
@@ -237,6 +238,8 @@ export default function Doc() {
           </div>
         )}
       </header>
+
+      <Listen kind="doc" id={doc.id} />
 
       <div className="doc-actions">
         <button type="button" className="doc-btn" onClick={ask}><IconChat /> לשאול על המסמך הזה</button>

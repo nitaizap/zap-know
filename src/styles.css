@@ -551,3 +551,24 @@ body { font-size: 16px; }
 .more-links a { color: var(--dark-60); text-decoration: none; font-weight: 600; font-size: var(--fs-sm); }
 .more-links a:hover { color: var(--navy); }
 .teaser { margin-top: var(--s10); }
+
+/* ============ Filter bar, length, quick bites ============ */
+.fbar { display: flex; align-items: center; gap: var(--s3); margin: var(--s4) 0 var(--s5); flex-wrap: wrap; }
+.fbar-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--navy-20); background: var(--surface); color: var(--navy); font-weight: 700; cursor: pointer; }
+.fbar-pill:hover, .fbar-pill.on { background: var(--navy-5); }
+.fbar-count { min-width: 20px; height: 20px; border-radius: 999px; background: var(--navy); color: #fff; font-size: 12px; display: inline-grid; place-items: center; padding: 0 6px; }
+.fbar-sum { color: var(--muted); font-size: var(--fs-sm); }
+.fbar-clear { background: none; border: 0; color: var(--navy); text-decoration: underline; cursor: pointer; font-size: var(--fs-sm); }
+.fsheet { display: grid; gap: var(--s4); }
+.fgroup-label { font-weight: 800; font-size: 13px; color: var(--dark-60); margin-bottom: 8px; }
+.card-len { margin-inline-start: auto; color: var(--dark-60); font-weight: 600; white-space: nowrap; }
+.bites-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 240px); gap: var(--s3); overflow-x: auto; padding: 2px 2px 10px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.bites-row::-webkit-scrollbar { display: none; }
+.bite { scroll-snap-align: start; display: flex; flex-direction: column; gap: 8px; padding: var(--s4); border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--dark); box-shadow: var(--shadow-1); transition: border-color .15s, box-shadow .15s; }
+.bite:hover { border-color: var(--navy-20); box-shadow: var(--shadow-2); }
+.bite b { font-weight: 800; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bite-len { align-self: flex-start; font-size: 12px; font-weight: 800; color: var(--green-ink); background: var(--green-5); border-radius: 999px; padding: 2px 10px; }
+.home .bites { margin-top: var(--s10); }
+.fd-filter .fbar { margin: 0; }
+.fd-filter .fbar-sum, .fd-filter .fbar-clear { display: none; }
+.fd-filter .fbar-pill { padding: 6px 12px; font-size: 13px; }

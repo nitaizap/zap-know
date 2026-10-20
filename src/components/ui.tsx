@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Item, KIND_LABEL, fmtDate } from '../lib'
+import { Item, KIND_LABEL, fmtDate, fmtMinutes } from '../lib'
 import { ReactionBar } from './social'
 import { IBook, IHeadphones, INews, ISpark } from './icons'
 
@@ -91,6 +91,7 @@ export function ItemCard({ item, progress, reasons }: { item: Item; progress?: n
           <span className="meta-src">{item.source_name}</span>
           <span className="meta-dot" aria-hidden="true">·</span>
           <span>{fmtDate(item.published_at || item.created_at)}</span>
+          {item.minutes ? <span className="card-len">{fmtMinutes(item.minutes)}</span> : null}
         </div>
       </Link>
       <ReactionBar item={item} compact />
@@ -143,6 +144,24 @@ export function MediaHero({ item }: { item: Item }) {
     return <div className="media-hero"><img src={item.thumbnail_url} alt="" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} /></div>
   }
   return null
+}
+
+// "ביס קטן": one compact horizontal row of ≤10-minute items.
+export function BitesRow({ items }: { items: Item[] }) {
+  if (!items.length) return null
+  return (
+    <section className="bites">
+      <h2 className="section">ביס קטן <small>עד 10 דקות</small></h2>
+      <div className="bites-row">
+        {items.map((i) => (
+          <Link key={i.id} to={`/item/${i.id}`} className="bite">
+            <span className="bite-len">{fmtMinutes(i.minutes)}</span>
+            <b>{i.title_he}</b>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
 }
 
 // The personal weekly episode, as the home page's lead card.

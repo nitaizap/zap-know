@@ -35,6 +35,8 @@ export type Item = {
   created_at: string
   thumbnail_url?: string | null
   preview_video_id?: string | null
+  minutes?: number | null
+  likes?: number
 }
 
 export type TeamProfile = {
@@ -153,11 +155,21 @@ const BASE_COLS =
 // them, so an older schema never breaks a page. ITEM_COLS is a live binding: probeMediaCols()
 // upgrades it for every importer.
 export let ITEM_COLS: typeof BASE_COLS = BASE_COLS
+const OPTIONAL_COLS = ['thumbnail_url,preview_video_id', 'minutes', 'likes']
 export async function probeMediaCols() {
-  const { error } = await supabase.from('items').select('thumbnail_url,preview_video_id').limit(1)
+  const ok = await Promise.all(OPTIONAL_COLS.map(async (c) => !(await supabase.from('items').select(c).limit(1)).error))
+  const extra = OPTIONAL_COLS.filter((_, n) => ok[n])
   // Typed as the base list so supabase-js keeps inferring rows; the extra fields are optional on Item.
-  ITEM_COLS = (error ? BASE_COLS : `${BASE_COLS},thumbnail_url,preview_video_id`) as typeof BASE_COLS
-  return !error
+  ITEM_COLS = [BASE_COLS, ...extra].join(',') as typeof BASE_COLS
+  return ok.every(Boolean)
+}
+
+// "5 דק'" / "1:20 שע'", for cards and filters.
+export function fmtMinutes(m: number | null | undefined): string {
+  if (!m) return ''
+  if (m < 60) return `${m} דק'`
+  const h = Math.floor(m / 60), r = m % 60
+  return r ? `${h}:${String(r).padStart(2, '0')} שע'` : `${h} שע'`
 }
 
 // Calls a Supabase edge function with the signed-in user's token.

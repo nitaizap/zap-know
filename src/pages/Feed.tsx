@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { ITEM_COLS, Item, KIND_LABEL, Topic, fmtDate, supabase, track } from '../lib'
 import { Comments, ShareSheet, react, useSocial } from '../components/social'
 import { earn } from '../components/points'
+import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
+import { useApp } from '../App'
 import '../feed.css'
 
 // Social-media style feed: vertical snap cards (up/down = next/prev, like TikTok),
@@ -10,10 +12,11 @@ import '../feed.css'
 // and an action rail with reactions, comments, share and save.
 
 type FeedItem = Item & { thumbnail_url?: string | null; preview_video_id?: string | null; reason?: string | null }
-type Tab = 'foryou' | 'trending' | 'new'
+type Tab = 'foryou' | 'bites' | 'trending' | 'new'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'foryou', label: 'בשבילכם' },
+  { key: 'bites', label: 'ביס קטן' },
   { key: 'trending', label: 'טרנדים' },
   { key: 'new', label: 'חדש' },
 ]
@@ -50,6 +53,10 @@ async function loadTab(tab: Tab): Promise<FeedItem[]> {
       .eq('status', 'approved').in('kind', ['course', 'news']).order('created_at', { ascending: false }).limit(30)
     return (res.data ?? []) as unknown as FeedItem[]
   }
+  if (tab === 'bites') {
+    const { data } = await supabase.rpc('quick_bites', { p_limit: 30 })
+    return fetchItems(((data ?? []) as { id: number }[]).map((r) => r.id))
+  }
   if (tab === 'trending') {
     const { data } = await supabase.rpc('trending', { p_limit: 30 })
     return fetchItems(((data ?? []) as { id: number }[]).map((r) => r.id))
@@ -78,6 +85,9 @@ const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-r
 
 export default function Feed() {
   const [tab, setTab] = useState<Tab>('foryou')
+  const { topics: topicList } = useApp()
+  const [f, setF] = useFilters('feed')
+  const saved = useSavedIds(f.saved)
   const [items, setItems] = useState<FeedItem[] | null>(null)
   const [topics, setTopics] = useState<Map<string, string>>(new Map())
   const [active, setActive] = useState(0)
@@ -96,10 +106,10 @@ export default function Feed() {
   useEffect(() => {
     let alive = true
     setItems(null); setActive(0); setMore('idle')
-    loadTab(tab).then((list) => { if (alive) setItems(list) })
+    loadTab(tab).then((list) => { if (alive) setItems(applyFilters(list, f, { saved })) })
     scroller.current?.scrollTo({ top: 0 })
     return () => { alive = false }
-  }, [tab])
+  }, [tab, JSON.stringify(f), saved])
 
   // Which card is on screen.
   useEffect(() => {
@@ -180,6 +190,7 @@ export default function Feed() {
           <button key={t.key} role="tab" aria-selected={tab === t.key} className={`fd-tab ${tab === t.key ? 'on' : ''}`}
             onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
+        <div className="fd-filter"><FilterBar value={f} onChange={setF} show={{ topic: topicList, kind: true, len: true, vertical: true, saved: true }} /></div>
       </div>
 
       <div className="fd-scroller" ref={scroller}>

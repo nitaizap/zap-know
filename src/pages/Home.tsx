@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
 import { ITEM_COLS, Item, supabase, weekStart } from '../lib'
-import { Empty, EpisodeCard, Headline, ItemCard, MetroLine, Skeletons } from '../components/ui'
+import { BitesRow, Empty, EpisodeCard, Headline, ItemCard, MetroLine, Skeletons } from '../components/ui'
 import { FeedRow, loadFeed, reasonChips } from '../components/social'
 import { LeaderTeaser } from '../components/points'
 import { suggestName } from '../components/prefs'
@@ -19,6 +19,7 @@ export default function Home() {
   const [hot, setHot] = useState<Record<string, Item[]>>({})
   const [loading, setLoading] = useState(true)
   const [forYou, setForYou] = useState<{ item: Item; row: FeedRow }[] | null>(null)
+  const [bites, setBites] = useState<Item[]>([])
   const [inbox, setInbox] = useState<{ id: number; item: Item; note: string | null; by: string }[]>([])
 
   const week = weekStart()
@@ -61,6 +62,13 @@ export default function Home() {
     }
     load()
     loadSocialFeed().then((r) => { if (alive && r) { setForYou(r.forYou); setInbox(r.inbox) } })
+    supabase.rpc('quick_bites', { p_limit: 8 }).then(async ({ data, error }) => {
+      const rows = (data as { id: number; minutes: number }[] | null) ?? []
+      if (error || !rows.length) return
+      const { data: its } = await supabase.from('items').select(ITEM_COLS).in('id', rows.map((r) => r.id))
+      const byId = new Map(((its as Item[] | null) ?? []).map((i) => [i.id, i]))
+      if (alive) setBites(rows.flatMap((r) => (byId.has(r.id) ? [{ ...byId.get(r.id)!, minutes: r.minutes }] : [])))
+    })
     return () => { alive = false }
   }, [profile.user_id, profile.topics.join(','), week])
 
@@ -154,6 +162,8 @@ export default function Home() {
           <Link to="/feed" className="btn">לפיד המלא</Link>
         </div>
       </section>
+
+      <BitesRow items={bites} />
 
       <LeaderTeaser />
 
