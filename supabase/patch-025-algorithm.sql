@@ -115,7 +115,7 @@ exception when duplicate_object then null; end $$;
 create or replace function public.feed_v2(p_limit int default 40, p_lane text default 'for_you', p_topic text default null,
                                           p_kind text default null, p_max_minutes int default null)
 returns table (id bigint, score numeric, lane text, reason_he text, reason_kind text, popular_with text, shared_by text)
-language plpgsql stable security definer set search_path = public as $
+language plpgsql stable security definer set search_path = public as $$
 #variable_conflict use_column
 declare
   v_lane text := case lower(coalesce(p_lane, 'for_you'))
