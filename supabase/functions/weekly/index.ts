@@ -117,7 +117,8 @@ async function voice(text: string, path: string) {
 }
 
 async function episodes(onlyEmail?: string) {
-  let q = admin.from("profiles").select("user_id,email,display_name,role,topics");
+  // Demo colleagues never get an episode: it would only burn AI/TTS quota and the 150s budget.
+  let q = admin.from("profiles").select("user_id,email,display_name,role,topics").eq("is_demo", false);
   if (onlyEmail) q = q.eq("email", onlyEmail);
   const { data: people } = await q;
   const audio = (Deno.env.get("EPISODE_AUDIO") ?? "true") === "true";
