@@ -17,7 +17,8 @@ import { teamColor, teamInitials } from './Doc'
 import { DocPreview, previewLines } from '../components/ui'
 import { Layer } from '../components/Layer'
 import { TypeBadge } from '../components/TypeBadge'
-import zapLogo from '../assets/zap-group-white.png'
+import zapMark from '../assets/zap-mark-white.png'
+import { Avatar as Face } from '../components/Avatar'
 import { DetailBody, DetailLink, setDetailHost, type Target } from '../components/detail'
 
 // zap UP is a TikTok for work: one full-screen vertical feed (up/down = next/prev), a horizontal
@@ -38,6 +39,11 @@ type Entry =
   | { t: 'episode'; ep: Episode }
   | { t: 'leaders'; rows: BoardRow[] }
   | { t: 'quote'; q: Quote }
+  | { t: 'card'; key: string; node: React.ReactNode }
+
+// Who liked a card (item_likers, patch-019): my team first, then the most recent.
+export type Liker = { item_id: number; user_id: string; display_name: string; avatar_url: string | null; avatar_style: string | null
+  avatar_color: string | null; team: string | null; is_demo: boolean; liked_at: string; total: number }
 
 async function fetchItems(ids: number[]): Promise<FeedItem[]> {
   if (!ids.length) return []
@@ -147,10 +153,11 @@ const EMPTY: Partial<Record<FeedSource, [string, string]>> = {
   history: ['ההיסטוריה עוד ריקה', 'כל מה שתפתחו, תאהבו או תגיבו עליו יופיע כאן.'],
 }
 
-export default function Feed({ source, head, listTo, agent, q = '', chip }: {
+export default function Feed({ source, head, listTo, agent, q = '', chip, prefix }: {
   source: FeedSource
   q?: string                   // search inside the personal lanes
   chip?: React.ReactNode       // the profile chip, on האזור שלי
+  prefix?: { key: string; node: React.ReactNode }[]   // my own cards, before the feed (האזור שלי)
   head?: React.ReactNode       // tabs or the page name, in the slim top overlay
   listTo?: string              // the list view, behind a small icon
   agent?: React.ReactNode      // "שאלו את העמוד", inside the filter sheet
@@ -245,7 +252,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip }: {
 
   // Specials go between items: the episode third, leaders sixth, a colleague's words every sixth after.
   const entries = useMemo<Entry[]>(() => {
-    const out: Entry[] = []
+    const out: Entry[] = (prefix ?? []).map((p) => ({ t: 'card', key: p.key, node: p.node }))
     let qn = 0
     for (const [n, item] of (items ?? []).entries()) {
       out.push({ t: 'item', item })
@@ -254,7 +261,21 @@ export default function Feed({ source, head, listTo, agent, q = '', chip }: {
       else if (n >= 7 && (n - 7) % 6 === 0 && qn < quotes.length) out.push({ t: 'quote', q: quotes[qn++] })
     }
     return out
-  }, [items, episode, leaders, quotes])
+  }, [items, episode, leaders, quotes, prefix])
+
+  // Social proof: the likers of every card on this page, in one call.
+  const [likers, setLikers] = useState<Map<number, Liker[]>>(new Map())
+  const likerKey = (items ?? []).map((i) => i.id).join(',')
+  useEffect(() => {
+    if (!likerKey) return
+    supabase.rpc('item_likers', { p_item_ids: likerKey.split(',').map(Number), p_per: 3 }).then(({ data, error }) => {
+      if (error) return  // not deployed yet: no stack, nothing else changes
+      const m = new Map<number, Liker[]>()
+      for (const r of (data ?? []) as Liker[]) m.set(r.item_id, [...(m.get(r.item_id) ?? []), r])
+      setLikers(m)
+    })
+  }, [likerKey])
+  const [likersOf, setLikersOf] = useState<number | null>(null)
 
   // Which card is on screen.
   useEffect(() => {
@@ -372,8 +393,10 @@ export default function Feed({ source, head, listTo, agent, q = '', chip }: {
         {/* Minimal chrome: the zap logo top right, the tabs, the AI. Pages and me only on a desktop. */}
         <header className="tk-top">
           <div className="tk-top-row">
-            <Link to="/" className="tk-brand" aria-label="zap UP, הבית">
-              <img src={zapLogo} alt="zap group" width={96} height={24} /><span className="tk-up">UP</span>
+            {/* The lockup: the real zap mark and wordmark + UP, "by zap group" under it. */}
+            <Link to="/" className="tk-brand" aria-label="zap UP by zap group, הבית">
+              <span className="tk-lock"><img src={zapMark} alt="" width={70} height={31} /><b className="tk-up">UP</b></span>
+              <small className="tk-by">by zap group</small>
             </Link>
             {desk && <PageNav className="tk-pages" />}
             <span className="tk-grow" />
@@ -395,15 +418,11 @@ export default function Feed({ source, head, listTo, agent, q = '', chip }: {
         </header>
 
         <div className="fd-scroller" ref={scroller}>
-          {items === null && <div className="fd-card fd-empty"><div className="fd-spinner" aria-hidden />טוענים בשבילכם</div>}
-          {items?.length === 0 && (
-            <div className="fd-card fd-empty">
-              <p className="fd-empty-title">{q && EMPTY[source] ? 'לא מצאנו' : EMPTY[source]?.[0] ?? 'עברתם על הכול'}</p>
-              <p>{q && EMPTY[source] ? 'נסו מילה אחרת, או שאלו את ה-AI.' : EMPTY[source]?.[1] ?? 'תוכן חדש נכנס כל כמה שעות. אפשר לנקות את הסינון, או לשאול את ה-AI.'}</p>
-            </div>
-          )}
           {entries.map((en, i) => {
             const near = Math.abs(i - active) <= 1
+            if (en.t === 'card') return (
+              <section key={en.key} className="fd-card" data-index={i}><div className="fd-inner tk-special tk-mine">{en.node}</div></section>
+            )
             if (en.t === 'episode') return <EpisodeSlide key="ep" ep={en.ep} index={i} />
             if (en.t === 'leaders') return <LeadersSlide key="lead" index={i} />
             if (en.t === 'quote') return <QuoteSlide key={`q${en.q.comment_id}`} q={en.q} index={i} />
@@ -411,10 +430,18 @@ export default function Feed({ source, head, listTo, agent, q = '', chip }: {
             return (
               <FeedCard key={it.id} item={it} index={i} active={i === active} near={near} bite={source === 'bites'}
                 lines={linesOf(it)} team={authorOf(it)} faces={faces.get(authorOf(it)?.team ?? '') ?? []} tools={toolsOf(it)}
+                likers={likers.get(it.id) ?? []} myId={myId} onLikers={() => setLikersOf(it.id)}
                 kept={kept.has(it.id)} onKeep={() => keep(it)} onSave={() => save(it)} onHide={() => hide(it)}
                 onComments={() => openComments(it)} onShare={() => setSheet({ item: it, kind: 'share' })} />
             )
           })}
+          {items === null && <div className="fd-card fd-empty"><div className="fd-spinner" aria-hidden />טוענים בשבילכם</div>}
+          {items?.length === 0 && (
+            <div className="fd-card fd-empty">
+              <p className="fd-empty-title">{q && EMPTY[source] ? 'לא מצאנו' : EMPTY[source]?.[0] ?? 'עברתם על הכול'}</p>
+              <p>{q && EMPTY[source] ? 'נסו מילה אחרת, או שאלו את ה-AI.' : EMPTY[source]?.[1] ?? 'תוכן חדש נכנס כל כמה שעות. אפשר לנקות את הסינון, או לשאול את ה-AI.'}</p>
+            </div>
+          )}
           {items && items.length > 0 && more === 'done' && (
             <div className="fd-card fd-empty">
               <p className="fd-empty-title">זהו להיום</p>
@@ -467,19 +494,63 @@ export default function Feed({ source, head, listTo, agent, q = '', chip }: {
         </Layer>
       )}
       {sheet?.kind === 'share' && <ShareSheet item={sheet.item} onClose={() => setSheet(null)} />}
+      {likersOf !== null && <LikersSheet itemId={likersOf} onClose={() => setLikersOf(null)} />}
     </div>
+  )
+}
+
+// Everyone who liked a card: face, name, team.
+function LikersSheet({ itemId, onClose }: { itemId: number; onClose: () => void }) {
+  const [rows, setRows] = useState<Liker[] | null>(null)
+  useEffect(() => {
+    supabase.rpc('item_likers', { p_item_ids: [itemId], p_per: 50 }).then(({ data, error }) => setRows(error ? [] : ((data as Liker[]) ?? [])))
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [itemId, onClose])
+  return (
+    <Layer>
+      <div className="fd-sheet-back" onClick={onClose}>
+        <div className="fd-sheet short" role="dialog" aria-modal="true" aria-label="מי אהב" onClick={(e) => e.stopPropagation()}>
+          <div className="fd-sheet-head"><b>מי אהב את זה</b><button onClick={onClose} aria-label="לסגור"><IcoX /></button></div>
+          <div className="fd-sheet-body">
+            <ul className="likers">
+              {(rows ?? []).map((r) => (
+                <li key={r.user_id}>
+                  <Face face={{ ...r, name: r.display_name }} size={40} />
+                  <span><b>{r.display_name}</b><small>{[r.team, r.is_demo ? 'דמו' : null].filter(Boolean).join(' · ')}</small></span>
+                </li>
+              ))}
+              {rows?.length === 0 && <li className="likers-empty">עוד אין לייקים. אולי אתם הראשונים.</li>}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </Layer>
   )
 }
 
 type Panel = { kind: 'details'; target: Target } | { kind: 'comments'; item: FeedItem }
 const targetOf = (i: FeedItem): Target => (i.doc_id ? { kind: 'doc', id: i.doc_id } : { kind: 'item', id: i.id })
 
-function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, kept, onKeep, onSave, onHide, onComments, onShare }: {
+function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, likers, myId, onLikers, kept, onKeep, onSave, onHide, onComments, onShare }: {
   item: FeedItem; index: number; active: boolean; near: boolean; bite: boolean; lines: string[]
-  team: TeamLite | null; faces: BoardRow[]; tools: string[]; kept: boolean; onKeep: () => void; onSave: () => void; onHide: () => void
+  team: TeamLite | null; faces: BoardRow[]; tools: string[]; likers: Liker[]; myId: string; onLikers: () => void; kept: boolean; onKeep: () => void; onSave: () => void; onHide: () => void
   onComments: () => void; onShare: () => void
 }) {
   const s = useSocial(item.id)
+  const { profile } = useApp()
+  // Optimistic: my face joins the stack the moment I like, and leaves when I unlike.
+  const serverMe = likers.some((l) => l.user_id === myId)
+  const iLike = s ? s.mine === 1 : serverMe
+  const others = likers.filter((l) => l.user_id !== myId)
+  const meFace: Liker = { item_id: item.id, user_id: myId, display_name: profile.display_name || 'אתם', avatar_url: profile.avatar_url ?? null,
+    avatar_style: profile.avatar_style ?? null, avatar_color: profile.avatar_color ?? null, team: profile.role, is_demo: false, liked_at: '', total: 0 }
+  const stack = (iLike ? [meFace, ...others] : others).slice(0, 3)
+  const total = Math.max(stack.length, (likers[0]?.total ?? 0) + (iLike && !serverMe ? 1 : 0) - (!iLike && serverMe ? 1 : 0))
+  const firstName = (n: string) => n.replace(/\s*\(דמו\)/, '').split(/\s+/)[0]
+  const likeLine = !stack.length ? null
+    : `לייק מ${stack[0].user_id === myId ? 'כם' : `-${firstName(stack[0].display_name)}`}${total > 1 ? ` ועוד ${(total - 1).toLocaleString('he-IL')}` : ''}`
   const [dx, setDx] = useState(0)
   const [drag, setDrag] = useState(false)
   const [burst, setBurst] = useState<{ n: number; x: number; y: number } | null>(null)
@@ -581,11 +652,17 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
             <bdi>{authorName}</bdi>{item.lang === 'he' ? ' · עברית' : ''}{item.is_demo ? ' · דמו' : ''}
             <span className="fd-go" aria-hidden>↗</span>
           </span>
+          {likeLine && <span className="fd-likeline">{likeLine}</span>}
         </DetailLink>
       </div>
 
       <div className="fd-rail" aria-label="פעולות">
         <RailBtn label="אהבתי" count={s?.likes ?? item.likes ?? 0} on={s?.mine === 1} pop onClick={() => react(item.id, 1)}><IcoHeart /></RailBtn>
+        {stack.length > 0 && (
+          <button type="button" className="fd-stack" onClick={(e) => { e.stopPropagation(); onLikers() }} aria-label={`${likeLine}. מי אהב`}>
+            {stack.map((l) => <Face key={l.user_id} face={{ ...l, name: l.display_name }} size={24} />)}
+          </button>
+        )}
         <RailBtn label="תגובות" count={s?.comments_count ?? 0} onClick={onComments}><IcoChat /></RailBtn>
         <RailBtn label="לשתף" count={s?.shares_count ?? 0} onClick={onShare}><IcoShare /></RailBtn>
         <RailBtn label={kept ? 'נשמר' : 'לשמור'} on={kept} pop onClick={onKeep}><IcoSave /></RailBtn>

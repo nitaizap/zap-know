@@ -73,6 +73,7 @@ export type Profile = {
   avatar_style?: string | null
   avatar_color?: string | null
   weekly_time?: string | null
+  sheet_url?: string | null
 }
 
 export type Source = {

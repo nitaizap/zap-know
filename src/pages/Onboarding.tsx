@@ -7,6 +7,8 @@ import {
 } from '../components/prefs'
 import '../onboarding.css'
 import { Avatar, AvatarPicker } from '../components/Avatar'
+import { AiAvatarMaker } from '../components/AiAvatar'
+import { AppCtx } from '../App'
 
 // A short, game-like intro: one question per screen, big tappable cards, about a minute.
 export default function Onboarding({ session, topics, existing, onDone }: {
@@ -14,6 +16,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
 }) {
   const ex = (existing ?? {}) as Partial<ProfileX>
   const [step, setStep] = useState(0)
+  const [aiDone, setAiDone] = useState(false)
   const [name, setName] = useState(ex.display_name ?? suggestName(session.user.email ?? ''))
   const [color, setColor] = useState(ex.avatar_color ?? AVATAR_COLORS[0])
   const [look, setLook] = useState<{ avatar_url: string | null; avatar_style: string | null }>({
@@ -236,6 +239,14 @@ export default function Onboarding({ session, topics, existing, onDone }: {
                 <span>הרמה הראשונה שלכם. כל שיעור, תגובה ושיתוף מקדמים אתכם בטבלה.</span>
               </div>
             </div>
+            {saved && !aiDone && (
+              <section className="ob-ai">
+                <h3 className="ob-q">האווטאר שלכם <span className="ob-opt">לא חובה</span></h3>
+                <AppCtx.Provider value={{ session, profile: saved, topics, setProfile: (p) => setSaved(p) }}>
+                  <AiAvatarMaker onSaved={() => setAiDone(true)} onSkip={() => setAiDone(true)} skipLabel="אולי אחר כך" />
+                </AppCtx.Provider>
+              </section>
+            )}
             <button className="btn block ob-cta" onClick={() => saved && onDone(saved)} disabled={!saved}>לבית שלי</button>
             <p className="ob-help center">אפשר לשנות הכול מתי שרוצים ב"האזור שלי".</p>
           </div>}

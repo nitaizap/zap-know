@@ -5,6 +5,8 @@ import Feed from './Feed'
 import { Layer } from '../components/Layer'
 import { BoardCard } from '../components/board'
 import { IClose } from '../components/icons'
+import { AiAvatarSheet } from '../components/AiAvatar'
+import { BoardSlide, FollowCard, ProfileCard, SettingsCard, StatsCard, WalletCard } from '../components/mine'
 import { useApp } from '../App'
 import { KIND_LABEL, Item, supabase } from '../lib'
 import { Empty, Skeletons, clip } from '../components/ui'
@@ -148,6 +150,7 @@ export function MeDetails({ start }: { start?: MeTab }) {
         </div>
         <Link to="/contribute" className="btn">משתפים משהו</Link>
       </header>
+      <AvatarBlock />
 
       <div className="me-tabs" role="tablist" aria-label="האזור שלי">
         {ME_TABS.filter((t) => t.key !== 'history').map((t) => (
@@ -345,14 +348,15 @@ function MyReminders() {
 // האזור שלי looks like the rest of zap UP: the same full-screen feed, with my own lanes and a search.
 // Profile, points, the board, budget and settings live behind the chip, in a sheet.
 const LANES = [
-  { key: 'saved', label: 'שמרתי' }, { key: 'later', label: 'אחר כך' }, { key: 'history', label: 'היסטוריה' },
+  { key: 'mine', label: 'שלי' }, { key: 'saved', label: 'שמרתי' }, { key: 'later', label: 'אחר כך' }, { key: 'history', label: 'היסטוריה' },
 ] as const
 
 export default function Me() {
   const { profile } = useApp()
   const loc = useLocation()
   const [params, setParams] = useSearchParams()
-  const lane = LANES.find((l) => l.key === params.get('lane'))?.key ?? 'saved'
+  const lane = LANES.find((l) => l.key === params.get('lane'))?.key ?? 'mine'
+  const [maker, setMaker] = useState(false)
   const [q, setQ] = useState('')
   const [dq, setDq] = useState('')
   const [searching, setSearching] = useState(false)
@@ -402,7 +406,17 @@ export default function Me() {
 
   return (
     <>
-      <Feed key={lane} source={lane} q={dq} head={head} chip={chip} />
+      {/* "שלי": my own cards first, then what I saved continues below them. */}
+      <Feed key={lane} source={lane === 'mine' ? 'saved' : lane} q={dq} head={head} chip={chip}
+        prefix={lane === 'mine' && !dq ? [
+          { key: 'me', node: <ProfileCard onMore={setSheet} onAvatar={() => setMaker(true)} /> },
+          { key: 'board', node: <BoardSlide /> },
+          { key: 'wallet', node: <WalletCard onMore={setSheet} /> },
+          { key: 'stats', node: <StatsCard /> },
+          { key: 'follow', node: <FollowCard onMore={setSheet} /> },
+          { key: 'settings', node: <SettingsCard onMore={setSheet} /> },
+        ] : undefined} />
+      {maker && <AiAvatarSheet onClose={() => setMaker(false)} />}
       {sheet && (
         <Layer>
           <div className="dt-back" onClick={() => setSheet(null)}>
@@ -418,5 +432,19 @@ export default function Me() {
         </Layer>
       )}
     </>
+  )
+}
+
+// "כרטיס הדמות שלכם" and the way to make (or remake) it.
+function AvatarBlock() {
+  const { profile } = useApp()
+  const [open, setOpen] = useState(false)
+  const sheet = (profile as typeof profile & { sheet_url?: string | null }).sheet_url
+  return (
+    <section className="me-avatar-block">
+      {sheet && <><h2 className="me-h2">כרטיס הדמות שלכם</h2><img className="me-sheet-img" src={sheet} alt="כרטיס הדמות שלכם" loading="lazy" /></>}
+      <button type="button" className="btn ghost" onClick={() => setOpen(true)}>{sheet ? 'ליצור אווטאר חדש' : 'ליצור אווטאר'}</button>
+      {open && <AiAvatarSheet onClose={() => setOpen(false)} />}
+    </section>
   )
 }

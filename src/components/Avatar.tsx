@@ -47,24 +47,35 @@ export function Character({ seed, color, size }: { seed: string; color?: string 
   )
 }
 
+// Avatars come in five sizes only, so every list and card lines up.
+const SIZES = [24, 32, 40, 64, 96]
+const snap = (n: number) => SIZES.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a))
+// Light palette colours take the dark letter (AA), the rest take white.
+const DARK_LETTER = new Set(['#ffc600', '#00ab12', '#ff5c9e', '#ff210d'])
+/** The deterministic palette colour of a person or team. */
+export const faceColor = (seed: string) => AVATAR_COLORS[hash(seed || 'zap') % AVATAR_COLORS.length]
+const firstLetter = (name: string) => (name.match(/[\p{L}\p{N}]/u)?.[0] ?? '?').toUpperCase()
+
 export function Avatar({ face, size = 32, className }: { face: Partial<Face> & { name?: string | null }; size?: number; className?: string }) {
   const [broken, setBroken] = useState(false)
   const name = (face.name || '?').trim()
-  const style = { width: size, height: size }
+  const s = snap(size)
+  const style = { width: s, height: s }
   if (face.avatar_url && !broken) {
     return (
       <span className={`avatar ${className ?? ''}`} style={style}>
-        <img src={face.avatar_url} alt="" width={size} height={size} onError={() => setBroken(true)} />
+        <img src={face.avatar_url} alt="" width={s} height={s} loading="lazy" decoding="async" onError={() => setBroken(true)} />
       </span>
     )
   }
   if (face.avatar_style === 'character') {
-    return <span className={`avatar ${className ?? ''}`} style={style}><Character seed={face.user_id ?? name} color={face.avatar_color} size={size} /></span>
+    return <span className={`avatar ${className ?? ''}`} style={style}><Character seed={face.user_id ?? name} color={face.avatar_color} size={s} /></span>
   }
+  const bg = face.avatar_color || faceColor(face.user_id ?? name)
   return (
-    <span className={`avatar avatar-initial ${className ?? ''}`}
-      style={{ ...style, background: face.avatar_color || '#052b7a', fontSize: Math.round(size * 0.42) }}>
-      {name.charAt(0).toUpperCase()}
+    <span className={`avatar avatar-initial ${className ?? ''}`} aria-hidden="true"
+      style={{ ...style, background: bg, color: DARK_LETTER.has(bg) ? '#001c32' : '#fff', fontSize: Math.round(s * 0.46) }}>
+      <span>{firstLetter(name)}</span>
     </span>
   )
 }

@@ -47,7 +47,7 @@ type Ctx = {
   topics: Topic[]
   setProfile: (p: Profile) => void
 }
-const AppCtx = createContext<Ctx | null>(null)
+export const AppCtx = createContext<Ctx | null>(null)
 export function useApp() {
   const c = useContext(AppCtx)
   if (!c) throw new Error('no app context')

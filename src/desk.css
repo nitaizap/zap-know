@@ -284,3 +284,92 @@
 @media (prefers-reduced-motion: reduce) {
   .dv.live .dv-shape.a, .fd-pod.on .pod-art { animation: none !important; }
 }
+
+/* ---------- Round 4: lockup, avatars, my cards, AI avatar, social proof ---------- */
+/* The lockup: the real zap mark + "UP" as one wordmark, "by zap group" under it. Just a link. */
+.tk-brand { flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1; }
+.tk-lock { display: inline-flex; align-items: center; gap: 5px; direction: ltr; }
+.tk-lock img { height: 26px; width: auto; display: block; }
+.tk-brand .tk-up { color: #fff; font-weight: 900; font-size: 25px; letter-spacing: -.5px; line-height: 1; padding: 0; border: 0; border-radius: 0; transform: translateY(-1px); }
+.tk-by { color: #fff; font-weight: 300; font-size: 10.5px; letter-spacing: .2px; opacity: .9; direction: ltr; align-self: flex-end; }
+.desk .tk-lock img { height: 30px; }
+.desk .tk-brand .tk-up { font-size: 29px; }
+.desk .tk-by { font-size: 12px; }
+
+/* Avatars: perfect circles, the letter centred on its metrics, a thin ring on dark media. */
+.avatar { border-radius: 50%; }
+.avatar-initial { font-family: 'Noto Sans Hebrew', system-ui, sans-serif; font-weight: 900; line-height: 1; }
+.avatar-initial > span { display: block; line-height: 1; height: 1em; margin-top: -.06em; }
+.fd-wrap .avatar, .dv .avatar, .me-chip .avatar, .fd-stack .avatar, .tk-mine .mc-me .avatar { box-shadow: 0 0 0 2px rgba(255, 255, 255, .9); }
+
+/* Social proof: up to three faces under the like button, a short line in the caption. */
+.fd-stack { display: inline-flex; justify-content: center; border: 0; background: none; padding: 0; margin-top: -4px; cursor: pointer; }
+.fd-stack > * { margin-inline-start: -8px; }
+.fd-stack > *:first-child { margin-inline-start: 0; }
+.fd-stack:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; border-radius: 999px; }
+.fd-likeline { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 300; opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fd-sheet.short { height: auto; max-height: min(70dvh, calc(var(--vvh, 100dvh) - 24px)); }
+.likers { list-style: none; margin: 0; padding: 4px 0 18px; display: grid; gap: 4px; }
+.likers li { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+.likers li span { display: flex; flex-direction: column; }
+.likers li small { color: #4d6070; font-size: 12.5px; }
+.likers-empty { color: #4d6070; }
+
+/* My cards (האזור שלי), in the same frame as every post, on a white board. */
+.tk-mine { padding: 118px 14px 24px !important; overflow: hidden !important; justify-content: stretch !important;
+  background: radial-gradient(circle at 80% 0%, #485cc7 0, #052b7a 45%, #001c32 100%); }
+.tk-mine > :first-child, .tk-mine > :last-child { margin: 0 !important; }
+@media (min-width: 1024px) { .desk .tk-mine { padding: 18px 14px !important; } }
+.mc { height: 100%; display: flex; flex-direction: column; gap: 12px; background: #fff; color: #001c32; border-radius: 22px; padding: 18px 18px 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, .35); overflow: hidden; }
+.mc-kicker { align-self: flex-start; background: #ffc600; color: #001c32; font-weight: 900; font-size: 13px; padding: 4px 12px; border-radius: 999px; }
+.mc-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.mc-body .bc { flex: 1; min-height: 0; }
+.mc-more { align-self: flex-start; border: 0; background: none; color: #052b7a; font: inherit; font-weight: 900; font-size: 15px; padding: 8px 0; cursor: pointer; }
+.mc-more:focus-visible, .mc-btn:focus-visible { outline: 3px solid #052b7a; outline-offset: 2px; }
+.mc-me { display: flex; align-items: center; gap: 16px; }
+.mc-me h2 { margin: 0; font-weight: 900; font-size: 24px; line-height: 1.15; color: #052b7a; }
+.mc-me p { margin: 2px 0 8px; font-weight: 300; color: #4d6070; }
+.mc-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: #052b7a; color: #fff;
+  font: inherit; font-weight: 900; font-size: 14px; cursor: pointer; text-decoration: none; }
+.mc-btn.ghost { background: #e6eaf2; color: #052b7a; }
+.mc-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.mc-row b { font-weight: 900; font-size: 17px; }
+.mc-row span { font-size: 13px; color: #4d6070; font-weight: 300; }
+.mc-bar { height: 8px; border-radius: 8px; background: #e6eaf2; overflow: hidden; margin-top: 6px; }
+.mc-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffc600, #00ab12); border-radius: 8px; }
+.mc-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mc-nums span { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 14px; background: #e6eaf2; font-size: 12.5px; color: #4d6070; text-align: center; }
+.mc-nums b { font-weight: 900; font-size: 22px; color: #052b7a; line-height: 1.1; }
+.mc-badges { display: flex; gap: 8px; font-size: 26px; align-items: center; }
+.mc-badges small { font-size: 13px; color: #4d6070; }
+.mc-hint { margin: 0; font-size: 13.5px; color: #4d6070; }
+.mc-list p { margin: 0 0 6px; font-size: 14px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mc-chips small { color: #4d6070; font-size: 13px; }
+.mc-chips span { background: #edeff9; color: #33449e; border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 700; }
+.mc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.mc-vcard { margin: 0; min-height: 0; aspect-ratio: 1.7; max-height: 170px; }
+.tk-mine .bc { height: auto; flex: 1; }
+
+/* AI avatar maker. */
+.aa { display: flex; flex-direction: column; gap: 12px; padding: 14px 0; }
+.aa-row { display: flex; align-items: center; gap: 14px; }
+.aa-row p { margin: 0; font-size: 15.5px; line-height: 1.5; }
+.aa-consent { margin: 0; font-size: 13.5px; color: #263e51; background: #fff9e6; border-inline-start: 4px solid #ffc600; padding: 8px 12px; border-radius: 8px; }
+.aa-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+.aa-btn { min-height: 46px; padding: 0 20px; border-radius: 12px; border: 0; background: #052b7a; color: #fff; font: inherit; font-weight: 900; font-size: 15px; cursor: pointer; }
+.aa-btn.ghost { background: #e6eaf2; color: #052b7a; }
+.aa-btn:disabled { opacity: .6; cursor: progress; }
+.aa-btn:focus-visible, .aa-skip:focus-visible { outline: 3px solid #052b7a; outline-offset: 2px; }
+.aa-skip { align-self: flex-start; border: 0; background: none; color: #4d6070; font: inherit; text-decoration: underline; cursor: pointer; padding: 6px 0; }
+.aa-err { margin: 0; color: #b0185a; font-weight: 700; }
+.aa-left, .aa-note { margin: 0; font-size: 13.5px; color: #4d6070; }
+.aa-busy { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
+.aa-bar { height: 8px; border-radius: 8px; background: #e6eaf2; overflow: hidden; }
+.aa-bar i { display: block; height: 100%; background: #052b7a; border-radius: 8px; transition: width .8s ease; }
+.aa-busy span { color: #4d6070; font-size: 13.5px; }
+.aa-done { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.aa-face { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; box-shadow: 0 8px 24px rgba(0, 28, 50, .2); }
+.aa-sheet, .me-sheet-img { width: 100%; border-radius: 14px; border: 1px solid #e6e8eb; background: #fff; }
+.me-avatar-block { margin: 16px 0; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.ob-ai { text-align: start; margin: 8px 0 12px; padding: 14px; border-radius: 16px; background: #f6f7f9; }
