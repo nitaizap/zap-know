@@ -6,6 +6,7 @@ import { Empty, Headline, ItemCard, MetroLine, Skeletons } from '../components/u
 import { BudgetBar } from '../components/budget'
 import { FeedRow, loadFeed, reasonChips } from '../components/social'
 import { LeaderTeaser } from '../components/points'
+import { suggestName } from '../components/prefs'
 
 type Lane = { item: Item; chips: string[] }
 
@@ -13,7 +14,9 @@ type Episode = { id: number; week: string; body_he: string; item_ids: number[]; 
 type Continue = { item: Item; done: number }
 
 export default function Home() {
-  const { profile, topics } = useApp()
+  const { profile, topics, setProfile } = useApp()
+  const [nameDraft, setNameDraft] = useState(() => suggestName(profile.email))
+  const [nameBusy, setNameBusy] = useState(false)
   const nav = useNavigate()
   const [episode, setEpisode] = useState<Episode | null>(null)
   const [episodeItems, setEpisodeItems] = useState<Item[]>([])
@@ -130,6 +133,15 @@ export default function Home() {
 
   const firstName = (profile.display_name || profile.email.split('@')[0]).split(/[.\s_]/)[0]
 
+  // People who joined before onboarding asked for a name: one quick inline prompt.
+  async function saveName() {
+    setNameBusy(true)
+    const { data } = await supabase.from('profiles').update({ display_name: nameDraft.trim() })
+      .eq('user_id', profile.user_id).select('*').single()
+    setNameBusy(false)
+    if (data) setProfile(data as typeof profile)
+  }
+
   return (
     <div style={{ position: 'relative' }}>
       <MetroLine top={10} />
@@ -137,6 +149,17 @@ export default function Home() {
       <div className="small" style={{ margin: '-6px 0 12px' }}>
         <Link to="/me" style={{ fontWeight: 600 }}>האזור שלי וההעדפות ←</Link>
       </div>
+
+      {!profile.display_name && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <h3 style={{ margin: '0 0 4px' }}>איך לקרוא לכם?</h3>
+          <p className="small muted" style={{ margin: '0 0 8px' }}>ככה תופיעו בטבלה, בתגובות ובשיתופים. רגע אחד וסיימנו.</p>
+          <div className="row" style={{ gap: 8 }}>
+            <input className="input" style={{ flex: 1 }} value={nameDraft} maxLength={40} onChange={(e) => setNameDraft(e.target.value)} />
+            <button className="btn" disabled={nameBusy || nameDraft.trim().length < 2} onClick={saveName}>{nameBusy ? 'שומרים' : 'לשמור'}</button>
+          </div>
+        </div>
+      )}
 
       <div className="card episode">
         <div className="tile" />

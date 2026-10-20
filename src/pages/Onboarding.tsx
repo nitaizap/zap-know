@@ -2,11 +2,12 @@ import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { ALLOWED_DOMAIN, Profile, ROLES, Topic, supabase } from '../lib'
 import { Headline } from '../components/ui'
-import { NeedsPicker } from '../components/prefs'
+import { NeedsPicker, suggestName } from '../components/prefs'
 
 export default function Onboarding({ session, topics, existing, onDone }: {
   session: Session; topics: Topic[]; existing: Profile | null; onDone: (p: Profile) => void
 }) {
+  const [name, setName] = useState(existing?.display_name ?? suggestName(session.user.email ?? ''))
   const [role, setRole] = useState(existing?.role ?? '')
   const [picked, setPicked] = useState<string[]>(existing?.topics ?? [])
   const [manager, setManager] = useState(existing?.manager_email ?? '')
@@ -28,6 +29,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
     const row = {
       user_id: session.user.id,
       email: session.user.email ?? '',
+      display_name: name.trim(),
       role,
       topics: picked,
       needs,
@@ -65,6 +67,12 @@ export default function Onboarding({ session, topics, existing, onDone }: {
       <Headline light="כמה שאלות קטנות," black="ומתחילים" hand="15 שניות" />
       <p className="muted">ככה zap UP יודע מה להביא לכם כל שבוע. אפשר לשנות את זה מתי שרוצים.</p>
 
+      <h2 className="section">איך לקרוא לכם?</h2>
+      <label className="field">
+        <span className="small muted" style={{ fontWeight: 300 }}>שם פרטי ושם משפחה (או האות הראשונה שלו). ככה תופיעו בטבלה, בתגובות ובשיתופים.</span>
+        <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="למשל: דנה כ." />
+      </label>
+
       <h2 className="section">באיזה תחום אתם עובדים?</h2>
       <div className="chips">
         {ROLES.map((r) => (
@@ -91,7 +99,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
       {manager.trim() && !managerOk && <div className="small" style={{ color: 'var(--red)' }}>המייל צריך להסתיים ב-{ALLOWED_DOMAIN}</div>}
 
       <div style={{ marginTop: 24 }}>
-        <button className="btn block" disabled={!role || picked.length < 2 || !managerOk} onClick={() => setStep(2)}>
+        <button className="btn block" disabled={name.trim().length < 2 || !role || picked.length < 2 || !managerOk} onClick={() => setStep(2)}>
           ממשיכים
         </button>
         <div className="small muted" style={{ marginTop: 8, textAlign: 'center' }}>שלב 1 מתוך 2</div>

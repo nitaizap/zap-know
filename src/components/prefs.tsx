@@ -23,8 +23,15 @@ export function NeedsPicker({ needs, setNeeds, note, setNote }: {
   )
 }
 
-// Change role, interests and needs any time. Feeds, discovery and the weekly episode follow.
+// A starting suggestion from the work email: "dana.cohen@" → "Dana Cohen". People edit it.
+export function suggestName(email: string) {
+  return email.split('@')[0].split(/[._-]+/).filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+
+// Change name, role, interests and needs any time. Feeds, discovery and the weekly episode follow.
 export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; topics: Topic[]; onSaved: (p: Profile) => void }) {
+  const [name, setName] = useState(profile.display_name ?? suggestName(profile.email))
   const [role, setRole] = useState(profile.role ?? '')
   const [picked, setPicked] = useState<string[]>(profile.topics)
   const [needs, setNeeds] = useState<string[]>(profile.needs ?? [])
@@ -39,7 +46,7 @@ export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; top
   async function save() {
     setState('busy')
     const { data, error } = await supabase.from('profiles')
-      .update({ role, topics: picked, needs, needs_note: note.trim() || null })
+      .update({ display_name: name.trim(), role, topics: picked, needs, needs_note: note.trim() || null })
       .eq('user_id', profile.user_id).select('*').single()
     if (error || !data) { setState('err'); return }
     setState('saved')
@@ -50,6 +57,9 @@ export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; top
     <div className="card" id="prefs">
       <h3 style={{ margin: '0 0 4px' }}>ההעדפות שלי</h3>
       <p className="small muted" style={{ margin: 0 }}>מה שתבחרו כאן משנה את הפיד, את ההמלצות ואת הפרק השבועי.</p>
+
+      <h4 style={{ margin: '14px 0 0' }}>איך לקרוא לכם</h4>
+      <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} style={{ marginTop: 6 }} />
 
       <h4 style={{ margin: '14px 0 0' }}>התחום שלכם</h4>
       <div className="chips">
@@ -67,7 +77,7 @@ export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; top
       <NeedsPicker needs={needs} setNeeds={setNeeds} note={note} setNote={setNote} />
 
       <div className="row" style={{ marginTop: 12, gap: 10 }}>
-        <button className="btn" disabled={!role || picked.length < 2 || state === 'busy'} onClick={save}>
+        <button className="btn" disabled={name.trim().length < 2 || !role || picked.length < 2 || state === 'busy'} onClick={save}>
           {state === 'busy' ? 'שומרים' : 'לשמור'}
         </button>
         {state === 'saved' && <span className="small" style={{ color: 'var(--green)' }}>נשמר. הפיד מתעדכן.</span>}
