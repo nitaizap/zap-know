@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Item, KIND_LABEL, fmtDate, fmtMinutes } from '../lib'
 import { ReactionBar } from './social'
 import '../adopt.css'
-import { IBook, IHeadphones, INews, ISpark } from './icons'
+import { IHeadphones, ISpark } from './icons'
 
 // Page hero: Light setup line + Black punch line with the hand-drawn navy swoosh.
 // The rounded-square texture lives only here, fading out before the content starts.
@@ -101,14 +101,7 @@ export function ItemCard({ item, progress, reasons }: { item: Item; progress?: n
   )
 }
 
-// Topic → brand color, for fallback tiles when an item has no image.
-const TOPIC_TONE: Record<string, string> = {
-  'digital-marketing': 'navy', ppc: 'yellow', social: 'pink', 'geo-ecommerce': 'green', 'data-ai': 'purple',
-  'behavioral-econ': 'red', decisions: 'purple', cx: 'pink',
-}
-const toneOf = (item: Item) => TOPIC_TONE[item.topic_slug ?? ''] ?? (item.kind === 'internal' ? 'yellow' : 'navy')
-
-// 16:9 card image: the item's thumbnail, or a brand-colored tile with the kind icon.
+// 16:9 card image: the real source image, or a preview of the item's own text.
 export function Thumb({ item }: { item: Item }) {
   if (item.thumbnail_url) {
     return (
@@ -122,36 +115,28 @@ export function Thumb({ item }: { item: Item }) {
   return <div className="thumb thumb-fail"><ThumbFallback item={item} /></div>
 }
 
-// Brand fallback when there is no image: lightest-tint background, a few rounded tiles
-// (logo-style rounding), and one metro line that enters and leaves at the edges with a station.
-const TONE_HEX: Record<string, { base: string; tint: string; tile: string }> = {
-  navy: { base: '#052b7a', tint: '#e6eaf2', tile: '#c1cade' },
-  yellow: { base: '#ffc600', tint: '#fff9e6', tile: '#fff1bf' },
-  pink: { base: '#ff5c9e', tint: '#ffeff5', tile: '#ffd6e7' },
-  green: { base: '#00ab12', tint: '#e6f7e7', tile: '#bfeac4' },
-  purple: { base: '#485cc7', tint: '#edeff9', tile: '#d1d6f1' },
-  red: { base: '#ff210d', tint: '#ffe9e7', tile: '#ffc8c3' },
+// No source image: a "document preview" made from the item's own words (title + first lines),
+// like a screenshot of the page itself. Never generated or decorative art.
+export function previewLines(text: string | null | undefined, n = 3): string[] {
+  return (text ?? '').split(/\n+|(?<=[.!?])\s+/)
+    .map((l) => l.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/^#+\s*|^[-*>\d.)\s]+|\*\*|__|`/g, '').trim())
+    .filter((l) => l.length > 3).slice(0, n)
+}
+
+export function DocPreview({ title, lines, by, big }: { title: string; lines: string[]; by?: string | null; big?: boolean }) {
+  return (
+    <div className={`docpv${big ? ' big' : ''}`} aria-hidden="true">
+      <div className="docpv-page">
+        {by && <span className="docpv-by">{by}</span>}
+        <b className="docpv-title">{title}</b>
+        <ul>{lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+      </div>
+    </div>
+  )
 }
 
 function ThumbFallback({ item }: { item: Item }) {
-  const t = TONE_HEX[toneOf(item)] ?? TONE_HEX.navy
-  const Icon = item.kind === 'podcast' ? IHeadphones : item.kind === 'news' ? INews : IBook
-  const v = item.id % 3 // a little variety between neighbouring cards
-  const y = [70, 96, 58][v]
-  const sx = [196, 150, 220][v]
-  return (
-    <div className="thumb-tile thumb-svgwrap" aria-hidden="true" style={{ background: t.tint }}>
-      <svg className="thumb-metro" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice">
-        <rect x={232 - v * 14} y={-24} width={120} height={120} rx={7} fill={t.tile} />
-        <rect x={-30} y={118 - v * 8} width={92} height={92} rx={6} fill={t.tile} opacity={0.8} />
-        <rect x={250} y={128} width={44} height={44} rx={3} fill="#fff" opacity={0.7} />
-        <path d={`M-10 ${y + 40} H${sx - 60} Q${sx - 40} ${y + 40} ${sx - 26} ${y + 26} L${sx} ${y} H330`}
-          fill="none" stroke={t.base} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={sx} cy={y} r={9} fill="#fff" stroke={t.base} strokeWidth={5} />
-      </svg>
-      <span className="thumb-ico" style={{ color: t.base }}><Icon size={30} /></span>
-    </div>
-  )
+  return <DocPreview title={item.title_he} lines={previewLines(item.summary_he, 2)} by={item.source_name} />
 }
 
 // Item page media: an embedded YouTube player when there is one, else a large hero image.

@@ -41,6 +41,7 @@ export type Item = {
   tools?: string[]
   lang?: 'he' | 'en' | null
   level?: 'beginner' | 'intermediate' | 'advanced' | null
+  doc_id?: number | null
 }
 
 export type TeamProfile = {
@@ -163,7 +164,7 @@ const BASE_COLS =
 // them, so an older schema never breaks a page. ITEM_COLS is a live binding: probeMediaCols()
 // upgrades it for every importer.
 export let ITEM_COLS: typeof BASE_COLS = BASE_COLS
-const OPTIONAL_COLS = ['thumbnail_url,preview_video_id', 'minutes', 'likes', 'audio_url', 'tools,lang,level']
+const OPTIONAL_COLS = ['thumbnail_url,preview_video_id', 'minutes', 'likes', 'audio_url', 'tools,lang,level', 'doc_id']
 export async function probeMediaCols() {
   const ok = await Promise.all(OPTIONAL_COLS.map(async (c) => !(await supabase.from('items').select(c).limit(1)).error))
   const extra = OPTIONAL_COLS.filter((_, n) => ok[n])

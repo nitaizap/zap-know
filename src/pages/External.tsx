@@ -18,7 +18,7 @@ const Feed = lazy(() => import('./Feed'))
 export default function External() {
   const { topics, profile } = useApp()
   const [params, setParams] = useSearchParams()
-  const view = params.get('view') === 'feed' ? 'feed' : 'list'
+  const view = params.get('view') === 'list' ? 'list' : 'feed'
   const [q, setQ] = useState(params.get('q') ?? '')
   const [f, setF] = useFilters('external')
   const saved = useSavedIds(f.saved)
@@ -69,7 +69,7 @@ export default function External() {
 
   const setView = (v: 'list' | 'feed') => {
     const next = new URLSearchParams(params)
-    if (v === 'feed') next.set('view', 'feed'); else next.delete('view')
+    if (v === 'list') next.set('view', 'list'); else next.delete('view')
     setParams(next, { replace: true })
   }
   const onType = (v: string) => {
