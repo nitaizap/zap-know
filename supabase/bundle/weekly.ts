@@ -44,6 +44,16 @@ export type Notice = {
   teams_to?: string; // an email for a personal chat, or "channel" for קורה ב-zap
 };
 
+// Plain (non-secret) settings live in app_settings so they can change without a redeploy.
+const settingsCache = new Map<string, string>();
+export async function setting(key: string, fallback: string) {
+  if (settingsCache.has(key)) return settingsCache.get(key)!;
+  const { data } = await admin.from("app_settings").select("value").eq("key", key).maybeSingle();
+  const value = data?.value || fallback;
+  settingsCache.set(key, value);
+  return value;
+}
+
 export async function notify(n: Notice) {
   const brevo = Deno.env.get("BREVO_API_KEY");
   const teams = Deno.env.get("TEAMS_WEBHOOK");
@@ -56,7 +66,7 @@ export async function notify(n: Notice) {
       method: "POST",
       headers: { "api-key": brevo, "Content-Type": "application/json", accept: "application/json" },
       body: JSON.stringify({
-        sender: { name: "zap UP", email: Deno.env.get("SENDER_EMAIL") ?? Deno.env.get("OWNER_EMAIL") },
+        sender: { name: "zap UP", email: await setting("sender_email", Deno.env.get("SENDER_EMAIL") ?? Deno.env.get("OWNER_EMAIL") ?? "") },
         to: [{ email: n.to }],
         subject: n.subject,
         htmlContent: n.html,
