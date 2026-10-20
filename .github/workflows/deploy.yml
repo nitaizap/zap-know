@@ -1,0 +1,54 @@
+# Builds the site from master and publishes it to GitHub Pages. This replaces the old
+# gh-pages branch: every push to master goes live in about 2 minutes.
+name: Deploy site
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Least privilege: read the code, write only to Pages. No secrets are used; the Supabase
+# URL and anon key in src/ are public by design (RLS protects the data).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push cancels a build that hasn't started deploying.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Actions are pinned to full commit SHAs (tag in the comment) so a moved tag can't change what runs.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+      # npm ci installs exactly what package-lock.json pins, and skips install scripts.
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      # The SPA uses a hash router; 404.html is a fallback for stray deep links.
+      - run: cp dist/index.html dist/404.html
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
