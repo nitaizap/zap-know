@@ -6,9 +6,14 @@ import { IClose } from './icons'
 // "סינון ומיון" pill (with an active-filter count) that opens a compact sheet.
 export type Sort = 'top' | 'new' | 'short' | 'long' | 'liked'
 export type Len = '' | '5' | '15' | '60' | 'more'
-export type Filters = { topic: string; kind: '' | Item['kind']; len: Len; vertical: string; saved: boolean; sort: Sort }
+export type Lang = '' | 'he' | 'en'
+export type Level = '' | 'beginner' | 'intermediate' | 'advanced'
+export type Filters = {
+  topic: string; kind: '' | Item['kind']; len: Len; vertical: string; saved: boolean; sort: Sort
+  lang: Lang; level: Level; tool: string
+}
 
-export const NO_FILTERS: Filters = { topic: '', kind: '', len: '', vertical: '', saved: false, sort: 'top' }
+export const NO_FILTERS: Filters = { topic: '', kind: '', len: '', vertical: '', saved: false, sort: 'top', lang: '', level: '', tool: '' }
 
 const LENS: { v: Len; label: string }[] = [
   { v: '5', label: "עד 5 דק'" }, { v: '15', label: "עד 15 דק'" }, { v: '60', label: 'עד שעה' }, { v: 'more', label: 'יותר' },
@@ -16,6 +21,8 @@ const LENS: { v: Len; label: string }[] = [
 const SORTS: { v: Sort; label: string }[] = [
   { v: 'top', label: 'מומלץ' }, { v: 'new', label: 'חדש' }, { v: 'short', label: 'הכי קצר' }, { v: 'long', label: 'הכי ארוך' }, { v: 'liked', label: 'הכי אהוב' },
 ]
+const LANGS: { v: Lang; label: string }[] = [{ v: 'he', label: 'עברית' }, { v: 'en', label: 'אנגלית' }]
+const LEVELS: { v: Level; label: string }[] = [{ v: 'beginner', label: 'מתחילים' }, { v: 'intermediate', label: 'בינוני' }, { v: 'advanced', label: 'מתקדם' }]
 const KINDS: { v: Filters['kind']; label: string }[] = [{ v: 'course', label: 'קורס' }, { v: 'news', label: 'עדכון' }, { v: 'podcast', label: 'פודקאסט' }, { v: 'internal', label: 'פנימי' }]
 
 // Remembers the last choice per page; storage can be unavailable, so every access is guarded.
@@ -59,7 +66,10 @@ export function applyFilters<T extends Item>(items: T[], f: Filters, opts: { sav
     (!f.kind || i.kind === f.kind) &&
     lenOk(i.minutes, f.len) &&
     (!f.vertical || i.verticals?.includes(f.vertical)) &&
-    (!f.saved || !!opts.saved?.has(i.id)))
+    (!f.saved || !!opts.saved?.has(i.id)) &&
+    (!f.lang || i.lang === f.lang) &&
+    (!f.level || i.level === f.level) &&
+    (!f.tool || !!i.tools?.includes(f.tool)))
   const when = (i: Item) => new Date(i.published_at || i.created_at).getTime()
   switch (f.sort) {
     case 'new': return out.sort((a, b) => when(b) - when(a))
@@ -70,11 +80,11 @@ export function applyFilters<T extends Item>(items: T[], f: Filters, opts: { sav
   }
 }
 
-type Show = { topic?: Topic[]; kind?: boolean; len?: boolean; vertical?: boolean; saved?: boolean }
+type Show = { topic?: Topic[]; kind?: boolean; len?: boolean; vertical?: boolean; saved?: boolean; lang?: boolean; level?: boolean; tools?: string[] }
 
 export function FilterBar({ value, onChange, show, total }: { value: Filters; onChange: (f: Filters) => void; show: Show; total?: number }) {
   const [open, setOpen] = useState(false)
-  const active = [value.topic, value.kind, value.len, value.vertical].filter(Boolean).length + (value.saved ? 1 : 0)
+  const active = [value.topic, value.kind, value.len, value.vertical, value.lang, value.level, value.tool].filter(Boolean).length + (value.saved ? 1 : 0)
   const sortLabel = SORTS.find((s) => s.v === value.sort)?.label
   const set = (patch: Partial<Filters>) => onChange({ ...value, ...patch })
 
@@ -121,6 +131,21 @@ export function FilterBar({ value, onChange, show, total }: { value: Filters; on
                 {show.topic.filter((t) => t.status === 'live').map((t) => (
                   <Chip key={t.slug} on={value.topic === t.slug} onClick={() => set({ topic: value.topic === t.slug ? '' : t.slug })}>{t.name_he}</Chip>
                 ))}
+              </Group>
+            )}
+            {show.level && (
+              <Group label="רמה">
+                {LEVELS.map((l) => <Chip key={l.v} on={value.level === l.v} onClick={() => set({ level: value.level === l.v ? '' : l.v })}>{l.label}</Chip>)}
+              </Group>
+            )}
+            {show.lang && (
+              <Group label="שפת המקור">
+                {LANGS.map((l) => <Chip key={l.v} on={value.lang === l.v} onClick={() => set({ lang: value.lang === l.v ? '' : l.v })}>{l.label}</Chip>)}
+              </Group>
+            )}
+            {show.tools && show.tools.length > 0 && (
+              <Group label="כלי">
+                {show.tools.map((t) => <Chip key={t} on={value.tool === t} onClick={() => set({ tool: value.tool === t ? '' : t })}><bdi dir="ltr">{t}</bdi></Chip>)}
               </Group>
             )}
             {show.vertical && (

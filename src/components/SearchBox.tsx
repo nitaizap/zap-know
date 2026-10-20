@@ -1,0 +1,60 @@
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import type { Topic } from '../lib'
+import '../contribute.css'
+
+// One box for both intents: a question goes to the agent, anything else to the library.
+// \b doesn't treat Hebrew letters as word characters, so the question word must end in a space or the end.
+const QUESTION = /[?？]|^\s*(איך|מה|למה|מאיפה|מי|האם|כמה|מתי|איפה|באיזה)(?=\s|$)/
+const POPULAR = ['Google Ads', 'GA4', 'רילס', 'GEO', 'NotebookLM', 'פרומפטים', 'Looker Studio', 'Excel', 'Canva', 'Claude']
+
+export function looksLikeQuestion(q: string) { return QUESTION.test(q.trim()) }
+
+export function SearchBox({ topics }: { topics: Topic[] }) {
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const nav = useNavigate()
+  const wrap = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    window.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('keydown', onKey) }
+  }, [open])
+
+  function go(term: string) {
+    const t = term.trim()
+    if (!t) return
+    setOpen(false); setQ('')
+    nav(looksLikeQuestion(t) ? `/agent?q=${encodeURIComponent(t)}` : `/library?q=${encodeURIComponent(t)}`)
+  }
+
+  return (
+    <div className="sbox" ref={wrap}>
+      <form role="search" onSubmit={(e) => { e.preventDefault(); go(q) }}>
+        <svg className="sbox-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>
+        <input className="sbox-in" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)}
+          placeholder="מה רוצים ללמוד היום?" aria-label="חיפוש, או שאלה ל-zap UP" />
+        {q.trim() && <span className="sbox-hint small">{looksLikeQuestion(q) ? 'נשאל את zap UP' : 'נחפש בספרייה'}</span>}
+      </form>
+      {open && (
+        <div className="sbox-drop" role="dialog" aria-label="הצעות">
+          <div className="small muted">נושאים</div>
+          <div className="chips" style={{ margin: '6px 0 12px' }}>
+            {topics.filter((t) => t.status === 'live').map((t) => (
+              <button key={t.slug} className="chip" onClick={() => { setOpen(false); nav(`/topic/${t.slug}`) }}>{t.name_he}</button>
+            ))}
+          </div>
+          <div className="small muted">מה מחפשים עכשיו</div>
+          <div className="chips" style={{ margin: '6px 0 0' }}>
+            {POPULAR.map((k) => <button key={k} className="chip" onClick={() => go(k)}><bdi>{k}</bdi></button>)}
+          </div>
+          <div className="small muted sbox-tip">טיפ: שאלה, כמו "איך מתחילים עם GEO?", הולכת ישר לסוכן.</div>
+        </div>
+      )}
+    </div>
+  )
+}

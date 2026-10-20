@@ -8,7 +8,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 export const ALLOWED_DOMAIN = '@d.co.il'
 
-export type Topic = { slug: string; name_he: string; blurb_he: string | null; status: 'live' | 'soon'; sort: number }
+export type Topic = { slug: string; name_he: string; blurb_he: string | null; status: 'live' | 'soon'; sort: number; expert_team_id?: number | null }
 
 export type Lesson = { title_he: string; title_orig?: string; minutes?: number }
 
@@ -38,6 +38,9 @@ export type Item = {
   minutes?: number | null
   likes?: number
   audio_url?: string | null
+  tools?: string[]
+  lang?: 'he' | 'en' | null
+  level?: 'beginner' | 'intermediate' | 'advanced' | null
 }
 
 export type TeamProfile = {
@@ -160,7 +163,7 @@ const BASE_COLS =
 // them, so an older schema never breaks a page. ITEM_COLS is a live binding: probeMediaCols()
 // upgrades it for every importer.
 export let ITEM_COLS: typeof BASE_COLS = BASE_COLS
-const OPTIONAL_COLS = ['thumbnail_url,preview_video_id', 'minutes', 'likes', 'audio_url']
+const OPTIONAL_COLS = ['thumbnail_url,preview_video_id', 'minutes', 'likes', 'audio_url', 'tools,lang,level']
 export async function probeMediaCols() {
   const ok = await Promise.all(OPTIONAL_COLS.map(async (c) => !(await supabase.from('items').select(c).limit(1)).error))
   const extra = OPTIONAL_COLS.filter((_, n) => ok[n])

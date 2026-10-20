@@ -18,8 +18,9 @@ import BudgetPage from './pages/Budget'
 import Me from './pages/Me'
 import Leaderboard from './pages/Leaderboard'
 import { PointsPill, Toaster } from './components/points'
-import { IBook, ICar, IChat, IClose, IGrid, IHome, ILogout, IMenu, INews, IPlay, IShield, ITrophy, IUser, IUsers, IWallet } from './components/icons'
+import { IBook, ICar, IChat, IClose, IGrid, IHome, ILogout, IMenu, INews, IPlay, IShield, ISpark, ITrophy, IUser, IUsers, IWallet } from './components/icons'
 import { Avatar } from './components/Avatar'
+import { SearchBox } from './components/SearchBox'
 
 // Pages built separately load lazily; a route appears only once its file exists.
 const pageModules = import.meta.glob(['./pages/Feed.tsx', './pages/TeamAgent.tsx', './pages/Doc.tsx'])
@@ -29,6 +30,7 @@ const Feed = lazyPage('./pages/Feed.tsx')
 const TeamAgent = lazyPage('./pages/TeamAgent.tsx')
 const Doc = lazyPage('./pages/Doc.tsx')
 const Drive = lazy(() => import('./pages/Drive'))
+const Contribute = lazy(() => import('./pages/Contribute'))
 const page = (P: React.ComponentType | null) =>
   P ? <Suspense fallback={<div className="skeleton" style={{ marginTop: 28 }} />}><P /></Suspense> : <Home />
 
@@ -75,7 +77,7 @@ export default function App() {
 
   return (
     <AppCtx.Provider value={{ session, profile, topics, setProfile }}>
-      <Shell profile={profile}>
+      <Shell profile={profile} topics={topics}>
         <main className="container main">
           <Routes>
             <Route path="/" element={<Home />} />
@@ -83,6 +85,7 @@ export default function App() {
             <Route path="/agent" element={page(TeamAgent)} />
             <Route path="/doc/:id" element={page(Doc)} />
             <Route path="/drive" element={page(Drive)} />
+            <Route path="/contribute" element={page(Contribute)} />
             <Route path="/topics" element={<Topics />} />
             <Route path="/topic/:slug" element={<TopicPage />} />
             <Route path="/library" element={<Library />} />
@@ -121,7 +124,7 @@ const PRIMARY = [
   { to: '/leaderboard', label: 'הטבלה', icon: ITrophy },
 ]
 
-function Shell({ profile, children }: { profile: Profile; children: React.ReactNode }) {
+function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[]; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [more, setMore] = useState(false)
   const loc = useLocation()
@@ -132,6 +135,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
     { to: '/drive', label: 'אני בדרך', icon: ICar },
     { to: '/library', label: 'חיפוש', icon: IBook },
     { to: '/internal', label: 'קורה ב-zap', icon: INews },
+    { to: '/contribute', label: 'לשתף פרויקט או תוכן', icon: ISpark },
     { to: '/ask', label: 'שאלו את zap UP', icon: IChat },
     { to: '/teams', label: 'איך עובדים פה', icon: IUsers },
     { to: '/budget', label: 'התקציב שלי', icon: IWallet },
@@ -159,6 +163,8 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
               )}
             </div>
           </nav>
+
+          <SearchBox topics={topics} />
 
           <div className="topbar-end">
             <PointsPill />

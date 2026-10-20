@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ITEM_COLS, Item, callFn, supabase } from '../lib'
 import { Empty, Headline, ItemCard, Skeletons } from '../components/ui'
 import { earn } from '../components/points'
 import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
+import '../contribute.css'
 
 export default function Internal() {
   const [items, setItems] = useState<Item[] | null>(null)
@@ -21,7 +23,8 @@ export default function Internal() {
     e.preventDefault()
     setState('sending')
     try {
-      await callFn('ingest-internal', { ...form, channel: 'form' })
+      // The function reads the post body from `text`.
+      await callFn('ingest-internal', { title: form.title, team: form.team, text: form.what, link: form.link, channel: 'form' })
       setState('ok')
       earn('post')
       setForm({ title: '', team: '', what: '', link: '' })
@@ -38,6 +41,13 @@ export default function Internal() {
       <Headline light="מה צוותים אחרים בנו," black="קורה ב-zap" hand="מי עושה זאפ על זה?" />
       <p className="muted">פרויקטים, חידושים ואוטומציות מתוך zap. כל פרויקט מגיע מערוץ ה-Teams, מקבוצת המייל או מהטופס כאן, ו-AI מסכם אותו בשבילכם.</p>
 
+      <Link to="/contribute" className="card contribute-cta">
+        <span className="contribute-mic" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+        </span>
+        <span><b>בניתם משהו? מספרים בקול, ה-AI כותב</b><span className="small muted"> הקלטה, מסמך או קישור, ותוך דקה יש טיוטה לאישור שלכם</span></span>
+      </Link>
+
       <FilterBar value={f} onChange={setF} total={items ? applyFilters(items, f, { saved }).length : undefined} show={{ len: true, vertical: true, saved: true }} />
       <section>
         {items === null ? <Skeletons n={4} /> : items.length ? (
@@ -45,7 +55,7 @@ export default function Internal() {
         ) : <Empty>עוד אין פרויקטים. אולי שלכם יהיה הראשון?</Empty>}
       </section>
 
-      <h2 className="section">בניתם משהו? ספרו לכולם</h2>
+      <h2 className="section">בלי AI: טופס קצר</h2>
       <form className="card" onSubmit={submit} style={{ maxWidth: 640 }}>
         <label className="field"><span>איך קוראים לפרויקט?</span>
           <input className="input" value={form.title} onChange={set('title')} required />
