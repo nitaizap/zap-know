@@ -573,3 +573,41 @@
 .cf-edit input { width: 18px; height: 18px; accent-color: #052b7a; }
 .cf-source { margin-top: 14px; padding: 12px; border-radius: 12px; background: #fff9e6; border-inline-start: 4px solid #ffc600; }
 .cf-source p { margin: 0 0 8px; }
+
+/* Wallet card: the essentials only. */
+.mc-big { display: flex; flex-direction: column; gap: 2px; }
+.mc-big b { font-weight: 900; font-size: 34px; color: #052b7a; line-height: 1.1; }
+.mc-big span { font-size: 14px; color: #4d6070; }
+.mc-cardchip { align-self: flex-start; font-size: 13.5px; font-weight: 700; color: #001c32; background: #e6eaf2; border-radius: 999px; padding: 5px 12px; direction: rtl; }
+.mc-muted { color: #4d6070; }
+
+/* Share sheet: "לשתף עם…" with people and teams; the list scrolls, the send row stays. */
+.share-sheet { display: flex; flex-direction: column; overflow: hidden; height: auto; max-height: calc(var(--vvh, 100dvh) - 24px); }
+.share-with { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+.share-tabs { display: flex; gap: 4px; background: #e6eaf2; border-radius: 999px; padding: 3px; flex: none; }
+.share-tabs button { flex: 1; min-height: 38px; border: 0; border-radius: 999px; background: none; font: inherit; font-weight: 700; color: #4d6070; cursor: pointer; }
+.share-tabs button.on { background: #052b7a; color: #fff; font-weight: 900; }
+.share-picked { display: flex; flex-wrap: wrap; gap: 6px; flex: none; max-height: 76px; overflow-y: auto; }
+.share-list { flex: 1; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; }
+.share-list .people { max-height: none; margin: 0; }
+.person-btn { display: flex !important; align-items: center; gap: 10px; }
+.person-btn.on { background: #e6eaf2; }
+.share-check { margin-inline-start: auto; color: #00ab12; font-weight: 900; font-size: 18px; }
+.share-foot { flex: none; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid #e6e8eb; }
+
+/* My cards on a short frame (a laptop at 575px tall): less content, same type sizes. */
+.mc { container-type: size; }
+@container (max-height: 470px) {
+  .mc-me .avatar { width: 64px !important; height: 64px !important; font-size: 28px !important; }
+  .mc-me h2 { font-size: 20px; }
+  .mc-me p { margin-bottom: 4px; }
+  .mc-badges, .mc-add p, .mc-hint, .bc-foot > span { display: none; }
+  .mc-nums span { padding: 6px 4px; }
+  .mc-nums b { font-size: 18px; }
+  .mc-add-btn { width: 60px; height: 60px; }
+  .mc-add h2 { font-size: 20px; }
+  .mc-body { gap: 10px; }
+  .bc-list { min-height: 92px; }
+  .bc-head { gap: 4px; }
+  .mc-big b { font-size: 28px; }
+}

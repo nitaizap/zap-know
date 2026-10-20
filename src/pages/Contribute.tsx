@@ -114,7 +114,7 @@ export function ContributeFlow({ embedded }: { embedded?: boolean }) {
     return (
       <div className={`card done-card${embedded ? ' cf-embedded' : ''}`}>
         <h2>פורסם, עם הקרדיט שלכם</h2>
-        <p className="muted">{purpose === 'internal' ? 'הפוסט כבר במה קורה ב-zap, ועמיתים יכולים להגיב ולשתף. התמונה מהמקור מתווספת תוך כמה דקות.' : 'זה כבר במה קורה בעולם. מצאו טעות? בכל פריט יש "לדווח על טעות".'}</p>
+        <p className="muted">{purpose === 'internal' ? 'הפוסט כבר ב"בזאפ", ועמיתים יכולים להגיב ולשתף. התמונה מהמקור מתווספת תוך כמה דקות.' : 'זה כבר ב"בעולם". מצאו טעות? בכל פריט יש "לדווח על טעות".'}</p>
         <div className="row">
           <DetailLink className="btn" kind="item" id={posted.id}>לפתוח את הפוסט</DetailLink>
           <button className="btn ghost" onClick={restart}>להוסיף עוד משהו</button>
@@ -141,7 +141,7 @@ export function ContributeFlow({ embedded }: { embedded?: boolean }) {
           פרויקט או השקה שלנו<span className="small">קורה ב-zap</span>
         </button>
         <button role="tab" aria-selected={purpose === 'external'} className={purpose === 'external' ? 'on' : ''} onClick={() => setPurpose('external')}>
-          מה קורה בעולם<span className="small">תוכן מבחוץ שכדאי לכולם להכיר</span>
+          בעולם<span className="small">תוכן מבחוץ שכדאי לכולם להכיר</span>
         </button>
       </div>
 

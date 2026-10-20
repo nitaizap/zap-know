@@ -110,23 +110,36 @@ export function ReactionBar({ item, onComments, compact }: { item: Item; onComme
 type Person = { user_id: string; name: string; email: string; role: string | null }
 
 export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void }) {
-  const [mode, setMode] = useState<'pick' | 'colleague'>('pick')
+  const [mode, setMode] = useState<'pick' | 'with'>('pick')
+  const [tab, setTab] = useState<'people' | 'teams'>('people')
   const [q, setQ] = useState('')
   const [people, setPeople] = useState<Person[]>([])
-  const [to, setTo] = useState<Person | null>(null)
+  const [picked, setPicked] = useState<Person[]>([])
+  const [teams, setTeams] = useState<{ team: string; members: string[] }[]>([])
+  const [pickedTeams, setPickedTeams] = useState<string[]>([])
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<{ msg: string; link?: string } | null>(null)
   const [err, setErr] = useState('')
-  const face = useFaces(people.map((p) => p.user_id))
+  const face = useFaces([...people.map((p) => p.user_id), ...picked.map((p) => p.user_id)])
 
   useEffect(() => {
-    if (mode !== 'colleague') return
+    if (mode !== 'with' || tab !== 'people') return
     const t = setTimeout(() => {
       supabase.rpc('people', { p_q: q.trim() }).then(({ data }) => setPeople((data as Person[]) ?? []))
     }, 200)
     return () => clearTimeout(t)
-  }, [q, mode])
+  }, [q, mode, tab])
+
+  // Teams and their members (from the all-time board, which knows everyone's team).
+  useEffect(() => {
+    if (mode !== 'with' || tab !== 'teams' || teams.length) return
+    supabase.rpc('leaderboard', { p_period: 'all', p_scope: 'people', p_limit: 300 }).then(({ data }) => {
+      const m = new Map<string, string[]>()
+      for (const r of (data ?? []) as { team: string | null; user_id: string | null }[]) if (r.team && r.user_id) m.set(r.team, [...(m.get(r.team) ?? []), r.user_id])
+      setTeams([...m.entries()].map(([team, members]) => ({ team, members })).sort((a, b) => a.team.localeCompare(b.team, 'he')))
+    })
+  }, [mode, tab, teams.length])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -134,33 +147,49 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  async function send(channel: 'colleague' | 'teams' | 'link') {
+  async function send(channel: 'teams' | 'link') {
     setBusy(true); setErr('')
     try {
-      const r = await callFn<{ ok: boolean; link: string }>('share', {
-        item_id: item.id, channel, to_user: to?.user_id, note: note.trim() || undefined,
-      })
+      const r = await callFn<{ ok: boolean; link: string }>('share', { item_id: item.id, channel, note: note.trim() || undefined })
       setSocial(item.id, { shares_count: (store.get(item.id)?.shares_count ?? 0) + 1 })
       earn('share')
       if (channel === 'link') {
         let copied = false
         try { await navigator.clipboard.writeText(r.link); copied = true } catch { /* show it instead */ }
         setDone(copied ? { msg: 'הקישור הועתק. אפשר להדביק איפה שרוצים.' } : { msg: 'הנה הקישור:', link: r.link })
-      } else if (channel === 'teams') {
-        setDone({ msg: 'נשלח לערוץ "קורה ב-zap" ב-Teams.' })
-      } else {
-        setDone({ msg: `נשלח ל${to?.name}. זה יחכה בבית שלהם ב-zap UP, וגם במייל.` })
-      }
+      } else setDone({ msg: 'נשלח לערוץ "קורה ב-zap" ב-Teams.' })
     } catch {
       setErr('השיתוף לא עבר. נסו שוב עוד רגע.')
     }
     setBusy(false)
   }
 
+  // To colleagues, or to whole teams (each member gets it in zap UP and by email, as a colleague share).
+  async function sendWith() {
+    const ids = new Set(picked.map((p) => p.user_id))
+    for (const t of teams.filter((t) => pickedTeams.includes(t.team))) t.members.forEach((m) => ids.add(m))
+    ids.delete(myIdCache ?? '')
+    const list = [...ids].slice(0, 60)
+    if (!list.length) return
+    setBusy(true); setErr('')
+    const res = await Promise.all(list.map((u) => callFn('share', { item_id: item.id, channel: 'colleague', to_user: u, note: note.trim() || undefined }).then(() => true, () => false)))
+    const ok = res.filter(Boolean).length
+    setBusy(false)
+    if (!ok) { setErr('השיתוף לא עבר. נסו שוב עוד רגע.'); return }
+    setSocial(item.id, { shares_count: (store.get(item.id)?.shares_count ?? 0) + 1 })
+    earn('share')
+    const who = [...picked.map((p) => p.name), ...pickedTeams.map((t) => `צוות ${t}`)]
+    setDone({ msg: `נשלח ל${who.slice(0, 3).join(', ')}${who.length > 3 ? ` ועוד ${who.length - 3}` : ''}. זה מחכה להם ב-zap UP, וגם במייל.` })
+  }
+
+  const togglePerson = (p: Person) => setPicked((cur) => (cur.some((x) => x.user_id === p.user_id) ? cur.filter((x) => x.user_id !== p.user_id) : [...cur, p]))
+  const toggleTeam = (t: string) => setPickedTeams((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]))
+  const count = picked.length + pickedTeams.length
+
   return (
     <Layer>
     <div className="sheet-wrap" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}>
-      <div className="sheet card" role="dialog" aria-label="שיתוף" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet card share-sheet" role="dialog" aria-label="שיתוף" onClick={(e) => e.stopPropagation()}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h3 style={{ margin: 0 }}>שיתוף</h3>
           <button className="icon-btn" onClick={onClose} aria-label="לסגור"><IClose /></button>
@@ -175,43 +204,68 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
           </>
         ) : mode === 'pick' ? (
           <div className="sheet-opts">
-            <button className="btn ghost block" onClick={() => setMode('colleague')}>לעמית או עמיתה</button>
+            <button className="btn block" onClick={() => setMode('with')}>לשתף עם…</button>
             <button className="btn ghost block" disabled={busy} onClick={() => send('teams')}>לערוץ "קורה ב-zap" ב-Teams</button>
             <button className="btn ghost block" disabled={busy} onClick={() => send('link')}>להעתיק קישור</button>
           </div>
         ) : (
-          <>
-            {to ? (
-              <div className="row" style={{ marginBottom: 10 }}>
-                <span className="badge">{to.name}{to.role ? ` · ${to.role}` : ''}</span>
-                <button className="chip" onClick={() => setTo(null)}>להחליף</button>
-              </div>
-            ) : (
-              <>
-                <input className="input" autoFocus placeholder="שם או מייל" value={q} onChange={(e) => setQ(e.target.value)} />
-                <ul className="people">
-                  {people.map((p) => (
-                    <li key={p.user_id}>
-                      <button onClick={() => setTo(p)} className="person-btn">
-                        <Avatar face={face(p.user_id) ?? { user_id: p.user_id, name: p.name }} size={30} />
-                        <b>{p.name}</b> <span className="small muted">{p.role ?? ''}</span>
-                        <div className="small muted" dir="ltr">{p.email}</div>
-                      </button>
-                    </li>
-                  ))}
-                  {people.length === 0 && <li className="small muted" style={{ padding: 8 }}>לא מצאנו. אולי עוד לא נכנסו ל-zap UP.</li>}
-                </ul>
-              </>
-            )}
-            <label className="field" style={{ marginTop: 10 }}>
-              <span>כמה מילים משלכם <small className="muted">לא חובה</small></span>
-              <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="למשל: זה בדיוק מה שדיברנו עליו" />
-            </label>
-            <div className="row">
-              <button className="btn" disabled={!to || busy} onClick={() => send('colleague')}>{busy ? 'שולחים' : 'לשלוח'}</button>
-              <button className="btn ghost" onClick={() => setMode('pick')}>לחזור</button>
+          <div className="share-with">
+            <div className="share-tabs" role="tablist">
+              <button role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'on' : ''} onClick={() => setTab('people')}>חבר/ה</button>
+              <button role="tab" aria-selected={tab === 'teams'} className={tab === 'teams' ? 'on' : ''} onClick={() => setTab('teams')}>צוותים</button>
             </div>
-          </>
+            {count > 0 && (
+              <div className="share-picked">
+                {picked.map((p) => <button key={p.user_id} className="chip on" onClick={() => togglePerson(p)}>{p.name} ×</button>)}
+                {pickedTeams.map((t) => <button key={t} className="chip on" onClick={() => toggleTeam(t)}>צוות {t} ×</button>)}
+              </div>
+            )}
+            <div className="share-list">
+              {tab === 'people' ? (
+                <>
+                  <input className="input" autoFocus placeholder="שם או מייל" value={q} onChange={(e) => setQ(e.target.value)} />
+                  <ul className="people">
+                    {people.map((p) => {
+                      const on = picked.some((x) => x.user_id === p.user_id)
+                      return (
+                        <li key={p.user_id}>
+                          <button onClick={() => togglePerson(p)} className={`person-btn${on ? ' on' : ''}`} aria-pressed={on}>
+                            <Avatar face={face(p.user_id) ?? { user_id: p.user_id, name: p.name }} size={32} />
+                            <span><b>{p.name}</b> <span className="small muted">{p.role ?? ''}</span></span>
+                            {on && <span className="share-check" aria-hidden>✓</span>}
+                          </button>
+                        </li>
+                      )
+                    })}
+                    {people.length === 0 && <li className="small muted" style={{ padding: 8 }}>לא מצאנו. אולי עוד לא נכנסו ל-zap UP.</li>}
+                  </ul>
+                </>
+              ) : (
+                <ul className="people">
+                  {teams.map((t) => {
+                    const on = pickedTeams.includes(t.team)
+                    return (
+                      <li key={t.team}>
+                        <button onClick={() => toggleTeam(t.team)} className={`person-btn${on ? ' on' : ''}`} aria-pressed={on}>
+                          <Avatar face={{ user_id: `team-${t.team}`, name: t.team }} size={32} />
+                          <span><b>צוות {t.team}</b> <span className="small muted">{t.members.length} אנשים</span></span>
+                          {on && <span className="share-check" aria-hidden>✓</span>}
+                        </button>
+                      </li>
+                    )
+                  })}
+                  {teams.length === 0 && <li className="small muted" style={{ padding: 8 }}>טוענים את הצוותים</li>}
+                </ul>
+              )}
+            </div>
+            <div className="share-foot">
+              <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="כמה מילים משלכם (לא חובה)" aria-label="כמה מילים משלכם" />
+              <div className="row">
+                <button className="btn" disabled={!count || busy} onClick={sendWith}>{busy ? 'שולחים' : count ? `לשלוח (${count})` : 'לשלוח'}</button>
+                <button className="btn ghost" onClick={() => setMode('pick')}>לחזור</button>
+              </div>
+            </div>
+          </div>
         )}
         {err && <div className="notice err" style={{ marginTop: 10 }}>{err}</div>}
       </div>
@@ -219,6 +273,8 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
     </Layer>
   )
 }
+let myIdCache: string | null = null
+supabase.auth.getSession().then(({ data }) => { myIdCache = data.session?.user.id ?? null })
 
 type Comment = { id: number; user_id: string; author_name: string; body: string; at: string; pending?: boolean }
 

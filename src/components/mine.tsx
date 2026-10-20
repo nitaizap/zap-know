@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../App'
-import { Budget, Purchase, SUPABASE_URL, fmtMinutes, fmtMoney, loadBudget, supabase, STATUS_LABEL } from '../lib'
+import { Budget, Purchase, SUPABASE_URL, fmtMinutes, fmtMoney, loadBudget, supabase } from '../lib'
 import { Avatar } from './Avatar'
 import { BADGES, useMyPoints, useRankGap, rankLine } from './points'
 import { BoardCard } from './board'
@@ -104,19 +104,16 @@ export function WalletCard({ onMore }: { onMore: Open }) {
     <Card kicker="הארנק שלי" onMore={() => onMore('budget')}>
       {b === null ? <p className="mc-hint">תקציב הלמידה עוד לא הוגדר. ברגע ש-L&amp;D יפעילו אותו, הוא כאן.</p> : (
         <>
-          <div className="vcard mc-vcard">
-            <div className="vcard-top"><b>zap UP</b><span className="vcard-demo">דמו</span></div>
-            <div className="vcard-num">•••• •••• •••• 4821</div>
-            <div className="vcard-bottom"><span>{profile.display_name || ''}</span><span>{b ? fmtMoney(Math.max(0, b.remaining), b.currency) : '·'}</span></div>
-          </div>
           {b && (
             <>
-              <div className="mc-row"><b>{fmtMoney(Math.max(0, b.remaining), b.currency)} נשארו</b><span>מתוך {fmtMoney(b.monthly_amount, b.currency)} · יצאו {fmtMoney(b.spent, b.currency)}</span></div>
+              <div className="mc-big"><b>{fmtMoney(Math.max(0, b.remaining), b.currency)}</b><span>נשארו החודש</span></div>
               <div className="mc-bar"><i style={{ width: `${Math.round((1 - used) * 100)}%` }} /></div>
+              <div className="mc-row"><span>יצאו {fmtMoney(b.spent, b.currency)} מתוך {fmtMoney(b.monthly_amount, b.currency)}</span></div>
+              <span className="mc-cardchip">💳 •••• 4821 · דמו</span>
               <div className="mc-list">
                 {b.pending > 0 && <p>⏳ {b.pending === 1 ? 'בקשה אחת מחכה לאישור' : `${b.pending} בקשות מחכות לאישור`}</p>}
                 {(b.bonus ?? 0) > 0 && <p>✨ כולל {fmtMoney(b.bonus!, b.currency)} בונוס מהטבלה</p>}
-                {recent.map((r) => <p key={r.id}>{r.title} · {fmtMoney(r.price, r.currency)} · {STATUS_LABEL[r.status]}</p>)}
+                {recent.length > 0 && <p className="mc-muted">{recent.length === 1 ? 'רכישה אחת החודש' : `${recent.length} רכישות אחרונות`} · בפרטים</p>}
               </div>
             </>
           )}
@@ -261,8 +258,6 @@ export function MineCarousel({ cards }: { cards: { key: string; label: string; n
             </div>
           ))}
         </div>
-        <button type="button" className="mcar-arrow prev" onClick={() => go(at - 1)} disabled={at === 0} aria-label="הכרטיס הקודם">→</button>
-        <button type="button" className="mcar-arrow next" onClick={() => go(at + 1)} disabled={at === cards.length - 1} aria-label="הכרטיס הבא">←</button>
       </div>
       <div className="mcar-metro" role="tablist" aria-label="הכרטיסים שלי">
         {cards.map((c, i) => (

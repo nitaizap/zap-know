@@ -27,7 +27,7 @@ const ICON: Record<ResType, React.ReactNode> = {
   bite: <svg {...P}><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="currentColor" /></svg>,
 }
 export const TYPE_LABEL: Record<ResType, string> = {
-  course: 'קורס', article: 'מאמר', podcast: 'פודקאסט', video: 'סרטון', news: 'חדשות', doc: 'מסמך צוות', bite: 'ביס קטן',
+  course: 'קורס', article: 'מאמר', podcast: 'פודקאסט', video: 'סרטון', news: 'חדשות', doc: 'מסמך צוות', bite: 'בקצרה',
 }
 
 export function TypeBadge({ item, bite, className }: { item: Typed; bite?: boolean; className?: string }) {

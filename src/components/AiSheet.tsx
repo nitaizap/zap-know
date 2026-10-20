@@ -10,7 +10,7 @@ import { DOC_KIND_HE, type DocKind } from '../pages/Doc'
 import { IClose } from './icons'
 import '../ai.css'
 
-// One AI for all of zap UP: any question, from any page, answered across מה קורה בעולם and מה קורה ב-zap,
+// One AI for all of zap UP: any question, from any page, answered across בעולם and בזאפ,
 // with the resources it used as swipeable cards (their real thumbnails or the document itself).
 
 type Src = { type: 'internal' | 'external' | 'doc'; title: string; url: string; snippet?: string; kind?: DocKind; team?: string }
@@ -47,7 +47,7 @@ async function toCards(sources: Src[]): Promise<Card[]> {
     const it = im.get(idOf(s.url, 'item') ?? -1)
     const d = dm.get(idOf(s.url, 'doc') ?? -1)
     const thumb = it?.thumbnail_url || (it?.preview_video_id ? ytThumb(it.preview_video_id) : null)
-    const label = s.type === 'doc' ? (s.kind ? DOC_KIND_HE[s.kind] : 'מסמך צוות') : s.type === 'internal' ? 'מה קורה ב-zap' : KIND[it?.kind ?? ''] ?? 'מה קורה בעולם'
+    const label = s.type === 'doc' ? (s.kind ? DOC_KIND_HE[s.kind] : 'מסמך צוות') : s.type === 'internal' ? 'בזאפ' : KIND[it?.kind ?? ''] ?? 'בעולם'
     const typed: Typed | null = s.type === 'doc' ? { kind: 'internal', doc_id: 1 } : it ? { kind: it.kind as Item['kind'], preview_video_id: it.preview_video_id } : null
     return { ...s, thumb, label, typed, lines: previewLines(d?.body_md || s.snippet || it?.summary_he || '', 3) }
   })

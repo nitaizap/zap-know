@@ -836,8 +836,8 @@ function YouTubeLoop({ vid, list, poster, live, title }: { vid?: string; list?: 
         <>
           <iframe className="fd-player" title={title}
             src={vid
-              ? `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&controls=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`
-              : `https://www.youtube-nocookie.com/embed/videoseries?list=${list}&autoplay=1&controls=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`}
+              ? `https://www.youtube.com/embed/${vid}?autoplay=1&controls=1&playsinline=1&rel=0`
+              : `https://www.youtube.com/embed/videoseries?list=${list}&autoplay=1&controls=1&playsinline=1&rel=0`}
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
           <button type="button" className="fd-player-x" onClick={(e) => { e.stopPropagation(); setFull(false) }}>✕ חזרה לפיד</button>
         </>
