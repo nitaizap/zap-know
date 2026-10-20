@@ -6,6 +6,7 @@ import { BoardRow, earn } from '../components/points'
 import { BoardCard } from '../components/board'
 import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
 import { PageNav, useApp } from '../App'
+import { openProfile } from './Me'
 import '../feed.css'
 import '../tiktok.css'
 import '../desk.css'
@@ -435,9 +436,9 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
             <EpisodeBell />
             <AiButton />
             {desk && (chip ?? (
-              <Link to="/me" className="tk-me" aria-label="האזור שלי">
+              <button type="button" className="tk-me" aria-label="הפרופיל שלי" onClick={() => openProfile()}>
                 <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} />
-              </Link>
+              </button>
             ))}
           </div>
           {(head || !desk) && <div className="tk-head">{head}{!desk && filterEl}</div>}

@@ -469,3 +469,50 @@ function AvatarBlock() {
     </section>
   )
 }
+
+// The avatar in any header opens the profile sheet in place (no route change); Esc, ✕ or the
+// phone's back button closes it and leaves you where you were.
+const PROFILE_EVENT = 'zapup:profile'
+export const openProfile = (tab: MeTab = 'points') => window.dispatchEvent(new CustomEvent(PROFILE_EVENT, { detail: tab }))
+
+export function ProfileHost() {
+  const [tab, setTab] = useState<MeTab | null>(null)
+  useEffect(() => {
+    const on = (e: Event) => {
+      try { history.pushState({ ...(history.state ?? {}), zapProfile: 1 }, '') } catch { /* ignore */ }
+      setTab((e as CustomEvent<MeTab>).detail)
+    }
+    const pop = () => setTab(null)
+    window.addEventListener(PROFILE_EVENT, on)
+    window.addEventListener('popstate', pop)
+    return () => { window.removeEventListener(PROFILE_EVENT, on); window.removeEventListener('popstate', pop) }
+  }, [])
+  const close = () => {
+    if ((history.state as { zapProfile?: number } | null)?.zapProfile) history.back()
+    else setTab(null)
+  }
+  useEffect(() => {
+    if (!tab) return
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!tab) return null
+  return (
+    <Layer>
+      <div className="dt-back" onClick={close}>
+        <section className="dt-sheet" role="dialog" aria-modal="true" aria-label="הפרופיל שלי" onClick={(e) => e.stopPropagation()}>
+          <header className="dt-head">
+            <span className="dt-grab" aria-hidden />
+            <b>הפרופיל שלי</b>
+            <span className="dt-actions">
+              <button type="button" className="dt-signout" onClick={() => supabase.auth.signOut()}>לצאת</button>
+              <button className="dt-x" onClick={close} aria-label="לסגור"><IClose /></button>
+            </span>
+          </header>
+          <div className="dt-body"><MeDetails start={tab} /></div>
+        </section>
+      </div>
+    </Layer>
+  )
+}

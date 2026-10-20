@@ -7,7 +7,7 @@ import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import TeamDetail from './pages/TeamDetail'
 import Admin from './pages/Admin'
-import Me from './pages/Me'
+import Me, { ProfileHost, openProfile } from './pages/Me'
 import { PointsPill, Toaster } from './components/points'
 import { IClose, IHome, ILogout, IMenu, IShield, IUser } from './components/icons'
 import { Avatar } from './components/Avatar'
@@ -121,6 +121,7 @@ export default function App() {
       </Shell>
       <AiSheet />
       <DetailHost />
+      <ProfileHost />
       <Toaster />
     </AppCtx.Provider>
   )
@@ -168,7 +169,7 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
           <div className="topbar-end">
             <PointsPill />
             <div className={`more ${menu ? 'open' : ''}`}>
-              <button className="me-link more-btn" aria-label="התפריט שלי" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
+              <button className="me-link more-btn" aria-label="הפרופיל שלי" onClick={() => openProfile()}>
                 <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} className="me-avatar-img" />
               </button>
               {menu && (

@@ -611,3 +611,8 @@
   .bc-head { gap: 4px; }
   .mc-big b { font-size: 28px; }
 }
+
+/* The header avatar opens the profile sheet. */
+button.tk-me { padding: 0; background: none; cursor: pointer; }
+.dt-actions { display: inline-flex; align-items: center; gap: 8px; }
+.dt-signout { border: 0; background: none; color: #4d6070; font: inherit; font-size: 14px; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 6px; }
