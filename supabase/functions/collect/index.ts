@@ -2,7 +2,7 @@
 // public sources: YouTube RSS, publisher RSS, the edX catalog API and the Skillshop catalog.
 // Only public metadata (title, description, lesson titles) is summarized, never course content.
 import { XMLParser } from "npm:fast-xml-parser@4.5.0";
-import { admin, cors, json, llm, log, mail, notify, parseJson, VOICE } from "../_shared/core.ts";
+import { admin, cors, json, llm, log, mail, notify, parseJson, setting, VOICE } from "../_shared/core.ts";
 
 type Source = { id: number; name: string; kind: string; ref: string; topic_slug: string };
 type Raw = {
@@ -150,7 +150,8 @@ ${r.lessons.length ? `שיעורים:\n${r.lessons.map((l, i) => `${i + 1}. ${l}
     source_url: r.url,
     published_at: r.published ? new Date(r.published).toISOString() : null,
     summarized_at: new Date().toISOString(),
-    status: "pending",
+    // Automatic publishing: no approval queue. Reports ("דווח על טעות") are the safety net.
+    status: (await setting("auto_publish", "true")) === "true" ? "approved" : "pending",
     ...(r.audio ? { audio_url: r.audio } : {}),
     ...(r.minutes ? { minutes: r.minutes } : {}),
   });

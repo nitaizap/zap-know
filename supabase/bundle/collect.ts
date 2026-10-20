@@ -395,7 +395,8 @@ ${r.lessons.length ? `שיעורים:\n${r.lessons.map((l, i) => `${i + 1}. ${l}
     source_url: r.url,
     published_at: r.published ? new Date(r.published).toISOString() : null,
     summarized_at: new Date().toISOString(),
-    status: "pending",
+    // Automatic publishing: no approval queue. Reports ("דווח על טעות") are the safety net.
+    status: (await setting("auto_publish", "true")) === "true" ? "approved" : "pending",
     ...(r.audio ? { audio_url: r.audio } : {}),
     ...(r.minutes ? { minutes: r.minutes } : {}),
   });

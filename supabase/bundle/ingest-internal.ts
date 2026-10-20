@@ -296,7 +296,7 @@ ${text.slice(0, 6000)}`,
       ], true),
     );
     const external = b.purpose === "external";
-    const auto = !external && (Deno.env.get("INTERNAL_AUTO_APPROVE") ?? "true") === "true";
+    const auto = (await setting("auto_publish", "true")) === "true";
     const sourceUrl = b.link?.startsWith("http") ? b.link : `https://zap-know.internal/${channel}/${Date.now()}`;
     // The author earns points for the post: the form knows the user, Zapier passes the sender's email.
     let author = user?.id ?? null;

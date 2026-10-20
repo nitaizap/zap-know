@@ -2,7 +2,7 @@
 //  - Teams channel and mail group, via Zapier, authenticated with the x-zap-secret header
 //  - the short form on the site, authenticated with the employee's session
 // The post is summarized in One Tone and published as a kind='internal' item.
-import { admin, cors, json, llm, log, notify, parseJson, VOICE, zapUser } from "../_shared/core.ts";
+import { admin, cors, json, llm, log, notify, parseJson, setting, VOICE, zapUser } from "../_shared/core.ts";
 
 type Body = {
   title?: string; team?: string; text: string; link?: string; author?: string; channel?: string;
@@ -51,7 +51,7 @@ ${text.slice(0, 6000)}`,
       ], true),
     );
     const external = b.purpose === "external";
-    const auto = !external && (Deno.env.get("INTERNAL_AUTO_APPROVE") ?? "true") === "true";
+    const auto = (await setting("auto_publish", "true")) === "true";
     const sourceUrl = b.link?.startsWith("http") ? b.link : `https://zap-know.internal/${channel}/${Date.now()}`;
     // The author earns points for the post: the form knows the user, Zapier passes the sender's email.
     let author = user?.id ?? null;
