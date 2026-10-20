@@ -701,6 +701,7 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
           </span>
         )}
         </div>
+        <RailBtn label="לא אהבתי" count={s?.dislikes ?? 0} on={s?.mine === -1} onClick={() => react(item.id, -1)}><IcoDown /></RailBtn>
         <RailBtn label="תגובות" count={s?.comments_count ?? 0} onClick={onComments}><IcoChat /></RailBtn>
         <RailBtn label="לשתף" count={s?.shares_count ?? 0} onClick={onShare}><IcoShare /></RailBtn>
         <RailBtn label={kept ? 'נשמר' : 'לשמור'} on={kept} pop onClick={onKeep}><IcoSave /></RailBtn>
@@ -713,7 +714,6 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
                 <button role="menuitem" onClick={() => { listen.toggle(); setMenu(false) }}><IcoHead /> {listen.playing ? 'לעצור' : 'להאזין לזה'}</button>
               )}
               <button role="menuitem" onClick={() => { setMenu(false); remind.current?.() }}><IClock size={20} /> תזכורת במייל</button>
-              <button role="menuitem" aria-pressed={s?.mine === -1} onClick={() => { react(item.id, -1); setMenu(false) }}><IcoDown /> פחות כאלה</button>
               <button role="menuitem" onClick={() => { setMenu(false); onHide() }}><IcoX /> לא בשבילי</button>
             </div>
           )}
