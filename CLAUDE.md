@@ -1,0 +1,51 @@
+# zap UP (zap KNOW) — working notes for Claude sessions
+
+Hackathon project, team 3, zap One Tone hackathon (20.10.2026, upload deadline 21:00).
+zap UP is zap Group's learning and knowledge hub: external learning (courses, news, podcasts) +
+internal knowledge (team docs + an agent that answers "how does team X do Y"), with a social feed,
+gamification, a learning budget and audio ("להאזנה", drive mode, personal podcast feed).
+
+- Live site: https://nitaizap.github.io/zap-know/ (login: one-time email code, `@d.co.il` only)
+- Pitch deck (Artifact): https://claude.ai/artifact/Ld4YU4nCNsSeGYhzZK9CVC — sources in `pitch/project/`
+- Supabase project: `lfiwdqcysgwvzzfuuszf` (org "zap KNOW")
+- Submission folder (owner's machine): `Downloads/marcom hackathon/zapOnetone/תקיית הגשה`
+
+## Stack
+- Frontend: Vite + React + TS, HashRouter, base `/zap-know/`. Calm design system in `src/styles.css`,
+  shared pieces in `src/components/` (ui, icons, filters, social, points, budget, prefs, Listen).
+- Back-end: Supabase Postgres with RLS (`is_zap()` = email ends with `@d.co.il`), Edge Functions in
+  `supabase/functions/*`, cron via pg_cron (collect every 10 min — it also sends due reminders —
+  linkcheck nightly, weekly on Sunday 06:00).
+- AI: `LLM_PROVIDER` setting. Demo = Gemini free tier (public content + demo data only).
+  Production = Claude via OpenRouter with zero data retention (internal data).
+- Email: Brevo API (`BREVO_API_KEY`), sender address in table `app_settings.sender_email`.
+  Teams channel posts via a Teams Workflows webhook (`TEAMS_WEBHOOK`, optional).
+- Secrets live only in Supabase Edge Function Secrets. Never in code, docs or chat.
+
+## Data model (apply in order)
+`supabase/schema.sql`, then `patch-001` … `patch-014`, then seeds: `seed.sql` (demo items, teams),
+`seed-demo-people.sql` (15 demo colleagues on `@zap-up.invalid`, marked "(דמו)"),
+`seed-team-docs.sql` (36 team docs). Cleanup of demo people: `delete from auth.users where email like '%@zap-up.invalid';`
+
+## Deploying
+- Site: `npm run build`, copy `dist/` to a temp dir, add `404.html` (copy of index) + `.nojekyll`,
+  fresh `git init -b gh-pages`, force-push to `https://github.com/nitaizap/zap-know.git` gh-pages.
+- Functions: the dashboard editor takes ONE file. `supabase/bundle/<fn>.ts` = function + inlined
+  `_shared/core.ts`. Regenerate bundles after editing core or a function, push, then paste/deploy.
+  New functions need "Verify JWT with legacy secret" turned OFF (they check auth themselves).
+- SQL: Supabase SQL editor. Destructive-operation warnings are expected for `drop … if exists` lines.
+
+## Conventions
+- Hebrew copy follows the zap One Tone skill, internal register: warm colleague tone, clarity over
+  playfulness, plural/neutral gender (no slashes like מנהל/ת), lowercase "zap", no "...", max one "!".
+  Glossary and pending fixes: `pitch/copy-audit.md`.
+- Visuals follow the zap visual language skill: brand palette only, Noto Sans Hebrew Black/Light,
+  Gveret Levin for one handwritten accent, metro lines sparingly. The owner's direction: simple, fun, clear.
+- Demo data is always labelled (`is_demo`, "נתוני דמו", "(דמו)"). Never present it as real.
+- Every product change also updates the pitch deck (owner's standing request).
+
+## Working in parallel (two Claude accounts)
+- Work on a branch and open a PR; or agree file ownership before starting. Pull with
+  `git pull --rebase --autostash` before every push.
+- Announce SQL patches by number (next free: `patch-015`). Never edit an applied patch; add a new one.
+- Commit messages end with the Co-Authored-By / Claude-Session lines your session gives you.
