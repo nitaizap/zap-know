@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Item, KIND_LABEL, fmtDate } from '../lib'
+import { ReactionBar } from './social'
 
 // Light setup line + Black punch line with the hand-drawn navy swoosh.
 export function Headline({ light, black, hand }: { light: string; black: string; hand?: string }) {
@@ -60,19 +61,27 @@ export function ItemMeta({ item }: { item: Item }) {
   )
 }
 
-export function ItemCard({ item, progress }: { item: Item; progress?: number }) {
+export function ItemCard({ item, progress, reasons }: { item: Item; progress?: number; reasons?: string[] }) {
   return (
-    <Link to={`/item/${item.id}`} className="card link">
-      <h3>{item.title_he}</h3>
-      {item.summary_he && <p className="muted small">{clip(item.summary_he, 140)}</p>}
-      {progress !== undefined && (
-        <div style={{ marginTop: 10 }}>
-          <div className="bar"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
-          <div className="small muted" style={{ marginTop: 4 }}>{Math.round(progress * 100)}% מהשיעורים</div>
-        </div>
-      )}
-      <ItemMeta item={item} />
-    </Link>
+    <div className="card itemcard">
+      <Link to={`/item/${item.id}`} className="cardlink">
+        {reasons && reasons.length > 0 && (
+          <div className="chips" style={{ margin: '0 0 4px' }}>
+            {reasons.map((r) => <span key={r} className="badge reason">{r}</span>)}
+          </div>
+        )}
+        <h3>{item.title_he}</h3>
+        {item.summary_he && <p className="muted small">{clip(item.summary_he, 140)}</p>}
+        {progress !== undefined && (
+          <div style={{ marginTop: 10 }}>
+            <div className="bar"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
+            <div className="small muted" style={{ marginTop: 4 }}>{Math.round(progress * 100)}% מהשיעורים</div>
+          </div>
+        )}
+        <ItemMeta item={item} />
+      </Link>
+      <ReactionBar item={item} />
+    </div>
   )
 }
 

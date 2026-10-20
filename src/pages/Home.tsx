@@ -4,6 +4,7 @@ import { useApp } from '../App'
 import { Budget, ITEM_COLS, Item, loadBudget, supabase, weekStart } from '../lib'
 import { Empty, Headline, ItemCard, MetroLine, Skeletons } from '../components/ui'
 import { BudgetBar } from '../components/budget'
+import { FeedRow, loadFeed, reasonChips } from '../components/social'
 
 type Episode = { id: number; week: string; body_he: string; item_ids: number[]; audio_url: string | null }
 type Continue = { item: Item; done: number }
@@ -19,6 +20,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [budget, setBudget] = useState<Budget | null>(null)
+  const [forYou, setForYou] = useState<{ item: Item; row: FeedRow }[] | null>(null)
+  const [inbox, setInbox] = useState<{ id: number; item: Item; note: string | null; by: string }[]>([])
 
   const week = weekStart()
   const myTopics = topics.filter((t) => profile.topics.includes(t.slug))
@@ -73,8 +76,37 @@ export default function Home() {
     }
     load()
     loadBudget().then((b) => { if (alive) setBudget(b) })
+    loadSocialFeed().then((r) => { if (alive && r) { setForYou(r.forYou); setInbox(r.inbox) } })
     return () => { alive = false }
   }, [profile.user_id, profile.topics.join(','), week])
+
+  async function loadSocialFeed() {
+    const rows = await loadFeed(9)
+    if (!rows) return null
+    const [itemsRes, sharesRes] = await Promise.all([
+      rows.length ? supabase.from('items').select(ITEM_COLS).in('id', rows.map((r) => r.id)) : Promise.resolve({ data: [] }),
+      supabase.from('shares').select('id,item_id,note').eq('to_user', profile.user_id).eq('seen', false)
+        .order('at', { ascending: false }).limit(5),
+    ])
+    const byId = new Map(((itemsRes.data as Item[] | null) ?? []).map((i) => [i.id, i]))
+    const forYou = rows.flatMap((row) => (byId.has(row.id) ? [{ item: byId.get(row.id)!, row }] : []))
+    const shares = (sharesRes.data as { id: number; item_id: number; note: string | null }[] | null) ?? []
+    let inboxItems = new Map<number, Item>()
+    if (shares.length) {
+      const { data } = await supabase.from('items').select(ITEM_COLS).in('id', shares.map((x) => x.item_id))
+      inboxItems = new Map(((data as Item[] | null) ?? []).map((i) => [i.id, i]))
+    }
+    const sharedBy = new Map(rows.filter((r) => r.shared_by).map((r) => [r.id, r.shared_by!]))
+    const inbox = shares.flatMap((x) => (inboxItems.has(x.item_id)
+      ? [{ id: x.id, item: inboxItems.get(x.item_id)!, note: x.note, by: sharedBy.get(x.item_id) ?? 'עמית/ה' }] : []))
+    return { forYou, inbox }
+  }
+
+  async function openShare(id: number, itemId: number) {
+    setInbox((x) => x.filter((s) => s.id !== id))
+    await supabase.from('shares').update({ seen: true }).eq('id', id)
+    nav(`/item/${itemId}`)
+  }
 
   const firstName = (profile.display_name || profile.email.split('@')[0]).split(/[.\s_]/)[0]
 
@@ -104,6 +136,23 @@ export default function Home() {
         </p>
       </div>
 
+      {inbox.length > 0 && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <h3 style={{ margin: '0 0 6px' }}>שיתפו איתך</h3>
+          <ul className="inbox" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {inbox.map((s) => (
+              <li key={s.id}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="small muted">{s.by}{s.note ? `: ${s.note}` : ''}</div>
+                  <div style={{ fontWeight: 700 }}>{s.item.title_he}</div>
+                </div>
+                <button className="btn ghost" onClick={() => openShare(s.id, s.item.id)}>לפתוח</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {budget && (
         <Link to="/budget" className="card link" style={{ marginTop: 14 }}>
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
@@ -132,6 +181,15 @@ export default function Home() {
           <button className="btn">שאלו</button>
         </div>
       </form>
+
+      {forYou && forYou.length > 0 && (
+        <section>
+          <h2 className="section">בשבילך <small>לפי הנושאים שלכם ומה שעובד אצל הצוות</small></h2>
+          <div className="grid three">
+            {forYou.map(({ item, row }) => <ItemCard key={item.id} item={item} reasons={reasonChips(row)} />)}
+          </div>
+        </section>
+      )}
 
       {loading ? <Skeletons /> : myTopics.map((t) => (
         <section key={t.slug}>

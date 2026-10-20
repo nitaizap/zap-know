@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useApp } from '../App'
 import { ITEM_COLS, Item, VERTICALS, supabase } from '../lib'
 import { Empty, Headline, ItemCard, Skeletons } from '../components/ui'
+import { FeedRow, loadFeed, reasonChips } from '../components/social'
 
 export default function TopicPage() {
   const { slug } = useParams()
@@ -11,12 +12,16 @@ export default function TopicPage() {
   const [items, setItems] = useState<Item[] | null>(null)
   const [kind, setKind] = useState<'all' | 'course' | 'news'>('all')
   const [vertical, setVertical] = useState<string | null>(null)
+  const [sort, setSort] = useState<'top' | 'new'>('top')
+  const [ranked, setRanked] = useState<FeedRow[] | null>(null)
 
   useEffect(() => {
     setItems(null)
     supabase.from('items').select(ITEM_COLS).eq('status', 'approved').eq('topic_slug', slug ?? '')
       .neq('kind', 'internal').order('published_at', { ascending: false, nullsFirst: false }).limit(200)
       .then(({ data }) => setItems((data as Item[]) ?? []))
+    setRanked(null)
+    loadFeed(200, slug).then(setRanked)
   }, [slug])
 
   if (!topic) return <Empty>הנושא הזה לא קיים.</Empty>
@@ -33,7 +38,12 @@ export default function TopicPage() {
     )
   }
 
-  const shown = (items ?? []).filter((i) => (kind === 'all' || i.kind === kind) && (!vertical || i.verticals.includes(vertical)))
+  const rank = new Map((ranked ?? []).map((r, n) => [r.id, n]))
+  const ordered = sort === 'top' && ranked
+    ? [...(items ?? [])].sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9))
+    : items ?? []
+  const rowOf = new Map((ranked ?? []).map((r) => [r.id, r]))
+  const shown = ordered.filter((i) => (kind === 'all' || i.kind === kind) && (!vertical || i.verticals.includes(vertical)))
   const usedVerticals = VERTICALS.filter((v) => (items ?? []).some((i) => i.verticals.includes(v)))
 
   return (
@@ -43,6 +53,12 @@ export default function TopicPage() {
         {([['all', 'הכול'], ['course', 'קורסים'], ['news', 'עדכונים']] as const).map(([k, l]) => (
           <button key={k} className={`chip ${kind === k ? 'on' : ''}`} onClick={() => setKind(k)}>{l}</button>
         ))}
+        {ranked && (
+          <span className="row" style={{ marginInlineStart: 'auto', gap: 6 }}>
+            <button className={`chip ${sort === 'top' ? 'on' : ''}`} onClick={() => setSort('top')}>מומלץ</button>
+            <button className={`chip ${sort === 'new' ? 'on' : ''}`} onClick={() => setSort('new')}>חדש</button>
+          </span>
+        )}
       </div>
       {usedVerticals.length > 0 && (
         <div className="chips">
@@ -53,7 +69,7 @@ export default function TopicPage() {
         </div>
       )}
       {items === null ? <Skeletons n={6} /> : shown.length ? (
-        <div className="grid three">{shown.map((i) => <ItemCard key={i.id} item={i} />)}</div>
+        <div className="grid three">{shown.map((i) => <ItemCard key={i.id} item={i} reasons={sort === 'top' ? reasonChips(rowOf.get(i.id)) : undefined} />)}</div>
       ) : <Empty>אין כאן עדיין תוכן שמתאים לסינון.</Empty>}
     </div>
   )

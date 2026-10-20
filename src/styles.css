@@ -261,3 +261,35 @@ table.log td, table.log th { padding: 6px 8px; border-bottom: 1px solid var(--da
 .plist li:last-child { border-bottom: 0; }
 .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 12px; }
 .switch input { width: 20px; height: 20px; accent-color: var(--navy); }
+
+/* Social layer */
+.itemcard { display: flex; flex-direction: column; transition: transform .15s, border-color .15s; }
+.itemcard:hover { transform: translateY(-2px); border-color: var(--navy-20); }
+.cardlink { text-decoration: none; color: inherit; display: block; flex: 1; }
+.badge.reason { background: var(--pink-5); color: #c2185b; }
+.reactbar { display: flex; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--dark-10); flex-wrap: wrap; }
+.rb {
+  display: inline-flex; align-items: center; gap: 4px; border: 1px solid transparent; background: transparent;
+  border-radius: 999px; padding: 6px 10px; min-height: 36px; cursor: pointer; font-size: 14px; color: var(--dark-60);
+  text-decoration: none;
+}
+.rb:hover { background: var(--navy-5); }
+.rb span { font-weight: 700; }
+.rb.on { background: var(--green-5); border-color: var(--green); color: #00760c; }
+.rb.on.neg { background: var(--red-5); border-color: var(--red); color: #c41a0a; }
+.rb.share { margin-inline-start: auto; color: var(--navy); font-weight: 700; }
+.sheet-wrap {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0, 28, 50, .35);
+  display: flex; align-items: flex-end; justify-content: center; padding: 0;
+}
+.sheet { width: 100%; max-width: 480px; border-radius: 16px 16px 0 0; max-height: 85vh; overflow: auto; padding-bottom: 24px; }
+@media (min-width: 640px) { .sheet-wrap { align-items: center; padding: 16px; } .sheet { border-radius: 16px; } }
+.sheet-opts { display: grid; gap: 8px; }
+.people { list-style: none; padding: 0; margin: 8px 0 0; max-height: 220px; overflow: auto; }
+.people button { width: 100%; text-align: start; background: none; border: 0; padding: 8px; border-radius: var(--radius-sm); cursor: pointer; }
+.people button:hover { background: var(--navy-5); }
+.comments { list-style: none; padding: 0; margin: 0; }
+.comments li { padding: 10px 0; border-bottom: 1px solid var(--dark-10); }
+.linkbtn { background: none; border: 0; color: var(--dark-60); text-decoration: underline; cursor: pointer; padding: 4px; }
+.inbox li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--dark-10); }
+.inbox li:last-child { border-bottom: 0; }

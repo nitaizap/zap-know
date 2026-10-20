@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { useApp } from '../App'
 import { ITEM_COLS, Item, PurchaseResult, fmtMoney, supabase, track } from '../lib'
 import { Empty, ItemMeta, Skeletons } from '../components/ui'
 import { BuyResult, ManagerPrompt, buy } from '../components/budget'
+import { Comments, ReactionBar } from '../components/social'
 
 export default function ItemPage() {
   const { id } = useParams()
   const itemId = Number(id)
   const { profile, topics } = useApp()
+  const location = useLocation()
   const [item, setItem] = useState<Item | null | undefined>(undefined)
   const [done, setDone] = useState<number[]>([])
   const [saved, setSaved] = useState(false)
@@ -82,6 +84,14 @@ export default function ItemPage() {
     else { setBought(r); setBuyOpen(false) }
   }
 
+  function toComments() {
+    document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  useEffect(() => {
+    if (item && location.hash === '#comments') setTimeout(toComments, 300)
+  }, [item, location.hash])
+
   if (item === undefined) return <div style={{ marginTop: 28 }}><Skeletons n={1} /></div>
   if (item === null) return <Empty>הפריט הזה כבר לא זמין. אולי הקישור שלו נשבר, או שהוא בבדיקה.</Empty>
 
@@ -116,6 +126,7 @@ export default function ItemPage() {
         </a>
         <button className="btn ghost" onClick={toggleSave}>{saved ? 'שמור אצלכם ✓' : 'שמירה לאחר כך'}</button>
       </div>
+      <ReactionBar item={item} onComments={toComments} />
 
       {price && (
         <section className="card buy" style={{ marginTop: 18 }}>
@@ -164,6 +175,8 @@ export default function ItemPage() {
           </ul>
         </section>
       )}
+
+      <Comments item={item} myId={profile.user_id} />
 
       <div style={{ marginTop: 24 }}>
         {reported ? (
