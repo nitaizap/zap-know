@@ -148,7 +148,7 @@ export function ItemDetail({ itemId, embedded }: { itemId: number; embedded?: bo
       </h1>
       {item.title_orig && <div className="small muted" dir="auto">{item.title_orig}</div>}
       <ItemMeta item={item} />
-      {!embedded && <MediaHero item={item} />}
+      {(!embedded || item.preview_video_id) && <MediaHero item={item} />}
       {item.kind === 'podcast' && item.audio_url
         ? <div style={{ marginTop: 16 }}><AudioPlayer src={item.audio_url} title={item.title_he} /></div>
         : <Listen kind="item" id={item.id} />}

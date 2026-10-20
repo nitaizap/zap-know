@@ -391,7 +391,9 @@ export default function Me() {
   const head = (
     <>
       {LANES.map((l) => (
-        <button key={l.key} role="tab" aria-selected={l.key === lane} className={`tk-tab${l.key === lane ? ' on' : ''}`} onClick={() => pick(l.key)}>{l.label}</button>
+        <button key={l.key} role="tab" aria-selected={l.key === lane} aria-label={l.label} className={`tk-tab${l.key === lane ? ' on' : ''}`} onClick={() => pick(l.key)}>
+          {l.key === 'later' ? <><span className="lbl-long">{l.label}</span><span className="lbl-short" aria-hidden>אח״כ</span></> : l.label}
+        </button>
       ))}
       {lane === 'mine' ? null : searching || q ? (
         <input className="tk-search" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש אצלי"

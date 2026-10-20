@@ -176,6 +176,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
   const [sheet, setSheet] = useState<{ item: FeedItem; kind: 'comments' | 'share' } | null>(null)
   const [panel, setPanel] = useState<Panel | null>(null)
   const [faces, setFaces] = useState<Map<string, BoardRow[]>>(new Map())
+  const goToRef = useRef<(i: number) => void>(() => {})
   const desk = useDesk()
   const scroller = useRef<HTMLDivElement>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -183,7 +184,11 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
   // On a desktop, "לפתוח" (and any open from the AI or a deep link) lands in this feed's panel.
   useEffect(() => {
     if (!desk) return
-    return setDetailHost((t) => setPanel({ kind: 'details', target: t }))
+    return setDetailHost((t) => {
+      setPanel({ kind: 'details', target: t })
+      const i = entriesRef.current.findIndex((e) => e.t === 'item' && (t.kind === 'item' ? e.item.id === t.id : e.item.doc_id === t.id))
+      if (i >= 0) goToRef.current(i)
+    })
   }, [desk])
   useEffect(() => { if (!desk) setPanel(null) }, [desk])
 
@@ -259,6 +264,8 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
     }
     return out
   }, [items, episode, leaders, quotes, prefix])
+  const entriesRef = useRef<Entry[]>([])
+  entriesRef.current = entries
 
   // Social proof: the likers of every card on this page, in one call.
   const [likers, setLikers] = useState<Map<number, Liker[]>>(new Map())
@@ -317,6 +324,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
     if (!el) return
     el.scrollTo({ top: i * (slideH.current || el.clientHeight), behavior: reduced ? 'auto' : 'smooth' })
   }, [])
+  goToRef.current = goTo
 
   const removeItem = useCallback((id: number) => setItems((cur) => (cur ? cur.filter((x) => x.id !== id) : cur)), [])
 
@@ -676,12 +684,14 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
       </div>
 
       <div className="fd-rail" aria-label="פעולות">
+        <div className="fd-likewrap">
         <RailBtn label="אהבתי" count={s?.likes ?? item.likes ?? 0} on={s?.mine === 1} pop onClick={() => react(item.id, 1)}><IcoHeart /></RailBtn>
         {stack.length > 0 && (
           <button type="button" className="fd-stack" onClick={(e) => { e.stopPropagation(); onLikers() }} aria-label={`${likeLine}. מי אהב`}>
             {stack.map((l) => <Face key={l.user_id} face={{ ...l, name: l.display_name }} size={24} />)}
           </button>
         )}
+        </div>
         <RailBtn label="תגובות" count={s?.comments_count ?? 0} onClick={onComments}><IcoChat /></RailBtn>
         <RailBtn label="לשתף" count={s?.shares_count ?? 0} onClick={onShare}><IcoShare /></RailBtn>
         <RailBtn label={kept ? 'נשמר' : 'לשמור'} on={kept} pop onClick={onKeep}><IcoSave /></RailBtn>
