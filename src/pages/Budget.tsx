@@ -1,15 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useApp } from '../App'
 import {
   Budget, CATEGORY_LABEL, Purchase, PurchaseCategory, PurchaseResult, fmtDate, fmtMoney, loadBudget, supabase,
 } from '../lib'
 import { Empty, Headline } from '../components/ui'
 import { BudgetBar, BuyResult, ManagerPrompt, StatusChip, buy } from '../components/budget'
+import { PrefsPanel } from '../components/prefs'
 
 const EMPTY = { title: '', url: '', category: 'course' as PurchaseCategory, price: '', reason: '' }
 
 export default function BudgetPage() {
-  const { profile } = useApp()
+  const { profile, topics, setProfile } = useApp()
+  const loc = useLocation()
+  const prefsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if ((loc.state as { prefs?: boolean } | null)?.prefs) prefsRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [loc.key])
   const [budget, setBudget] = useState<Budget | null | undefined>(undefined)
   const [list, setList] = useState<Purchase[]>([])
   const [form, setForm] = useState(EMPTY)
@@ -128,6 +135,9 @@ export default function BudgetPage() {
           </ul>
         </div>
       )}
+      <div ref={prefsRef} style={{ marginTop: 24 }}>
+        <PrefsPanel profile={profile} topics={topics} onSaved={setProfile} />
+      </div>
     </div>
   )
 }

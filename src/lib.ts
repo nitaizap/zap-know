@@ -58,6 +58,8 @@ export type Profile = {
   topics: string[]
   is_admin: boolean
   manager_email?: string | null
+  needs?: string[]
+  needs_note?: string | null
 }
 
 export type Source = {
@@ -164,3 +166,15 @@ export async function callFn<T>(name: string, body: unknown): Promise<T> {
 export function track(itemId: number, type: 'open' | 'save' | 'click_source') {
   supabase.rpc('track', { p_item: itemId, p_type: type }).then(() => {}, () => {})
 }
+
+// What people need at work right now (asked at onboarding, editable in "ההעדפות שלי").
+export const NEEDS = [
+  'להתחיל בתפקיד חדש',
+  'לשפר תוצאות בקמפיינים',
+  'להבין AI ולהשתמש בו',
+  'לעבוד עם דאטה',
+  'להציג ולשכנע',
+  'לנהל זמן ותעדוף',
+  'להכיר את המותגים של zap',
+  'משהו אחר',
+]

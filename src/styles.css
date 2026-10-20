@@ -293,3 +293,9 @@ table.log td, table.log th { padding: 6px 8px; border-bottom: 1px solid var(--da
 .linkbtn { background: none; border: 0; color: var(--dark-60); text-decoration: underline; cursor: pointer; padding: 4px; }
 .inbox li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--dark-10); }
 .inbox li:last-child { border-bottom: 0; }
+
+/* Home lanes: swipeable row on phones, grid from tablet up. */
+.lane { display: grid; grid-auto-flow: column; grid-auto-columns: 82%; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; margin-inline: -16px; padding-inline: 16px; }
+.lane > * { scroll-snap-align: start; }
+@media (min-width: 640px) { .lane { grid-auto-flow: row; grid-template-columns: 1fr 1fr; overflow: visible; margin-inline: 0; padding-inline: 0; } }
+@media (min-width: 960px) { .lane { grid-template-columns: 1fr 1fr 1fr; } }

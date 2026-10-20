@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { ALLOWED_DOMAIN, Profile, ROLES, Topic, supabase } from '../lib'
 import { Headline } from '../components/ui'
+import { NeedsPicker } from '../components/prefs'
 
 export default function Onboarding({ session, topics, existing, onDone }: {
   session: Session; topics: Topic[]; existing: Profile | null; onDone: (p: Profile) => void
@@ -9,6 +10,9 @@ export default function Onboarding({ session, topics, existing, onDone }: {
   const [role, setRole] = useState(existing?.role ?? '')
   const [picked, setPicked] = useState<string[]>(existing?.topics ?? [])
   const [manager, setManager] = useState(existing?.manager_email ?? '')
+  const [needs, setNeeds] = useState<string[]>(existing?.needs ?? [])
+  const [note, setNote] = useState(existing?.needs_note ?? '')
+  const [step, setStep] = useState<1 | 2>(1)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -26,6 +30,8 @@ export default function Onboarding({ session, topics, existing, onDone }: {
       email: session.user.email ?? '',
       role,
       topics: picked,
+      needs,
+      needs_note: note.trim() || null,
       ...(manager.trim() ? { manager_email: manager.trim().toLowerCase() } : {}),
     }
     const { data, error } = await supabase.from('profiles').upsert(row).select('*').single()
@@ -34,10 +40,29 @@ export default function Onboarding({ session, topics, existing, onDone }: {
     onDone(data as Profile)
   }
 
+  if (step === 2) {
+    return (
+      <div className="container" style={{ maxWidth: 640, paddingBottom: 40 }}>
+        <div className="texture" />
+        <Headline light="ומה אתם צריכים" black="עכשיו בעבודה?" hand="עוד רגע" />
+        <p className="muted">ככה נביא לכם גם את מה שיעזור לכם החודש, לא רק את מה שמעניין. אפשר לבחור כמה שרוצים.</p>
+        <NeedsPicker needs={needs} setNeeds={setNeeds} note={note} setNote={setNote} />
+        <div className="row" style={{ marginTop: 24, gap: 10 }}>
+          <button className="btn ghost" onClick={() => setStep(1)} disabled={busy}>חזרה</button>
+          <button className="btn" style={{ flex: 1 }} disabled={busy} onClick={save}>
+            {busy ? 'שומרים' : needs.length ? 'לבית שלי' : 'דילוג, לבית שלי'}
+          </button>
+        </div>
+        {err && <div className="notice err" style={{ marginTop: 10 }}>{err}</div>}
+        <p className="small muted" style={{ marginTop: 14 }}>אפשר לשנות הכול אחר כך ב"ההעדפות שלי".</p>
+      </div>
+    )
+  }
+
   return (
     <div className="container" style={{ maxWidth: 640, paddingBottom: 40 }}>
       <div className="texture" />
-      <Headline light="שתי שאלות קטנות," black="ומתחילים" hand="10 שניות" />
+      <Headline light="כמה שאלות קטנות," black="ומתחילים" hand="15 שניות" />
       <p className="muted">ככה zap KNOW יודע מה להביא לכם כל שבוע. אפשר לשנות את זה מתי שרוצים.</p>
 
       <h2 className="section">באיזה תחום אתם עובדים?</h2>
@@ -66,10 +91,10 @@ export default function Onboarding({ session, topics, existing, onDone }: {
       {manager.trim() && !managerOk && <div className="small" style={{ color: 'var(--red)' }}>המייל צריך להסתיים ב-{ALLOWED_DOMAIN}</div>}
 
       <div style={{ marginTop: 24 }}>
-        <button className="btn block" disabled={!role || picked.length < 2 || busy || !managerOk} onClick={save}>
-          {busy ? 'שומרים' : 'לבית שלי'}
+        <button className="btn block" disabled={!role || picked.length < 2 || !managerOk} onClick={() => setStep(2)}>
+          ממשיכים
         </button>
-        {err && <div className="notice err" style={{ marginTop: 10 }}>{err}</div>}
+        <div className="small muted" style={{ marginTop: 8, textAlign: 'center' }}>שלב 1 מתוך 2</div>
       </div>
     </div>
   )

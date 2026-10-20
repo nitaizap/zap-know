@@ -6,6 +6,8 @@ import { Empty, Headline, ItemCard, MetroLine, Skeletons } from '../components/u
 import { BudgetBar } from '../components/budget'
 import { FeedRow, loadFeed, reasonChips } from '../components/social'
 
+type Lane = { item: Item; chips: string[] }
+
 type Episode = { id: number; week: string; body_he: string; item_ids: number[]; audio_url: string | null }
 type Continue = { item: Item; done: number }
 
@@ -22,6 +24,8 @@ export default function Home() {
   const [budget, setBudget] = useState<Budget | null>(null)
   const [forYou, setForYou] = useState<{ item: Item; row: FeedRow }[] | null>(null)
   const [inbox, setInbox] = useState<{ id: number; item: Item; note: string | null; by: string }[]>([])
+  const [discover, setDiscover] = useState<Lane[] | null>(null)
+  const [trending, setTrending] = useState<Lane[] | null>(null)
 
   const week = weekStart()
   const myTopics = topics.filter((t) => profile.topics.includes(t.slug))
@@ -77,8 +81,23 @@ export default function Home() {
     load()
     loadBudget().then((b) => { if (alive) setBudget(b) })
     loadSocialFeed().then((r) => { if (alive && r) { setForYou(r.forYou); setInbox(r.inbox) } })
+    loadLane<{ id: number; reason: string }>('discover', 9, (r) => (r.reason ? [r.reason] : []))
+      .then((x) => { if (alive) setDiscover(x) })
+    loadLane<{ id: number; views: number }>('trending', 6, (r) => (r.views > 0 ? [`${r.views} צפיות השבוע`] : []))
+      .then((x) => { if (alive) setTrending(x) })
     return () => { alive = false }
   }, [profile.user_id, profile.topics.join(','), week])
+
+  // An RPC lane: ranked ids → items in the same order. Null hides the lane (e.g. RPC missing).
+  async function loadLane<R extends { id: number }>(fn: string, limit: number, chips: (r: R) => string[]): Promise<Lane[] | null> {
+    const { data, error } = await supabase.rpc(fn, { p_limit: limit })
+    if (error) return null
+    const rows = (data as R[] | null) ?? []
+    if (!rows.length) return []
+    const { data: items } = await supabase.from('items').select(ITEM_COLS).in('id', rows.map((r) => r.id))
+    const byId = new Map(((items as Item[] | null) ?? []).map((i) => [i.id, i]))
+    return rows.flatMap((r) => (byId.has(r.id) ? [{ item: byId.get(r.id)!, chips: chips(r) }] : []))
+  }
 
   async function loadSocialFeed() {
     const rows = await loadFeed(9)
@@ -114,6 +133,9 @@ export default function Home() {
     <div style={{ position: 'relative' }}>
       <MetroLine top={10} />
       <Headline light={`היי ${firstName}, זה השבוע שלכם`} black="מה חדש בתחום" />
+      <div className="small" style={{ margin: '-6px 0 12px' }}>
+        <Link to="/budget" state={{ prefs: true }} style={{ fontWeight: 600 }}>ההעדפות שלי ←</Link>
+      </div>
 
       <div className="card episode">
         <div className="tile" />
@@ -153,14 +175,39 @@ export default function Home() {
         </div>
       )}
 
-      {budget && (
-        <Link to="/budget" className="card link" style={{ marginTop: 14 }}>
-          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-            <h3 style={{ margin: 0 }}>תקציב הלמידה שלכם החודש</h3>
-            <span className="small" style={{ fontWeight: 600 }}>לתקציב ←</span>
+      {forYou && forYou.length > 0 && (
+        <section>
+          <h2 className="section">מה מעניין אותי <small>הנושאים והצרכים שבחרתם, לפי מה שעובד אצל הצוות</small></h2>
+          <div className="lane">
+            {forYou.map(({ item, row }) => <ItemCard key={item.id} item={item} reasons={reasonChips(row)} />)}
           </div>
-          <BudgetBar b={budget} />
-        </Link>
+        </section>
+      )}
+      {!forYou && (loading ? <Skeletons /> : myTopics.length > 0 && (
+        <section>
+          <h2 className="section">מה מעניין אותי</h2>
+          <div className="lane">
+            {myTopics.flatMap((t) => hot[t.slug] ?? []).map((i) => <ItemCard key={i.id} item={i} />)}
+          </div>
+        </section>
+      ))}
+
+      {discover && discover.length > 0 && (
+        <section>
+          <h2 className="section">מה יכול לעניין אותך <small>מחוץ לנושאים שבחרתם</small></h2>
+          <div className="lane">
+            {discover.map(({ item, chips }) => <ItemCard key={item.id} item={item} reasons={chips} />)}
+          </div>
+        </section>
+      )}
+
+      {trending && trending.length > 0 && (
+        <section>
+          <h2 className="section">טרנדים <small>הכי נצפה השבוע</small></h2>
+          <div className="lane">
+            {trending.map(({ item, chips }) => <ItemCard key={item.id} item={item} reasons={chips} />)}
+          </div>
+        </section>
       )}
 
       {cont.length > 0 && (
@@ -172,7 +219,14 @@ export default function Home() {
         </>
       )}
 
-      <form className="card" style={{ marginTop: 24 }} onSubmit={(e) => { e.preventDefault(); if (q.trim()) nav(`/ask?q=${encodeURIComponent(q.trim())}`) }}>
+      <h2 className="section">
+        קורה ב-zap
+        <Link to="/internal" className="small" style={{ marginInlineStart: 'auto', fontWeight: 600 }}>לכל הפרויקטים ←</Link>
+      </h2>
+      {internal.length ? (
+        <div className="grid two">{internal.map((i) => <ItemCard key={i.id} item={i} />)}</div>
+      ) : <Empty>עוד אין פרויקטים. יש לכם משהו להראות? <Link to="/internal">ספרו לנו</Link></Empty>}
+      <form className="card" style={{ marginTop: 28 }} onSubmit={(e) => { e.preventDefault(); if (q.trim()) nav(`/ask?q=${encodeURIComponent(q.trim())}`) }}>
         <label className="field" style={{ marginBottom: 8 }}>
           <span>שאלו את zap KNOW</span>
         </label>
@@ -182,34 +236,16 @@ export default function Home() {
         </div>
       </form>
 
-      {forYou && forYou.length > 0 && (
-        <section>
-          <h2 className="section">בשבילך <small>לפי הנושאים שלכם ומה שעובד אצל הצוות</small></h2>
-          <div className="grid three">
-            {forYou.map(({ item, row }) => <ItemCard key={item.id} item={item} reasons={reasonChips(row)} />)}
+      {budget && (
+        <Link to="/budget" className="card link" style={{ marginTop: 14, display: 'block' }}>
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+            <h3 style={{ margin: 0 }}>תקציב הלמידה שלכם החודש</h3>
+            <span className="small" style={{ fontWeight: 600 }}>לתקציב ←</span>
           </div>
-        </section>
+          <BudgetBar b={budget} />
+        </Link>
       )}
 
-      {loading ? <Skeletons /> : myTopics.map((t) => (
-        <section key={t.slug}>
-          <h2 className="section">
-            החם השבוע ב{t.name_he}
-            <Link to={`/topic/${t.slug}`} className="small" style={{ marginInlineStart: 'auto', fontWeight: 600 }}>לכל הנושא ←</Link>
-          </h2>
-          {hot[t.slug]?.length ? (
-            <div className="grid three">{hot[t.slug].map((i) => <ItemCard key={i.id} item={i} />)}</div>
-          ) : <Empty>עוד אין כאן תוכן מאושר. האיסוף הבא כבר בדרך.</Empty>}
-        </section>
-      ))}
-
-      <h2 className="section">
-        קורה ב-zap
-        <Link to="/internal" className="small" style={{ marginInlineStart: 'auto', fontWeight: 600 }}>לכל הפרויקטים ←</Link>
-      </h2>
-      {internal.length ? (
-        <div className="grid two">{internal.map((i) => <ItemCard key={i.id} item={i} />)}</div>
-      ) : <Empty>עוד אין פרויקטים. יש לכם משהו להראות? <Link to="/internal">ספרו לנו</Link></Empty>}
     </div>
   )
 }
