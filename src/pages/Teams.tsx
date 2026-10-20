@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { TeamProfile, supabase } from '../lib'
-import { DemoBadge, Empty, Headline, Skeletons } from '../components/ui'
+import { Empty, Headline, Skeletons } from '../components/ui'
+import { DemoNote, teamColor, teamInitials } from './Doc'
+import '../calm.css'
 
 export default function Teams() {
   const [teams, setTeams] = useState<TeamProfile[] | null>(null)
@@ -17,30 +19,34 @@ export default function Teams() {
   const anyDemo = (teams ?? []).some((t) => t.is_demo)
 
   return (
-    <div>
+    <div className="calm">
       <Headline light="ככה עובדים פה," black="צוות אחרי צוות" />
-      <p className="muted">באילו כלים כל צוות משתמש, איפה החומרים שלו ולמי פונים. רוצים תשובה מהירה? <Link to="/ask">שאלו את zap UP</Link>.</p>
-      {anyDemo && (
-        <div className="notice demo" style={{ margin: '12px 0' }}>
-          <DemoBadge /> הפרופילים כאן הם נתוני דמו להאקתון. בגרסה המלאה הם נבנים משיחה חודשית קצרה עם כל צוות ומהמקומות שכל צוות בחר לשתף.
-        </div>
-      )}
-      <input className="input" placeholder="חפשו צוות או כלי, למשל Looker Studio" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 14 }} />
-      {teams === null ? <Skeletons n={6} /> : shown.length ? (
-        <div className="grid three">
-          {shown.map((t) => (
-            <Link key={t.id} to={`/teams/${t.id}`} className="card link">
-              <div className="row" style={{ justifyContent: 'space-between' }}>
-                {t.vertical && <span className="badge">{t.vertical}</span>}
-                {t.is_demo && <DemoBadge />}
+      <p className="calm-lead">באילו כלים כל צוות עובד, ואיפה החומרים שלו. יש שאלה? שואלים את הצוות ישירות.</p>
+      <input className="input input-lg" placeholder="חיפוש צוות או כלי, למשל GA4" value={q} onChange={(e) => setQ(e.target.value)} />
+      {anyDemo && <p className="small muted" style={{ margin: '10px 0 0' }}><DemoNote /> הפרופילים כאן נבנו לדמו של ההאקתון.</p>}
+
+      <div style={{ marginTop: 'var(--s6, 24px)' }}>
+        {teams === null ? <Skeletons n={6} /> : shown.length ? (
+          <div className="teamgrid">
+            {shown.map((t) => (
+              <div key={t.id} className="teamcard">
+                <div className="teamcard-head">
+                  <span className="tavatar" style={{ background: teamColor(t.id) }} aria-hidden="true">{teamInitials(t.team)}</span>
+                  <div>
+                    <h3>{t.team}</h3>
+                    {t.vertical && <span className="small muted">{t.vertical}</span>}
+                  </div>
+                </div>
+                <p>{t.summary_he}</p>
+                <div className="teamcard-actions">
+                  <Link className="btn" to={`/agent?team=${t.id}`}>לשאול את הצוות</Link>
+                  <Link className="textlink" to={`/teams/${t.id}`}>לפרופיל</Link>
+                </div>
               </div>
-              <h3>{t.team}</h3>
-              <p className="muted small">{t.summary_he}</p>
-              <div className="meta">{t.tools.slice(0, 4).map((x) => <span key={x.name} className="badge">{x.name}</span>)}</div>
-            </Link>
-          ))}
-        </div>
-      ) : <Empty>לא מצאנו צוות כזה.</Empty>}
+            ))}
+          </div>
+        ) : <Empty>לא מצאנו צוות כזה. אולי בשם אחר?</Empty>}
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { useApp } from '../App'
 import {
   ALLOWED_DOMAIN, Budget, Profile, PurchaseCategory, PurchaseResult, PurchaseStatus, STATUS_LABEL, callFn, fmtMoney, supabase,
 } from '../lib'
+import '../calm.css'
 
 export type BuyInput = { item_id?: number; title: string; url: string; category: PurchaseCategory; price: number; reason?: string }
 export type BuyOutcome = PurchaseResult | 'no_manager' | 'error'
@@ -16,8 +17,8 @@ export async function buy(input: BuyInput): Promise<BuyOutcome> {
 }
 
 export function StatusChip({ status }: { status: PurchaseStatus }) {
-  const tone = status === 'declined' ? 'fail' : status === 'pending_manager' ? 'internal' : 'ok'
-  return <span className={`badge ${tone}`}>{STATUS_LABEL[status]}</span>
+  const tone = status === 'declined' ? 'no' : status === 'pending_manager' ? 'wait' : 'ok'
+  return <span className={`statuschip ${tone}`}>{STATUS_LABEL[status]}</span>
 }
 
 export function BudgetBar({ b }: { b: Budget }) {
@@ -36,7 +37,7 @@ export function BudgetBar({ b }: { b: Budget }) {
       )}
       {(b.bonus ?? 0) > 0 && (
         <div className="small" style={{ marginTop: 6, color: 'var(--green)', fontWeight: 700 }}>
-          🏆 כולל {fmtMoney(b.bonus!, b.currency)} בונוס, כי סיימתם את החודש שעבר בין המובילים בטבלה.
+          כולל {fmtMoney(b.bonus!, b.currency)} בונוס, כי סיימתם את החודש שעבר בין המובילים בטבלה.
         </div>
       )}
       {b.is_placeholder && (
@@ -60,16 +61,14 @@ export function ManagerPrompt({ onSaved }: { onSaved: () => void }) {
     const { data, error } = await supabase.from('profiles').update({ manager_email: email.trim().toLowerCase() })
       .eq('user_id', profile.user_id).select('*').single()
     setBusy(false)
-    if (error || !data) { setErr('לא הצלחנו לשמור. נסו שוב.'); return }
+    if (error || !data) { setErr('לא הצלחנו לשמור. שווה לנסות שוב.'); return }
     setProfile(data as Profile)
     onSaved()
   }
 
   return (
-    <form className="notice info" onSubmit={save} style={{ marginTop: 10 }}>
-      <div style={{ marginBottom: 8 }}>
-        זה מעל התקציב החודשי, אז צריך אישור מהמנהל/ת הישיר/ה. מה המייל שלהם?
-      </div>
+    <form className="notice info" onSubmit={save} style={{ marginTop: 12 }}>
+      <div style={{ marginBottom: 8 }}>זה מעל התקציב החודשי, אז צריך אישור ממי שמנהל אתכם. מה כתובת המייל?</div>
       <div className="row">
         <input className="input" style={{ flex: 1, minWidth: 200 }} dir="ltr" placeholder={`name${ALLOWED_DOMAIN}`}
           value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -82,12 +81,12 @@ export function ManagerPrompt({ onSaved }: { onSaved: () => void }) {
 
 export function BuyResult({ result, url }: { result: PurchaseResult; url?: string }) {
   if (result.status === 'pending_manager') {
-    return <div className="notice info" style={{ marginTop: 10 }}>מעל התקציב, שלחנו בקשה למנהל/ת. נעדכן כשתגיע תשובה.</div>
+    return <div className="notice info" style={{ marginTop: 12 }}>זה מעל התקציב, אז שלחנו בקשת אישור. נעדכן ברגע שתגיע תשובה.</div>
   }
   return (
-    <div className="notice ok" style={{ marginTop: 10 }}>
+    <div className="notice ok" style={{ marginTop: 12 }}>
       אושר אוטומטית. קונים עכשיו באתר עם הכרטיס הווירטואלי של zap UP.
-      {' '}נשארו לכם {fmtMoney(result.remaining, result.currency)} החודש.
+      {' '}נשארו {fmtMoney(result.remaining, result.currency)} החודש.
       {url && <> <a href={url} target="_blank" rel="noopener noreferrer">לאתר הרכישה ←</a></>}
     </div>
   )
