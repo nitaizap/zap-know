@@ -1,9 +1,7 @@
-import { XMLParser } from "npm:fast-xml-parser@4.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-
 // Shared helpers for zap KNOW edge functions.
 // LLM provider is a setting: demo runs on the Gemini free tier (public content and
 // demo data only); production switches LLM_PROVIDER=openrouter for internal data.
+import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 export const admin = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -245,13 +243,15 @@ export function weekStart(d = new Date()) {
   return x.toISOString().slice(0, 10);
 }
 
+// ---- weekly ----
 // Weekly run (Sunday morning):
 //  1. picks the 3 most important updates per topic (hot_week)
 //  2. the self-running engine: scores sources by what employees open/save, proposes new RSS
 //     feeds (validated before they're suggested) and flags weak ones; L&D decides in the swipe screen
-//  3. writes each employee's personal episode, voices it (Gemini TTS) and hands it to Zapier
-//     for delivery on Teams + email
+//  3. writes each employee's hyper-personal episode from a context pack of their own week,
+//     voices it (Gemini TTS) and sends it on Teams + email
 // ?only=hot|engine|episodes runs one step; ?email=x@d.co.il limits episodes to one person (demo).
+import { XMLParser } from "npm:fast-xml-parser@4.5.0";
 
 const week = weekStart();
 const SITE = Deno.env.get("SITE_URL") ?? "https://nitaizap.github.io/zap-know/";
@@ -361,74 +361,262 @@ async function voice(text: string, path: string) {
   return admin.storage.from("episodes").getPublicUrl(path).data.publicUrl;
 }
 
+// ---- The personal weekly episode ----------------------------------------------------------------
+// Each person gets a card (≤120 words) and ~2–3 minutes of audio, built from a context pack of
+// their own week: who they are, their numbers, what's waiting for them, what happened around them
+// and on zap UP, and picks with a personal why. Platform-wide facts are gathered once for everyone;
+// the personal ones in one batch per person. One LLM call + one TTS call per person, as before.
+
+type Row = Record<string, unknown>
+const DAY = 86_400_000
+const ilDay = (d: string | Date) => new Date(d).toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" })
+const LEVELS: [number, string][] = [[1500, "zapper על"], [700, "zapper מוביל"], [300, "zapper פעיל"], [100, "zapper סקרן"], [0, "zapper מתחיל"]]
+const levelOf = (p: number) => {
+  const i = LEVELS.findIndex(([from]) => p >= from)
+  return { name: LEVELS[i][1], next: i > 0 ? LEVELS[i - 1][0] : null }
+}
+const firstName = (n?: string | null) => (n ?? "").replace(/\(דמו\)/g, "").trim().split(/\s+/)[0] || null
+
+// Supabase returns at most 1000 rows per request: page through.
+async function all<T = Row>(make: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>): Promise<T[]> {
+  const out: T[] = []
+  for (let from = 0; from < 50_000; from += 1000) {
+    const { data, error } = await make(from, from + 999)
+    if (error) throw new Error(JSON.stringify(error))
+    const rows = (data ?? []) as T[]
+    out.push(...rows)
+    if (rows.length < 1000) break
+  }
+  return out
+}
+
+// Month ranks from a set of ledger rows: user → [rank, points].
+function ranks(rows: { user_id: string; pts: number }[]) {
+  const sum = new Map<string, number>()
+  for (const r of rows) sum.set(r.user_id, (sum.get(r.user_id) ?? 0) + r.pts)
+  const sorted = [...sum.entries()].sort((a, b) => b[1] - a[1])
+  const m = new Map<string, { rank: number; pts: number; above: number | null }>()
+  sorted.forEach(([u, p], i) => m.set(u, { rank: i + 1, pts: p, above: i > 0 ? sorted[i - 1][1] : null }))
+  return m
+}
+
+async function platformWeek() {
+  const since = new Date(`${week}T00:00:00+03:00`).toISOString()
+  const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString()
+  const [profiles, monthLedger, weekLedger, opens, likes, comments, docs, teams, budget] = await Promise.all([
+    all((a, b) => admin.from("profiles").select("user_id,display_name,role,is_demo").range(a, b)),
+    all((a, b) => admin.from("points_ledger").select("user_id,at,kind,pts").gte("at", monthStart).range(a, b)),
+    all((a, b) => admin.from("points_ledger").select("user_id,at,kind,pts").gte("at", since).range(a, b)),
+    all((a, b) => admin.from("events").select("user_id,item_id,at").eq("type", "open").gte("at", since).range(a, b)),
+    all((a, b) => admin.from("reactions").select("user_id,item_id,at").eq("value", 1).gte("at", since).range(a, b)),
+    all((a, b) => admin.from("comments").select("user_id,item_id,at").gte("at", since).range(a, b)),
+    admin.from("team_docs").select("id,title,team_id,updated_at,is_demo").gte("updated_at", since).order("updated_at", { ascending: false }).limit(20),
+    admin.from("team_profiles").select("id,team"),
+    admin.from("budget_settings").select("monthly_amount,currency,is_placeholder").eq("id", 1).maybeSingle(),
+  ])
+  const ml = monthLedger as { user_id: string; at: string; pts: number }[]
+  const rankNow = ranks(ml)
+  const rankBefore = ranks(ml.filter((r) => r.at < since))
+  // What zap UP talked about this week: opens + likes×2 + comments×3.
+  const score = new Map<number, number>()
+  const bump = (rows: Row[], w: number) => { for (const r of rows) score.set(r.item_id as number, (score.get(r.item_id as number) ?? 0) + w) }
+  bump(opens, 1); bump(likes, 2); bump(comments, 3)
+  const commentCount = new Map<number, number>()
+  for (const c of comments) commentCount.set(c.item_id as number, (commentCount.get(c.item_id as number) ?? 0) + 1)
+  const hotIds = [...score.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([id]) => id)
+  const [{ data: hot }, { data: freshHe }] = await Promise.all([
+    hotIds.length ? admin.from("items").select("id,title_he,why_he,topic_slug,lang,kind,minutes,doc_id,status").in("id", hotIds) : Promise.resolve({ data: [] }),
+    admin.from("items").select("id,title_he,why_he,topic_slug,lang,kind,minutes").eq("status", "approved").eq("lang", "he")
+      .neq("kind", "internal").gte("created_at", since).order("likes", { ascending: false }).limit(3),
+  ])
+  const hotItems = ((hot ?? []) as Row[]).filter((i) => i.status === "approved").sort((a, b) => (score.get(b.id as number) ?? 0) - (score.get(a.id as number) ?? 0))
+  const mostDiscussed = [...commentCount.entries()].sort((a, b) => b[1] - a[1])[0]
+  const { data: md } = mostDiscussed ? await admin.from("items").select("id,title_he").eq("id", mostDiscussed[0]).maybeSingle() : { data: null }
+  const teamName = new Map(((teams.data ?? []) as { id: number; team: string }[]).map((t) => [t.id, t.team]))
+  return {
+    since, monthStart,
+    people: new Map((profiles as { user_id: string; display_name: string | null; role: string | null; is_demo: boolean }[]).map((p) => [p.user_id, p])),
+    weekLedger: weekLedger as { user_id: string; kind: string; pts: number }[],
+    rankNow, rankBefore,
+    opens: opens as { user_id: string; item_id: number; at: string }[],
+    likes: likes as { user_id: string; item_id: number }[],
+    hotItems,
+    topHebrew: hotItems.find((i) => i.lang === "he" && i.kind !== "internal") ?? ((freshHe ?? []) as Row[])[0] ?? null,
+    mostDiscussed: md ? { title: (md as Row).title_he as string, comments: mostDiscussed![1] } : null,
+    docs: ((docs.data ?? []) as { id: number; title: string; team_id: number; is_demo: boolean }[]).map((d) => ({ ...d, team: teamName.get(d.team_id) ?? "" })),
+    budget: budget.data as { monthly_amount: number; currency: string; is_placeholder: boolean } | null,
+  }
+}
+type Week = Awaited<ReturnType<typeof platformWeek>>
+
+// One person's context pack. Only facts that exist; empty and zero values are left out.
+async function pack(p: Row, w: Week) {
+  const uid = p.user_id as string
+  const topics = (p.topics as string[] | null)?.length ? (p.topics as string[]) : []
+  const team = (p.role as string | null) ?? null
+  const [allPts, recentOpens, saves, later, prog, rem, watch, buys, bonus, mine, hotTopic] = await Promise.all([
+    all((a, b) => admin.from("points_ledger").select("pts").eq("user_id", uid).range(a, b)),
+    admin.from("events").select("item_id,at").eq("user_id", uid).eq("type", "open").gte("at", new Date(Date.now() - 45 * DAY).toISOString()).limit(1000),
+    admin.from("saves").select("item_id,created_at,items(title_he,status)").eq("user_id", uid).order("created_at", { ascending: false }).limit(30),
+    admin.from("listen_later").select("item_id,items(title_he,status)").eq("user_id", uid).limit(20),
+    admin.from("progress").select("item_id,lessons_done,updated_at,items(title_he,lesson_plan)").eq("user_id", uid).order("updated_at", { ascending: false }).limit(5),
+    admin.from("reminders").select("send_at,items(title_he),team_docs(title)").eq("user_id", uid).is("sent_at", null).lte("send_at", new Date(Date.now() + 7 * DAY).toISOString()).order("send_at").limit(5),
+    admin.from("topic_watch").select("topic_slug").eq("user_id", uid),
+    admin.from("purchases").select("price,status").eq("user_id", uid).eq("month", w.monthStart.slice(0, 10)),
+    admin.rpc("budget_bonus_for", { p_user: uid }),
+    admin.from("items").select("id,title_he").eq("author_user", uid).eq("status", "approved").limit(50),
+    topics.length ? admin.from("items").select("id,title_he,why_he,topic_slug,kind,minutes").in("topic_slug", topics).eq("status", "approved").eq("hot_week", week).limit(4) : Promise.resolve({ data: [] }),
+  ])
+
+  // Their week, in numbers.
+  const total = (allPts as { pts: number }[]).reduce((a, r) => a + r.pts, 0)
+  const lvl = levelOf(total)
+  const weekRows = w.weekLedger.filter((r) => r.user_id === uid)
+  const weekPts = weekRows.reduce((a, r) => a + r.pts, 0)
+  const now = w.rankNow.get(uid), before = w.rankBefore.get(uid)
+  const days = new Set(((recentOpens.data ?? []) as Row[]).map((r) => ilDay(r.at as string)))
+  let streak = 0
+  const d = new Date(); if (!days.has(ilDay(d))) d.setTime(d.getTime() - DAY)
+  while (days.has(ilDay(d))) { streak++; d.setTime(d.getTime() - DAY) }
+  const weekOpenIds = [...new Set(w.opens.filter((o) => o.user_id === uid).map((o) => o.item_id))]
+  const { data: mins } = weekOpenIds.length ? await admin.from("items").select("id,minutes").in("id", weekOpenIds) : { data: [] }
+  const minutes = ((mins ?? []) as { minutes: number | null }[]).reduce((a, i) => a + (i.minutes ?? 0), 0)
+  const progRows = (prog.data ?? []) as { item_id: number; lessons_done: number[]; updated_at: string; items: { title_he: string; lesson_plan: unknown[] } }[]
+  const finished = progRows.filter((r) => r.updated_at >= w.since && r.items?.lesson_plan?.length && r.lessons_done.length >= r.items.lesson_plan.length).map((r) => r.items.title_he)
+  const spent = ((buys.data ?? []) as { price: number; status: string }[]).filter((b) => ["auto_approved", "approved", "purchased"].includes(b.status)).reduce((a, b) => a + Number(b.price), 0)
+  const bonusAmt = Number(bonus.data ?? 0)
+
+  // Waiting for them.
+  const opened = new Set(((recentOpens.data ?? []) as Row[]).map((r) => r.item_id as number))
+  const savedUnopened = ((saves.data ?? []) as { item_id: number; items: { title_he: string; status: string } | null }[])
+    .filter((s) => s.items?.status === "approved" && !opened.has(s.item_id)).slice(0, 3).map((s) => s.items!.title_he)
+  const laterList = ((later.data ?? []) as { items: { title_he: string; status: string } | null }[]).filter((l) => l.items?.status === "approved").slice(0, 2).map((l) => l.items!.title_he)
+  const cont = progRows.find((r) => r.items?.lesson_plan?.length && r.lessons_done.length < r.items.lesson_plan.length)
+  const watched = ((watch.data ?? []) as { topic_slug: string }[]).map((x) => x.topic_slug)
+  const { data: watchNew } = watched.length
+    ? await admin.from("items").select("title_he").in("topic_slug", watched).eq("status", "approved").gte("created_at", w.since).limit(2) : { data: [] }
+
+  // Around them: reactions to their posts, their team, what their team published.
+  const postLikes = weekRows.filter((r) => r.kind === "post_liked").length
+  const postComments = weekRows.filter((r) => r.kind === "post_commented").length
+  const nameOf = (u: string) => { const x = w.people.get(u); return x ? `${firstName(x.display_name) ?? "עמית"}${x.is_demo ? " (דמו)" : ""}` : null }
+  const teammates = team ? [...w.people.values()].filter((x) => x.role === team && x.user_id !== uid).map((x) => x.user_id) : []
+  const teamLikes = w.likes.filter((l) => teammates.includes(l.user_id)).slice(0, 3)
+  const { data: tl } = teamLikes.length ? await admin.from("items").select("id,title_he").in("id", teamLikes.map((l) => l.item_id)) : { data: [] }
+  const tlTitle = new Map(((tl ?? []) as { id: number; title_he: string }[]).map((i) => [i.id, i.title_he]))
+  const teamDocs = w.docs.filter((x) => team && (x.team === team || x.team.includes(team) || team.includes(x.team))).slice(0, 2)
+  const otherDoc = w.docs.find((x) => !teamDocs.includes(x)) ?? null
+
+  // Picks: hot in their topics, plus one from outside them.
+  const inTopics = ((hotTopic.data ?? []) as Row[]).slice(0, 3)
+  const outside = w.hotItems.find((i) => !topics.includes(i.topic_slug as string) && !i.doc_id && !inTopics.some((x) => x.id === i.id))
+  const picks = [...inTopics, ...(outside ? [{ ...outside, outside: true }] : [])].slice(0, 5)
+  if (picks.length < 3) for (const i of w.hotItems) { if (picks.length >= 3) break; if (!picks.some((x) => x.id === i.id) && !i.doc_id) picks.push(i) }
+
+  const clean = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined && v !== 0 && v !== "" && !(Array.isArray(v) && !v.length)))
+  const ctx = {
+    who: clean({
+      first_name: firstName(p.display_name as string), team, level: lvl.name,
+      interests: topics, needs: p.needs as string[] | null, needs_note: p.needs_note as string | null,
+      minutes_available: p.weekly_time as string | null, language: p.english_ok === false ? "עברית בלבד" : "עברית קודם",
+    }),
+    their_week: clean({
+      points_this_week: weekPts, rank_this_month: now?.rank ?? null,
+      rank_change: now && before ? before.rank - now.rank : null,
+      points_to_next_place: now?.above != null ? now.above - now.pts + 1 : null,
+      points_to_next_level: lvl.next !== null ? lvl.next - total : null,
+      streak_days: streak > 1 ? streak : null, minutes_learned: minutes, finished: finished,
+      budget_left: w.budget && !w.budget.is_placeholder ? Math.max(0, w.budget.monthly_amount + bonusAmt - spent) : null,
+      budget_bonus: bonusAmt || null, currency: w.budget?.currency,
+    }),
+    waiting: clean({
+      saved_not_opened: savedUnopened, listen_later: laterList,
+      continue_course: cont ? `${cont.items.title_he} (${cont.lessons_done.length} מתוך ${cont.items.lesson_plan.length} שיעורים)` : null,
+      reminders_this_week: ((rem.data ?? []) as Row[]).map((r) => ((r.items as Row | null)?.title_he ?? (r.team_docs as Row | null)?.title) as string).filter(Boolean),
+      new_in_watched_topics: ((watchNew ?? []) as Row[]).map((x) => x.title_he as string),
+    }),
+    around: clean({
+      likes_on_my_posts: postLikes, comments_on_my_posts: postComments, my_posts_count: ((mine.data ?? []) as Row[]).length || null,
+      team_liked: teamLikes.map((l) => `${nameOf(l.user_id)} אהבו את "${tlTitle.get(l.item_id) ?? ""}"`).filter((x) => !x.includes('""')),
+      team_published: teamDocs.map((x) => `${x.title}${x.is_demo ? " (דמו)" : ""}`),
+    }),
+    zap_this_week: clean({
+      trending: w.hotItems.filter((i) => !i.doc_id).slice(0, 3).map((i) => i.title_he as string),
+      top_hebrew: (w.topHebrew?.title_he as string) ?? null,
+      most_discussed: w.mostDiscussed ? `${w.mostDiscussed.title} (${w.mostDiscussed.comments} תגובות)` : null,
+      new_team_doc: otherDoc ? `${otherDoc.title} (צוות ${otherDoc.team})` : null,
+    }),
+    picks: picks.map((i) => clean({ title: i.title_he, why: i.why_he, minutes: i.minutes, outside_my_topics: (i as Row).outside ? true : null })),
+  }
+  return { ctx, picks: picks.map((i) => i.id as number) }
+}
+
+const SEGMENTS = ["פתיחה אישית", "השבוע שלכם", "מה מחכה לכם", "קורה ב-zap", "ההמלצות שלכם", "המובילים", "מה עושים עכשיו"]
+
 async function episodes(onlyEmail?: string) {
   // Demo colleagues never get an episode: it would only burn AI/TTS quota and the 150s budget.
-  let q = admin.from("profiles").select("user_id,email,display_name,role,topics").eq("is_demo", false);
-  if (onlyEmail) q = q.eq("email", onlyEmail);
-  const { data: people } = await q;
-  const audio = (Deno.env.get("EPISODE_AUDIO") ?? "true") === "true";
+  let q = admin.from("profiles").select("user_id,email,display_name,role,topics,needs,needs_note,weekly_time,english_ok").eq("is_demo", false)
+  if (onlyEmail) q = q.eq("email", onlyEmail)
+  const { data: people } = await q
+  const audio = (Deno.env.get("EPISODE_AUDIO") ?? "true") === "true"
+  const w = await platformWeek()
   // Shout-out: the month's leading people and team, mentioned in every episode.
-  const lead = await admin.rpc("leaderboard_public", { p_scope: "people", p_limit: 3 });
-  const leadTeam = await admin.rpc("leaderboard_public", { p_scope: "teams", p_limit: 1 });
-  const shout = [
-    ...((lead.data ?? []) as { name: string; points: number }[]).map((x) => `${x.name} (${x.points} נק')`),
-  ].join(", ");
-  const shoutTeam = ((leadTeam.data ?? []) as { name: string }[])[0]?.name;
-  const sent: string[] = [];
+  const lead = await admin.rpc("leaderboard_public", { p_scope: "people", p_limit: 3 })
+  const leadTeam = await admin.rpc("leaderboard_public", { p_scope: "teams", p_limit: 1 })
+  const shout = ((lead.data ?? []) as { name: string; points: number }[]).map((x) => `${x.name} (${x.points} נק')`).join(", ")
+  const shoutTeam = ((leadTeam.data ?? []) as { name: string }[])[0]?.name
+  const sent: string[] = []
   for (const p of people ?? []) {
-    const topics = p.topics?.length ? p.topics : ["digital-marketing"];
-    const [{ data: hotItems }, { data: inside }, { data: prog }] = await Promise.all([
-      admin.from("items").select("id,title_he,why_he,topic_slug").in("topic_slug", topics).eq("status", "approved")
-        .eq("hot_week", week).limit(3),
-      admin.from("items").select("id,title_he,why_he").eq("kind", "internal").eq("status", "approved")
-        .order("created_at", { ascending: false }).limit(1),
-      admin.from("progress").select("item_id,lessons_done,items(title_he,lesson_plan)").eq("user_id", p.user_id)
-        .order("updated_at", { ascending: false }).limit(1),
-    ]);
-    const picks = [...(hotItems ?? []), ...(inside ?? [])];
-    if (!picks.length) continue;
-    const cont = prog?.[0] as unknown as { item_id: number; lessons_done: number[]; items: { title_he: string; lesson_plan: unknown[] } } | undefined;
-    const out = parseJson<{ card_he: string; script_he: string }>(await llm([
+    const { ctx, picks } = await pack(p as Row, w)
+    if (!picks.length && !Object.keys(ctx.their_week).length) continue
+    const out = parseJson<{ card_he: string; script_he: string; segments: string[] }>(await llm([
       { role: "system", content: VOICE },
       {
         role: "user",
-        content: `כתבו את הפרק השבועי האישי של zap UP${p.display_name ? ` ל${p.display_name}` : ""} (תפקיד: ${p.role ?? "לא צוין"}).
-card_he: כרטיס קצר לטימס ולמייל. פתיח של שורה, ואז שורה לכל פריט ("• כותרת: למה זה שווה לכם"). ${cont ? `בסוף שורה שמזמינה להמשיך את "${cont.items.title_he}" (סיימו ${cont.lessons_done.length} מתוך ${cont.items.lesson_plan.length} שיעורים).` : ""} עד 90 מילים.
-script_he: אותו תוכן כתסריט לאודיו של כ-2 דקות, משפטים קצרים לדיבור, בלי סימנים ובלי קישורים.
-JSON בלבד.
+        content: `כתבו את הפרק השבועי האישי של zap UP, היפר-אישי, מתוך חבילת ההקשר (JSON) שלמטה בלבד.
+פונים ${ctx.who.first_name ? `בשם הפרטי "${ctx.who.first_name}" (פעם אחת, בפתיחה)` : 'בלי שם ("היי,")'}. לשון רבים או ניטרלית, zap באותיות קטנות, בלי "...", לכל היותר "!" אחד.
+מבנה, לפי הסדר: ${SEGMENTS.slice(0, 5).join(" → ")} → פרגון קצר למובילים → שורת קריאה לפעולה אחת.
+- מדלגים על כל חלק שאין לו נתונים. לעולם לא ממציאים מספרים, שמות או פריטים, ולא מזכירים אפסים.
+- "השבוע שלכם": המספרים שבחבילה בלבד (נקודות, מקום ושינוי, כמה חסר למקום הבא, רצף, דקות, מה סיימו, תקציב).
+- "ההמלצות שלכם": 3-5 הפריטים מ-picks, לכל אחד שורה אחת למה דווקא להם (לפי who). פריט עם outside_my_topics מוצג כ"אולי יפתיע אתכם".
+- שמות עם "(דמו)" הם עמיתי דמו: אם מזכירים אותם, משאירים את הסימון.
+card_he: כרטיס לטימס ולמייל, עד 120 מילים, שורה קצרה לכל חלק ("• ..." לפריטים).
+script_he: תסריט לאודיו, 300-350 מילים, משפטים קצרים לדיבור, בלי סימנים, בלי קישורים ובלי כותרות.
+segments: רשימת שמות החלקים שנכללו בפועל, מתוך: ${SEGMENTS.join(", ")}.
+JSON בלבד: {"card_he","script_he","segments"}
 
-פריטים:
-${picks.map((i) => `- ${i.title_he}: ${i.why_he ?? ""}`).join("\n")}
-${shout ? `שורת סיום קצרה וחמה שמפרגנת למובילים של החודש בטבלת הנקודות: ${shout}${shoutTeam ? `, והצוות המוביל: ${shoutTeam}` : ""}.` : ""}`,
+${shout ? `המובילים החודש: ${shout}${shoutTeam ? `; הצוות המוביל: ${shoutTeam}` : ""}.` : ""}
+חבילת ההקשר:
+${JSON.stringify(ctx)}`,
       },
-    ], true));
-    let audioUrl: string | null = null;
+    ], true))
+    let audioUrl: string | null = null
     if (audio) {
-      try { audioUrl = await voice(out.script_he, `${week}/${p.user_id}.wav`); } catch (e) {
-        await log("weekly-tts", false, { email: p.email, error: String(e) });
+      try { audioUrl = await voice(out.script_he, `${week}/${p.user_id}.wav`) } catch (e) {
+        await log("weekly-tts", false, { email: p.email, error: String(e) })
       }
     }
-    await admin.from("episodes").upsert({
-      user_id: p.user_id, week, body_he: out.card_he, item_ids: picks.map((i) => i.id), audio_url: audioUrl,
-    }, { onConflict: "user_id,week" });
+    const segments = (out.segments ?? []).filter((s) => SEGMENTS.includes(s))
+    const row = { user_id: p.user_id, week, body_he: out.card_he, item_ids: picks, audio_url: audioUrl }
+    // segments needs patch-020; without it the episode is still saved.
+    const { error } = await admin.from("episodes").upsert({ ...row, segments }, { onConflict: "user_id,week" })
+    if (error) await admin.from("episodes").upsert(row, { onConflict: "user_id,week" })
     const ok = await notify({
       kind: "episode", to: p.email,
-      subject: "הפרק השבועי שלכם ב-zap UP",
+      subject: ctx.who.first_name ? `${ctx.who.first_name}, הפרק השבועי שלכם ב-zap UP` : "הפרק השבועי שלכם ב-zap UP",
       html: mail("הפרק השבועי שלכם", out.card_he.split("\n").filter(Boolean), [
-        ...(audioUrl ? [{ label: "להאזנה (2 דקות)", url: audioUrl }] : []),
+        ...(audioUrl ? [{ label: "להאזנה (3 דקות)", url: audioUrl }] : []),
         { label: "לפתוח את zap UP", url: SITE, primary: !audioUrl },
       ]),
-      teams_text: `${out.card_he}${audioUrl ? `
-להאזנה: ${audioUrl}` : ""}
-${SITE}`,
+      teams_text: `${out.card_he}${audioUrl ? `\nלהאזנה: ${audioUrl}` : ""}\n${SITE}`,
       teams_to: p.email,
-    });
+    })
     if (ok) {
-      await admin.from("episodes").update({ sent_at: new Date().toISOString() }).eq("user_id", p.user_id).eq("week", week);
-      sent.push(p.email);
+      await admin.from("episodes").update({ sent_at: new Date().toISOString() }).eq("user_id", p.user_id).eq("week", week)
+      sent.push(p.email)
     }
   }
-  return { sent };
+  return { sent }
 }
 
 Deno.serve(async (req) => {

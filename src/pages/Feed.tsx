@@ -33,7 +33,7 @@ export type FeedSource = 'all' | 'external' | 'internal' | 'bites' | 'saved' | '
 type FeedItem = Item & { reason?: string | null }
 type TeamLite = { id: number; team: string }
 type DocLite = { id: number; team_id: number; body_md?: string | null; tools?: string[] | null }
-type Episode = { week: string; body_he: string; audio_url: string | null; items: Item[] }
+type Episode = { week: string; body_he: string; audio_url: string | null; items: Item[]; segments?: string[] }
 type Quote = { comment_id: number; item_id: number; item_title: string; body: string; author: string; user_id: string | null; team: string | null }
 type Entry =
   | { t: 'item'; item: FeedItem }
@@ -208,9 +208,9 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
   // The home feed also carries the weekly episode, the monthly leaders and what colleagues wrote.
   useEffect(() => {
     if (source !== 'all') return
-    supabase.from('episodes').select('week,body_he,audio_url,item_ids').order('week', { ascending: false }).limit(1).maybeSingle()
+    supabase.from('episodes').select('*').order('week', { ascending: false }).limit(1).maybeSingle()
       .then(async ({ data }) => {
-        const e = data as { week: string; body_he: string; audio_url: string | null; item_ids: number[] } | null
+        const e = data as { week: string; body_he: string; audio_url: string | null; item_ids: number[]; segments?: string[] } | null
         if (!e || !e.item_ids?.length) return
         setEpisode({ ...e, items: await fetchItems(e.item_ids.slice(0, 4)) })
       })
@@ -1011,6 +1011,7 @@ function EpisodeSlide({ ep, index }: { ep: Episode; index: number }) {
       <div className="fd-inner tk-special tk-episode">
         <span className="tk-kicker">הפרק השבועי שלכם</span>
         <h2>מה שווה להכיר השבוע</h2>
+        {(ep.segments?.length ?? 0) > 0 && <div className="tk-ep-segs">{ep.segments!.map((x) => <span key={x}>{x}</span>)}</div>}
         <ol className="tk-ep-list">
           {ep.items.map((i, n) => (
             <li key={i.id}>

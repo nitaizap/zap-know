@@ -447,3 +447,7 @@
 }
 .mcar .mc { height: 100%; }
 @media (prefers-reduced-motion: reduce) { .mcar-metro button { transition: none; } }
+
+/* The weekly episode: its segments as chips. */
+.tk-ep-segs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tk-ep-segs span { font-size: 13px; font-weight: 700; padding: 4px 11px; border-radius: 999px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .3); }
