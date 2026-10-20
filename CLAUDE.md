@@ -32,7 +32,7 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 - Pushing: the owner's team pulls master into another repo. Commit and push master after every working change, always pull --rebase first, never force-push master.
 
 ## Data model (apply in order)
-`supabase/schema.sql`, then `patch-001` … `patch-019` (016 AI cap, 017 docs as items, 018 Hebrew sources, 019 AI avatar + item_likers, 020 episode segments), then seeds: `seed.sql` (demo items, teams),
+`supabase/schema.sql`, then `patch-001` … `patch-019` (016 AI cap, 017 docs as items, 018 Hebrew sources, 019 AI avatar + item_likers, 020 episode segments, 021 playable: channel video ids + Hebrew YouTube sources), then seeds: `seed.sql` (demo items, teams),
 `seed-demo-people.sql` (15 demo colleagues on `@zap-up.invalid`, marked "(דמו)"),
 `seed-team-docs.sql` (36 team docs). Cleanup of demo people: `delete from auth.users where email like '%@zap-up.invalid';`
 
@@ -56,5 +56,5 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 ## Working in parallel (two Claude accounts)
 - Work on a branch and open a PR; or agree file ownership before starting. Pull with
   `git pull --rebase --autostash` before every push.
-- Announce SQL patches by number (next free: `patch-021`). Never edit an applied patch; add a new one.
+- Announce SQL patches by number (next free: `patch-022`). Never edit an applied patch; add a new one.
 - Commit messages end with the Co-Authored-By / Claude-Session lines your session gives you.
