@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
 import { Budget, ITEM_COLS, Item, loadBudget, supabase, weekStart } from '../lib'
-import { Empty, Headline, ItemCard, MetroLine, Skeletons } from '../components/ui'
+import { Empty, EpisodeCard, Headline, ItemCard, MetroLine, Skeletons } from '../components/ui'
 import { BudgetBar } from '../components/budget'
 import { FeedRow, loadFeed, reasonChips } from '../components/social'
 import { LeaderTeaser } from '../components/points'
@@ -143,12 +143,11 @@ export default function Home() {
   }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <MetroLine top={10} />
-      <Headline light={`היי ${firstName}, זה השבוע שלכם`} black="מה חדש בתחום" />
-      <div className="small" style={{ margin: '-6px 0 12px' }}>
-        <Link to="/me" style={{ fontWeight: 600 }}>האזור שלי וההעדפות ←</Link>
-      </div>
+    <div>
+      <Headline light={`היי ${firstName}, זה השבוע שלכם`} black="מה חדש בתחום">
+        <MetroLine top={6} />
+        <Link to="/me" className="hero-link">האזור שלי וההעדפות ←</Link>
+      </Headline>
 
       {!profile.display_name && (
         <div className="card" style={{ marginBottom: 14 }}>
@@ -161,26 +160,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="card episode">
-        <div className="tile" />
-        <div className="hand">הפרק השבועי שלכם</div>
-        <h3>3 דברים ששווה להכיר השבוע</h3>
-        {loading ? <p>אוספים בשבילכם</p> : episodeItems.length === 0 ? (
-          <p>עוד אין תוכן מאושר בנושאים שבחרתם. הוא מגיע עם האיסוף הבא.</p>
-        ) : (
-          <ol>
-            {episodeItems.map((i) => (
-              <li key={i.id}><Link to={`/item/${i.id}`}>{i.title_he}</Link></li>
-            ))}
-          </ol>
-        )}
-        {episode?.audio_url && (
-          <audio controls src={episode.audio_url} style={{ width: '100%', marginTop: 12 }} />
-        )}
-        <p className="small" style={{ marginTop: 12, opacity: .85 }}>
-          {episode ? 'הפרק הזה נשלח גם ב-Teams ובמייל.' : 'כל שבוע מגיע פרק חדש ב-Teams ובמייל, לפי הנושאים שבחרתם.'}
-        </p>
-      </div>
+      <EpisodeCard items={episodeItems} loading={loading} audioUrl={episode?.audio_url} sent={!!episode} />
 
       <LeaderTeaser />
 

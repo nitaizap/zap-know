@@ -33,6 +33,8 @@ export type Item = {
   saves: number
   is_demo: boolean
   created_at: string
+  thumbnail_url?: string | null
+  preview_video_id?: string | null
 }
 
 export type TeamProfile = {
@@ -144,8 +146,19 @@ export function fmtDate(s: string | null | undefined): string {
   return new Date(s).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: 'numeric' })
 }
 
-export const ITEM_COLS =
+const BASE_COLS =
   'id,kind,topic_slug,verticals,title_he,title_orig,summary_he,why_he,lesson_plan,source_name,source_url,published_at,summarized_at,ai_summarized,status,hot_week,opens,saves,is_demo,created_at'
+
+// Media columns (thumbnail, YouTube preview) are newer; include them only once the database has
+// them, so an older schema never breaks a page. ITEM_COLS is a live binding: probeMediaCols()
+// upgrades it for every importer.
+export let ITEM_COLS: typeof BASE_COLS = BASE_COLS
+export async function probeMediaCols() {
+  const { error } = await supabase.from('items').select('thumbnail_url,preview_video_id').limit(1)
+  // Typed as the base list so supabase-js keeps inferring rows; the extra fields are optional on Item.
+  ITEM_COLS = (error ? BASE_COLS : `${BASE_COLS},thumbnail_url,preview_video_id`) as typeof BASE_COLS
+  return !error
+}
 
 // Calls a Supabase edge function with the signed-in user's token.
 export async function callFn<T>(name: string, body: unknown): Promise<T> {

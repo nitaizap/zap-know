@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { Suspense, createContext, lazy, useContext, useEffect, useState } from 'react'
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
-import { Profile, Topic, supabase } from './lib'
+import { Profile, Topic, probeMediaCols, supabase } from './lib'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
@@ -18,6 +18,11 @@ import BudgetPage from './pages/Budget'
 import Me from './pages/Me'
 import Leaderboard from './pages/Leaderboard'
 import { PointsPill, Toaster } from './components/points'
+import { IBook, IChat, IClose, IGrid, IHome, ILogout, IMenu, INews, IPlay, IShield, ITrophy, IUser, IUsers, IWallet } from './components/icons'
+
+// The TikTok-style feed lives in its own file (built separately); the route appears once it exists.
+const feedModules = import.meta.glob('./pages/Feed.tsx')
+const Feed = feedModules['./pages/Feed.tsx'] ? lazy(feedModules['./pages/Feed.tsx'] as () => Promise<{ default: React.ComponentType }>) : null
 
 type Ctx = {
   session: Session
@@ -45,8 +50,11 @@ export default function App() {
 
   useEffect(() => {
     if (!session) { setProfile(session === null ? null : undefined); return }
-    supabase.from('profiles').select('*').eq('user_id', session.user.id).maybeSingle()
-      .then(({ data }) => setProfile((data as Profile) ?? null))
+    // Probe the optional media columns before any page queries items.
+    Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', session.user.id).maybeSingle(),
+      probeMediaCols(),
+    ]).then(([{ data }]) => setProfile((data as Profile) ?? null))
     supabase.from('topics').select('*').order('sort')
       .then(({ data }) => setTopics((data as Topic[]) ?? []))
   }, [session])
@@ -59,36 +67,11 @@ export default function App() {
 
   return (
     <AppCtx.Provider value={{ session, profile, topics, setProfile }}>
-      <div className="app">
-        <div className="texture" />
-        <header className="topbar">
-          <div className="container">
-            <NavLink to="/" className="brand" aria-label="zap UP">
-              <img src="/zap-know/img/zap-group.svg" alt="zap group" />
-              <span className="brand-name"><b>UP</b><small><bdi dir="ltr">zap KNOW</bdi> · מרכז הלמידה והידע של zap</small></span>
-            </NavLink>
-            <nav className="topnav">
-              <NavLink to="/" end>הבית שלי</NavLink>
-              <NavLink to="/leaderboard">הטבלה</NavLink>
-              <NavLink to="/topics">נושאים</NavLink>
-              <NavLink to="/library">מאגר</NavLink>
-              <NavLink to="/internal">קורה ב-zap</NavLink>
-              <NavLink to="/teams">איך עובדים פה</NavLink>
-              <NavLink to="/ask">שאלו את zap UP</NavLink>
-              <NavLink to="/me">האזור שלי</NavLink>
-              <NavLink to="/budget">התקציב שלי</NavLink>
-              {profile.is_admin && <NavLink to="/admin">אישורים</NavLink>}
-            </nav>
-            <PointsPill />
-            <NavLink to="/me" className="me-link" aria-label="האזור שלי">
-              <span className="me-avatar">{(profile.display_name || profile.email).trim().charAt(0).toUpperCase()}</span>
-              <span className="me-text">האזור שלי</span>
-            </NavLink>
-          </div>
-        </header>
-        <main className="container">
+      <Shell profile={profile}>
+        <main className="container main">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/feed" element={Feed ? <Suspense fallback={<div className="skeleton" style={{ marginTop: 28 }} />}><Feed /></Suspense> : <Home />} />
             <Route path="/topics" element={<Topics />} />
             <Route path="/topic/:slug" element={<TopicPage />} />
             <Route path="/library" element={<Library />} />
@@ -104,21 +87,107 @@ export default function App() {
             <Route path="*" element={<Home />} />
           </Routes>
           <footer className="footer">
-            zap UP · Learn. Level Up. zap. · התקצירים נכתבים ב-AI מתוך מידע פומבי על כל קורס ועדכון, וכל פריט מוביל למקור המקורי.
-            מצאתם טעות? יש כפתור "דווח על טעות" בכל פריט.
-            {' '}
-            <button className="chip" style={{ fontSize: 12, padding: '2px 10px' }} onClick={() => supabase.auth.signOut()}>יציאה</button>
+            <div className="footer-brand"><b>zap UP</b> <bdi dir="ltr">Learn. Level Up. zap.</bdi></div>
+            <p>
+              <bdi dir="ltr">zap KNOW</bdi>, מרכז הלמידה והידע של zap. התקצירים נכתבים ב-AI מתוך מידע פומבי, וכל פריט מוביל למקור.
+              מצאתם טעות? בכל פריט יש "דווח על טעות".
+            </p>
           </footer>
         </main>
-        <nav className="tabbar">
-          <NavLink to="/" end><span className="ico">⌂</span>הבית</NavLink>
-          <NavLink to="/topics"><span className="ico">▦</span>נושאים</NavLink>
-          <NavLink to="/ask"><span className="ico">✦</span>שאלו</NavLink>
-          <NavLink to="/leaderboard"><span className="ico">🏆</span>הטבלה</NavLink>
-          <NavLink to="/me"><span className="ico">☺</span>האזור שלי</NavLink>
-        </nav>
-        <Toaster />
-      </div>
+      </Shell>
+      <Toaster />
     </AppCtx.Provider>
+  )
+}
+
+// Primary destinations stay in the header; everything else lives in the "עוד" menu, so the nav
+// is always one line. Below 1024px the header collapses to a drawer and the bottom tab bar.
+const PRIMARY = [
+  { to: '/', label: 'הבית', icon: IHome, end: true },
+  { to: '/feed', label: 'פיד', icon: IPlay },
+  { to: '/topics', label: 'נושאים', icon: IGrid },
+  { to: '/library', label: 'מאגר', icon: IBook },
+  { to: '/internal', label: 'קורה ב-zap', icon: INews },
+  { to: '/leaderboard', label: 'הטבלה', icon: ITrophy },
+  { to: '/ask', label: 'שאלו', icon: IChat },
+]
+
+function Shell({ profile, children }: { profile: Profile; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const [more, setMore] = useState(false)
+  const loc = useLocation()
+  useEffect(() => { setOpen(false); setMore(false) }, [loc.pathname])
+
+  const secondary = [
+    { to: '/me', label: 'האזור שלי', icon: IUser },
+    { to: '/teams', label: 'איך עובדים פה', icon: IUsers },
+    { to: '/budget', label: 'התקציב שלי', icon: IWallet },
+    ...(profile.is_admin ? [{ to: '/admin', label: 'אישורים וניהול', icon: IShield }] : []),
+  ]
+  const initial = (profile.display_name || profile.email).trim().charAt(0).toUpperCase()
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <div className="container topbar-in">
+          <NavLink to="/" className="brand" aria-label="zap UP, הבית">
+            <img src="/zap-know/img/zap-group.svg" alt="zap group" />
+            <span className="brand-up">UP</span>
+          </NavLink>
+
+          <nav className="topnav" aria-label="ניווט ראשי">
+            {PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}>{n.label}</NavLink>)}
+            <div className={`more ${more ? 'open' : ''}`}>
+              <button className="more-btn" aria-expanded={more} onClick={() => setMore((m) => !m)}>עוד</button>
+              {more && (
+                <div className="more-menu" role="menu">
+                  {secondary.map((n) => <NavLink key={n.to} to={n.to} role="menuitem"><n.icon size={18} />{n.label}</NavLink>)}
+                  <button role="menuitem" onClick={() => supabase.auth.signOut()}><ILogout size={18} />יציאה</button>
+                </div>
+              )}
+            </div>
+          </nav>
+
+          <div className="topbar-end">
+            <PointsPill />
+            <NavLink to="/me" className="me-link" aria-label="האזור שלי">
+              <span className="me-avatar">{initial}</span>
+            </NavLink>
+            <button className="icon-btn menu-btn" aria-label="תפריט" aria-expanded={open} onClick={() => setOpen(true)}><IMenu /></button>
+          </div>
+        </div>
+      </header>
+
+      {open && (
+        <div className="drawer-wrap" onClick={() => setOpen(false)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="תפריט">
+            <div className="drawer-head">
+              <span className="brand"><img src="/zap-know/img/zap-group.svg" alt="zap group" /><span className="brand-up">UP</span></span>
+              <button className="icon-btn" aria-label="סגירה" onClick={() => setOpen(false)}><IClose /></button>
+            </div>
+            <div className="drawer-me">
+              <span className="me-avatar">{initial}</span>
+              <div><b>{profile.display_name || profile.email.split('@')[0]}</b><div className="small muted">{profile.role ?? ''}</div></div>
+            </div>
+            <nav className="drawer-nav">
+              {[...PRIMARY, ...secondary].map((n) => (
+                <NavLink key={n.to} to={n.to} end={'end' in n ? Boolean(n.end) : undefined}><n.icon />{n.label}</NavLink>
+              ))}
+              <button onClick={() => supabase.auth.signOut()}><ILogout />יציאה</button>
+            </nav>
+          </aside>
+        </div>
+      )}
+
+      {children}
+
+      <nav className="tabbar" aria-label="ניווט">
+        <NavLink to="/feed"><IPlay size={22} /><span>פיד</span></NavLink>
+        <NavLink to="/" end><IHome size={22} /><span>הבית</span></NavLink>
+        <NavLink to="/ask"><IChat size={22} /><span>שאלו</span></NavLink>
+        <NavLink to="/leaderboard"><ITrophy size={22} /><span>הטבלה</span></NavLink>
+        <NavLink to="/me"><IUser size={22} /><span>שלי</span></NavLink>
+      </nav>
+    </div>
   )
 }

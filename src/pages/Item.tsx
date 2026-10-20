@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useApp } from '../App'
 import { ITEM_COLS, Item, PurchaseResult, fmtMoney, supabase, track } from '../lib'
-import { Empty, ItemMeta, Skeletons } from '../components/ui'
+import { Empty, ItemMeta, MediaHero, Skeletons } from '../components/ui'
 import { BuyResult, ManagerPrompt, buy } from '../components/budget'
 import { Comments, ReactionBar } from '../components/social'
 import { earn } from '../components/points'
@@ -117,6 +117,7 @@ export default function ItemPage() {
       </h1>
       {item.title_orig && <div className="small muted" dir="auto">{item.title_orig}</div>}
       <ItemMeta item={item} />
+      <MediaHero item={item} />
       {item.verticals.length > 0 && (
         <div className="chips">{item.verticals.map((v) => <span key={v} className="badge">{v}</span>)}</div>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { supabase } from '../lib'
+import { IBolt } from './icons'
 
 // Mirrors points_ledger in supabase/patch-006-points.sql. The server is the source of truth;
 // these are only for the rules panel and the instant "+N" feedback.
@@ -127,7 +128,7 @@ export function PointsPill() {
   if (!p) return null
   return (
     <NavLink to="/me" className="pts-pill" aria-label={`${p.month} נקודות החודש, ${p.level.name}`}>
-      <span className="pts-bolt">⚡</span>
+      <IBolt size={16} className="pts-bolt" />
       <b>{p.month.toLocaleString('he-IL')}</b>
       <span className="pts-level">{p.level.name}</span>
     </NavLink>

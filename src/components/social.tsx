@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Item, callFn, supabase } from '../lib'
 import { earn } from './points'
+import { IClose, IComment, IShare, IThumbDown, IThumbUp } from './icons'
 
 export type Social = { likes: number; dislikes: number; comments_count: number; shares_count: number; mine: 1 | -1 | null }
 
@@ -84,16 +85,17 @@ export function ReactionBar({ item, onComments }: { item: Item; onComments?: () 
   return (
     <>
       <div className="reactbar">
-        <button className={`rb ${s.mine === 1 ? 'on' : ''}`} aria-label="אהבתי" aria-pressed={s.mine === 1}
-          onClick={(e) => { stop(e); react(item.id, 1) }}>👍 <span>{s.likes}</span></button>
-        <button className={`rb ${s.mine === -1 ? 'on neg' : ''}`} aria-label="לא בשבילי" aria-pressed={s.mine === -1}
-          onClick={(e) => { stop(e); react(item.id, -1) }}>👎 <span>{s.dislikes}</span></button>
+        <button className={`rb ${s.mine === 1 ? 'on' : ''}`} aria-label={`אהבתי, ${s.likes}`} aria-pressed={s.mine === 1}
+          onClick={(e) => { stop(e); react(item.id, 1) }}><IThumbUp size={18} /><span>{s.likes}</span></button>
+        <button className={`rb ${s.mine === -1 ? 'on neg' : ''}`} aria-label={`לא בשבילי, ${s.dislikes}`} aria-pressed={s.mine === -1}
+          onClick={(e) => { stop(e); react(item.id, -1) }}><IThumbDown size={18} /><span>{s.dislikes}</span></button>
         {onComments ? (
-          <button className="rb" aria-label="תגובות" onClick={(e) => { stop(e); onComments() }}>💬 <span>{s.comments_count}</span></button>
+          <button className="rb" aria-label={`תגובות, ${s.comments_count}`} onClick={(e) => { stop(e); onComments() }}><IComment size={18} /><span>{s.comments_count}</span></button>
         ) : (
-          <Link className="rb" aria-label="תגובות" to={`/item/${item.id}#comments`}>💬 <span>{s.comments_count}</span></Link>
+          <Link className="rb" aria-label={`תגובות, ${s.comments_count}`} to={`/item/${item.id}#comments`}><IComment size={18} /><span>{s.comments_count}</span></Link>
         )}
-        <button className="rb share" onClick={(e) => { stop(e); setSharing(true) }}>שיתוף{s.shares_count ? <span> {s.shares_count}</span> : null}</button>
+        <button className="rb share" aria-label={`שיתוף${s.shares_count ? `, שותף ${s.shares_count} פעמים` : ''}`} title="שיתוף"
+          onClick={(e) => { stop(e); setSharing(true) }}><IShare size={18} />{s.shares_count ? <span>{s.shares_count}</span> : null}</button>
       </div>
       {sharing && <ShareSheet item={item} onClose={() => setSharing(false)} />}
     </>
@@ -154,7 +156,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
       <div className="sheet card" role="dialog" aria-label="שיתוף" onClick={(e) => e.stopPropagation()}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h3 style={{ margin: 0 }}>שיתוף</h3>
-          <button className="chip" onClick={onClose} aria-label="סגירה">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label="סגירה"><IClose /></button>
         </div>
         <p className="small muted" style={{ margin: '4px 0 12px' }}>{item.title_he}</p>
 

@@ -24,8 +24,9 @@ export default function Leaderboard() {
 
   return (
     <div style={{ position: 'relative' }}>
-      <MetroLine top={10} />
-      <Headline light="מי לומד, משתף ומשתדרג הכי הרבה," black="הטבלה" hand="בהצלחה" />
+      <Headline light="מי לומד, משתף ומשתדרג הכי הרבה," black="הטבלה" hand="בהצלחה">
+        <MetroLine top={6} />
+      </Headline>
 
       <div className="board-controls">
         <div className="seg" role="tablist" aria-label="מי מתחרה">
