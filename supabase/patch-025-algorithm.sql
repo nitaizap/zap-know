@@ -234,9 +234,9 @@ begin
   ),
   normed as (
     select r.*,
-      coalesce((r.pers - min(r.pers) over ()) / nullif(max(r.pers) over () - min(r.pers) over (), 0), 0.5) as pn,
-      coalesce((r.team - min(r.team) over ()) / nullif(max(r.team) over () - min(r.team) over (), 0), 0.5) as tn,
-      coalesce((r.plat - min(r.plat) over ()) / nullif(max(r.plat) over () - min(r.plat) over (), 0), 0.5) as pln
+      coalesce((r.pers - min(r.pers) over ()) / nullif(max(r.pers) over () - min(r.pers) over (), 0), 0.5)::numeric as pn,
+      coalesce((r.team - min(r.team) over ()) / nullif(max(r.team) over () - min(r.team) over (), 0), 0.5)::numeric as tn,
+      coalesce((r.plat - min(r.plat) over ()) / nullif(max(r.plat) over () - min(r.plat) over (), 0), 0.5)::numeric as pln
     from raw r
   ),
   labelled as (
