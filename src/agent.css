@@ -146,3 +146,14 @@ a.ag-tool:hover { background: var(--navy-20, #c1cade); }
   .ag-caret, .ag-typing i { animation: none; }
   .ag-avatar, .ag-starter { transition: none; }
 }
+/* The page agents (PageAgent) reuse the thread styles, so they need the same tokens. */
+.pa {
+  --ag-navy: var(--navy, #052b7a);
+  --ag-dark: var(--dark, #001c32);
+  --ag-muted: var(--muted, #4d6070);
+  --ag-line: var(--line, #e6e8eb);
+  --ag-surface: var(--surface, #fff);
+  --ag-bg: var(--bg, #f6f7f9);
+  --ag-radius: var(--radius, 12px);
+  --ag-shadow: var(--shadow-2, 0 1px 2px rgba(0, 28, 50, .05), 0 8px 24px rgba(0, 28, 50, .07));
+}

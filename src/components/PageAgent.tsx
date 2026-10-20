@@ -95,7 +95,8 @@ export function PageAgent({ mode, placeholder, starters, teams, defaultTeamId }:
     setBusy(true)
     try {
       const res = await callFn<AskReply>('ask', { question: q, history, mode, ...(teamId ? { team_id: teamId } : {}) })
-      const content = res.answer_he || 'לא מצאנו תשובה הפעם. שווה לנסח אחרת.'
+      // The model cites sources as [T0]/[E4]; the source cards already show them.
+      const content = (res.answer_he ?? '').replace(/\s*\[[A-Z]\d+\]/g, '').trim() || 'לא מצאנו תשובה הפעם. שווה לנסח אחרת.'
       setMsgs((m) => [...m, {
         role: 'assistant', content, sources: res.sources ?? [], followups: (res.followups ?? []).slice(0, 3),
         contact: res.contact ?? null, shown: reduceMotion ? content.length : 0,

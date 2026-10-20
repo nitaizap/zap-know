@@ -129,6 +129,8 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
   const [menu, setMenu] = useState(false)
   const loc = useLocation()
   useEffect(() => { setOpen(false); setMenu(false) }, [loc.pathname])
+  // A new page starts at the top; /me#section scrolls itself.
+  useEffect(() => { if (!loc.hash) window.scrollTo(0, 0) }, [loc.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="app">
