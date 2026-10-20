@@ -33,9 +33,10 @@ export function proxied(url: string, w = 1080): string {
   return `https://images.weserv.nl/?url=${encodeURIComponent(u)}&w=${w}&output=webp&we&il`
 }
 
-// A real capture of the page at desktop width, tall enough to scroll through.
+// A real capture of the page at desktop width, tall enough to scroll through. Straight from
+// thum.io: through weserv it 404s (the audit showed it), and thum.io already serves https at size.
 export const pageShot = (url: string, w = 1080) =>
-  proxied(`https://image.thum.io/get/width/${w}/crop/2200/viewportWidth/1280/noanimate/${url}`, w)
+  `https://image.thum.io/get/width/${w}/crop/2200/viewportWidth/1280/noanimate/${url}`
 
 export function choosePreview(i: PreviewInput): Preview {
   const thumb = (i.thumbnail_url ?? '').trim()

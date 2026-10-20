@@ -16,6 +16,7 @@ import { AiButton } from '../components/AiSheet'
 import { teamColor, teamInitials } from './Doc'
 import { DocPreview, previewLines } from '../components/ui'
 import { Layer } from '../components/Layer'
+import { choosePreview, pageShot, proxied, ytId } from '../preview'
 import { TypeBadge } from '../components/TypeBadge'
 import zapMark from '../assets/zap-mark-white.png'
 import { Avatar as Face } from '../components/Avatar'
@@ -124,11 +125,6 @@ const reduced = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers
 const saveData = typeof navigator !== 'undefined' && !!(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData
 const YT_Q = ['maxresdefault', 'sddefault', 'hqdefault']
 const ytStill = (id: string, q = 0) => `https://i.ytimg.com/vi/${id}/${YT_Q[q]}.jpg`
-// A real capture of the source page (never generated): a tall desktop-width shot that scrolls by.
-const pageShot = (url: string) => {
-  const w = Math.min(1400, Math.round(720 * Math.min(2, window.devicePixelRatio || 1)))
-  return `https://image.thum.io/get/width/${w}/crop/2400/viewportWidth/1280/noanimate/${url}`
-}
 
 // האזור שלי: what I saved, what I queued for later, everything I touched; searchable.
 async function loadMine(source: 'saved' | 'later' | 'history', q: string): Promise<FeedItem[]> {
@@ -153,11 +149,12 @@ const EMPTY: Partial<Record<FeedSource, [string, string]>> = {
   history: ['ההיסטוריה עוד ריקה', 'כל מה שתפתחו, תאהבו או תגיבו עליו יופיע כאן.'],
 }
 
-export default function Feed({ source, head, listTo, agent, q = '', chip, prefix }: {
+export default function Feed({ source, head, listTo, agent, q = '', chip, prefix, carousel }: {
   source: FeedSource
   q?: string                   // search inside the personal lanes
   chip?: React.ReactNode       // the profile chip, on האזור שלי
   prefix?: { key: string; node: React.ReactNode }[]   // my own cards, before the feed (האזור שלי)
+  carousel?: React.ReactNode   // instead of a feed: one slide holding a horizontal carousel (שלי)
   head?: React.ReactNode       // tabs or the page name, in the slim top overlay
   listTo?: string              // the list view, behind a small icon
   agent?: React.ReactNode      // "שאלו את העמוד", inside the filter sheet
@@ -230,7 +227,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
   })()
 
   useEffect(() => {
-    if (!docs) return
+    if (!docs || carousel) return
     let alive = true
     setItems(null); setActive(0); setMore('idle')
     const load = async (): Promise<FeedItem[]> => {
@@ -298,8 +295,27 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
     })
   }, [active, items, entries.length, more, source]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const slideH = useRef(0)
+  const activeRef = useRef(0)
+  activeRef.current = active
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      const h = el.clientHeight
+      if (!h || h === slideH.current) return
+      slideH.current = h
+      el.style.setProperty('--slide-h', `${h}px`)
+      // Re-snap to the card that was on screen.
+      el.scrollTo({ top: activeRef.current * h })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const goTo = useCallback((i: number) => {
-    scroller.current?.querySelector(`[data-index="${i}"]`)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+    const el = scroller.current
+    if (!el) return
+    el.scrollTo({ top: i * (slideH.current || el.clientHeight), behavior: reduced ? 'auto' : 'smooth' })
   }, [])
 
   const removeItem = useCallback((id: number) => setItems((cur) => (cur ? cur.filter((x) => x.id !== id) : cur)), [])
@@ -379,7 +395,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
     return previewLines(d?.body_md || it.summary_he, 16)
   }
   const cur = entries[active]
-  const backdrop = cur?.t === 'item' ? (ytIdOf(cur.item) ? ytStill(ytIdOf(cur.item)!, 2) : cur.item.thumbnail_url) || null : null
+  const backdrop = cur?.t === 'item' ? (ytIdOf(cur.item) ? ytStill(ytIdOf(cur.item)!, 2) : cur.item.thumbnail_url ? proxied(cur.item.thumbnail_url, 480) : null) : null
 
   const filterEl = (
     <FilterBar icon value={f} onChange={setF} extra={agent}
@@ -418,6 +434,8 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
         </header>
 
         <div className="fd-scroller" ref={scroller}>
+          {carousel && <section className="fd-card fd-carousel-slide" data-index={0}>{carousel}</section>}
+          {!carousel && <>
           {entries.map((en, i) => {
             const near = Math.abs(i - active) <= 1
             if (en.t === 'card') return (
@@ -448,6 +466,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
               <p>ראיתם את כל מה שחדש. מחר יש עוד.</p>
             </div>
           )}
+          </>}
         </div>
 
         {desk && entries.length > 1 && (
@@ -715,8 +734,7 @@ function Still({ src, live, onLoad, onFail }: {
 // A YouTube id from the column, or from any watch / youtu.be / shorts / embed link, or from a
 // YouTube thumbnail, so every video plays even when the collector didn't store the id.
 const YT_RE = /(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/
-export const ytIdOf = (i: Pick<Item, 'source_url'> & Partial<Pick<Item, 'preview_video_id' | 'thumbnail_url'>>) =>
-  i.preview_video_id || i.source_url.match(YT_RE)?.[1] || i.thumbnail_url?.match(/i\.ytimg\.com\/vi\/([\w-]{11})\//)?.[1] || null
+export const ytIdOf = (i: Pick<Item, 'kind' | 'source_url'> & Partial<Pick<Item, 'preview_video_id' | 'thumbnail_url'>>) => ytId(i)
 
 // When a page has no usable image and its capture fails: what the page itself declares
 // (og:image, og:video, an embedded YouTube), via microlink. Cached per URL, a few calls per visit.
@@ -743,7 +761,7 @@ async function metaOf(url: string): Promise<Meta> {
 
 // A YouTube clip over its still: muted, looping, from a lively point. It fades in once the player
 // reports it's playing (or shortly after it loads, if the player never says).
-function YouTubeLoop({ vid, live, title }: { vid: string; live: boolean; title: string }) {
+function YouTubeLoop({ vid, list, poster, live, title }: { vid?: string; list?: string; poster?: string; live: boolean; title: string }) {
   const [q, setQ] = useState(0)
   const [ok, setOk] = useState(true)
   const [clip, setClip] = useState(false)
@@ -771,23 +789,26 @@ function YouTubeLoop({ vid, live, title }: { vid: string; live: boolean; title: 
     window.addEventListener('message', onMsg)
     const loop = setInterval(() => post('seekTo', [from.current, true]), 15000)
     return () => { window.removeEventListener('message', onMsg); clearInterval(loop) }
-  }, [play, vid])
+  }, [play, vid, list])
 
   const loaded = () => {
     const w = frame.current?.contentWindow
-    w?.postMessage(JSON.stringify({ event: 'listening', id: vid, channel: 'widget' }), '*')
+    w?.postMessage(JSON.stringify({ event: 'listening', id: vid ?? list, channel: 'widget' }), '*')
     w?.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), '*')
     setTimeout(() => setClip(true), 2500)
   }
   const origin = encodeURIComponent(window.location.origin)
   return (
     <>
-      {ok && <Still src={ytStill(vid, q)} live={live && !clip}
+      {vid && ok && <Still src={ytStill(vid, q)} live={live && !clip}
         onLoad={(img) => { if (img.naturalWidth < 200 && q < YT_Q.length - 1) { setQ(q + 1); return false } }}
         onFail={() => (q < YT_Q.length - 1 ? setQ(q + 1) : setOk(false))} />}
+      {!vid && (poster ? <Still src={poster} live={live && !clip} onFail={() => setOk(false)} /> : <span className="st-shim" aria-hidden />)}
       {play && (
         <iframe ref={frame} className={`fd-video${clip ? ' on' : ''}`} title={title} tabIndex={-1} onLoad={loaded}
-          src={`https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&controls=0&playsinline=1&loop=1&playlist=${vid}&start=20&enablejsapi=1&origin=${origin}&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0`}
+          src={vid
+            ? `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&controls=0&playsinline=1&loop=1&playlist=${vid}&start=20&enablejsapi=1&origin=${origin}&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0`
+            : `https://www.youtube-nocookie.com/embed/videoseries?list=${list}&autoplay=1&mute=1&controls=0&playsinline=1&loop=1&enablejsapi=1&origin=${origin}&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0`}
           allow="autoplay; encrypted-media; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" />
       )}
     </>
@@ -854,10 +875,11 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
   playing: boolean; onPlay: () => void
 }) {
   const live = active
-  const vid = ytIdOf(item)
-  const isDoc = !!item.doc_id || (item.kind === 'internal' && !item.thumbnail_url && !vid)
+  const pv = choosePreview(item)
+  const vid = pv.vid
+  const isDoc = pv.type === 'doc poster'
   const isPage = !vid && !isDoc && item.kind !== 'podcast' && /^https?:\/\//.test(item.source_url) && !/zap-know/.test(item.source_url)
-  const [stage, setStage] = useState<'still' | 'shot' | 'meta' | 'text'>(item.thumbnail_url ? 'still' : isPage ? 'shot' : 'text')
+  const [stage, setStage] = useState<'still' | 'shot' | 'meta' | 'text'>(pv.type === 'source image' ? 'still' : pv.type === 'page capture' ? 'shot' : 'text')
   const [shotOk, setShotOk] = useState(false)
   const [meta, setMeta] = useState<Meta | null>(null)
   const [artOk, setArtOk] = useState(true)
@@ -871,7 +893,7 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
   }, [stage, near, meta, item.source_url])
 
   if (item.kind === 'podcast') {
-    const art = artOk ? item.thumbnail_url : null
+    const art = artOk ? pv.still ?? null : null
     return (
       <div className={`fd-media pod${live ? ' live' : ''}`}>
         {art && <img className="pod-bg" src={art} alt="" aria-hidden draggable={false} />}
@@ -905,18 +927,18 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
   )
   return (
     <div className={`fd-media${live ? ' live' : ''}`}>
-      {vid || metaYt ? <YouTubeLoop vid={(vid || metaYt)!} live={live} title={item.title_he} /> : (
+      {vid || metaYt || pv.list ? <YouTubeLoop vid={vid || metaYt || undefined} list={pv.list} poster={pv.still} live={live} title={item.title_he} /> : (
         <>
-          {stage === 'still' && item.thumbnail_url && (
-            <Still src={item.thumbnail_url} live={live}
-              onLoad={(img) => { if (isPage && img.naturalWidth < 600) { setStage('shot'); return false } }}
+          {stage === 'still' && pv.still && (
+            <Still src={pv.still} live={live}
+              onLoad={(img) => { if (isPage && img.naturalWidth < 300) { setStage('shot'); return false } }}
               onFail={() => setStage(isPage ? 'shot' : 'text')} />
           )}
           {stage === 'shot' && (
             <>
               {!shotOk && <span className="st-shim" aria-hidden />}
               {near && (
-                <img className={`fd-shot${shotOk ? ' on' : ''}`} src={pageShot(item.source_url)} alt="" draggable={false} decoding="async"
+                <img className={`fd-shot${shotOk ? ' on' : ''}`} src={pageShot(item.source_url, 1080)} alt="" draggable={false} decoding="async"
                   onLoad={(e) => { const i = e.currentTarget; if (i.naturalWidth > 300 && i.naturalHeight > 300) setShotOk(true); else setStage('meta') }}
                   onError={() => setStage('meta')} />
               )}
@@ -925,7 +947,7 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
           {stage === 'meta' && meta?.video && live && !saveData
             ? <video className="fd-mp4" src={meta.video} poster={meta.image ?? undefined} muted loop playsInline autoPlay preload="metadata" />
             : stage === 'meta' && meta?.image
-              ? <Still src={meta.image} live={live} onFail={() => setStage('text')} />
+              ? <Still src={proxied(meta.image)} live={live} onFail={() => setStage('text')} />
               : stage === 'meta' ? <span className="st-shim" aria-hidden /> : null}
           {stage === 'text' && paper}
         </>

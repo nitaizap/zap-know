@@ -6,7 +6,7 @@ import { Layer } from '../components/Layer'
 import { BoardCard } from '../components/board'
 import { IClose } from '../components/icons'
 import { AiAvatarSheet } from '../components/AiAvatar'
-import { BoardSlide, FollowCard, ProfileCard, SettingsCard, StatsCard, WalletCard } from '../components/mine'
+import { BoardSlide, FollowCard, MineCarousel, ProfileCard, SettingsCard, StatsCard, WalletCard } from '../components/mine'
 import { useApp } from '../App'
 import { KIND_LABEL, Item, supabase } from '../lib'
 import { Empty, Skeletons, clip } from '../components/ui'
@@ -393,7 +393,7 @@ export default function Me() {
       {LANES.map((l) => (
         <button key={l.key} role="tab" aria-selected={l.key === lane} className={`tk-tab${l.key === lane ? ' on' : ''}`} onClick={() => pick(l.key)}>{l.label}</button>
       ))}
-      {searching || q ? (
+      {lane === 'mine' ? null : searching || q ? (
         <input className="tk-search" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש אצלי"
           aria-label="חיפוש באזור שלי" onBlur={() => { if (!q) setSearching(false) }} onKeyDown={(e) => { if (e.key === 'Escape') { setQ(''); setSearching(false) } }} />
       ) : (
@@ -408,14 +408,16 @@ export default function Me() {
     <>
       {/* "שלי": my own cards first, then what I saved continues below them. */}
       <Feed key={lane} source={lane === 'mine' ? 'saved' : lane} q={dq} head={head} chip={chip}
-        prefix={lane === 'mine' && !dq ? [
-          { key: 'me', node: <ProfileCard onMore={setSheet} onAvatar={() => setMaker(true)} /> },
-          { key: 'board', node: <BoardSlide /> },
-          { key: 'wallet', node: <WalletCard onMore={setSheet} /> },
-          { key: 'stats', node: <StatsCard /> },
-          { key: 'follow', node: <FollowCard onMore={setSheet} /> },
-          { key: 'settings', node: <SettingsCard onMore={setSheet} /> },
-        ] : undefined} />
+        carousel={lane === 'mine' ? (
+          <MineCarousel cards={[
+            { key: 'me', label: 'פרופיל', node: <ProfileCard onMore={setSheet} onAvatar={() => setMaker(true)} /> },
+            { key: 'board', label: 'לוח מובילים', node: <BoardSlide /> },
+            { key: 'wallet', label: 'הארנק שלי', node: <WalletCard onMore={setSheet} /> },
+            { key: 'stats', label: 'הסטטיסטיקה שלי', node: <StatsCard /> },
+            { key: 'follow', label: 'התזכורות והמעקב', node: <FollowCard onMore={setSheet} /> },
+            { key: 'settings', label: 'הגדרות', node: <SettingsCard onMore={setSheet} /> },
+          ]} />
+        ) : undefined} />
       {maker && <AiAvatarSheet onClose={() => setMaker(false)} />}
       {sheet && (
         <Layer>

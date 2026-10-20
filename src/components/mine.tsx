@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../App'
 import { Budget, Purchase, SUPABASE_URL, fmtMinutes, fmtMoney, loadBudget, supabase, STATUS_LABEL } from '../lib'
@@ -220,5 +220,55 @@ export function SettingsCard({ onMore }: { onMore: Open }) {
         <button type="button" className="mc-btn" onClick={() => setProfile({ ...profile, topics: [] })}>לעבור שוב על השאלון</button>
       </div>
     </Card>
+  )
+}
+
+// "שלי" swipes sideways, so it never feels like the feed: one card per stop, a metro line of
+// stations underneath, ←/→ on a keyboard (RTL: ← is the next card), arrow buttons on a desktop.
+export function MineCarousel({ cards }: { cards: { key: string; label: string; node: React.ReactNode }[] }) {
+  const track = useRef<HTMLDivElement>(null)
+  const [at, setAt] = useState(0)
+  const go = (i: number) => {
+    const n = Math.max(0, Math.min(cards.length - 1, i))
+    track.current?.children[n]?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', inline: 'start', block: 'nearest' })
+  }
+  useEffect(() => {
+    const root = track.current
+    if (!root) return
+    const io = new IntersectionObserver((list) => {
+      for (const e of list) if (e.isIntersecting && e.intersectionRatio > 0.6) setAt(Number((e.target as HTMLElement).dataset.i))
+    }, { root, threshold: [0.6] })
+    Array.from(root.children).forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [cards.length])
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (t.closest('input, textarea, select, [role="dialog"]') || document.querySelector('.dt-back, .sheet-wrap, .fd-sheet-back, .ai-back')) return
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(at + 1) }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); go(at - 1) }
+    }
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  })
+  return (
+    <div className="mcar" aria-roledescription="קרוסלה" aria-label="שלי">
+      <div className="mcar-frame">
+        <div className="mcar-track" ref={track}>
+          {cards.map((c, i) => (
+            <div key={c.key} className="mcar-cell" data-i={i} role="group" aria-roledescription="כרטיס" aria-label={`${c.label}, ${i + 1} מתוך ${cards.length}`}>
+              {c.node}
+            </div>
+          ))}
+        </div>
+        <button type="button" className="mcar-arrow prev" onClick={() => go(at - 1)} disabled={at === 0} aria-label="הכרטיס הקודם">→</button>
+        <button type="button" className="mcar-arrow next" onClick={() => go(at + 1)} disabled={at === cards.length - 1} aria-label="הכרטיס הבא">←</button>
+      </div>
+      <div className="mcar-metro" role="tablist" aria-label="הכרטיסים שלי">
+        {cards.map((c, i) => (
+          <button key={c.key} type="button" role="tab" aria-selected={i === at} aria-label={c.label} className={i === at ? 'on' : i < at ? 'past' : ''} onClick={() => go(i)} />
+        ))}
+      </div>
+    </div>
   )
 }

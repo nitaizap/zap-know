@@ -400,3 +400,50 @@
   .fd-panel.cm .fp-body { min-height: 0; display: flex; flex-direction: column; padding-bottom: 0; }
   .fd-panel.cm .fp-body > .cmts { flex: 1; }
 }
+
+/* ---------- Round 5: one slide geometry, everywhere ---------- */
+/* The scroller is the only scroll container; every slide is exactly its measured height
+   (--slide-h, set from a ResizeObserver), with nothing between slides. The header floats on top. */
+.fd-scroller { scroll-snap-type: y mandatory; padding: 0; margin: 0; }
+.fd-card, .desk .fd-card { box-sizing: border-box; height: var(--slide-h, 100%); min-height: var(--slide-h, 100%); max-height: var(--slide-h, 100%);
+  margin: 0; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; }
+.fd-inner { box-sizing: border-box; max-height: 100%; }
+@media (min-width: 1024px) {
+  /* The header overlays the stage; each slide reserves the same room above and below the frame. */
+  .desk .tk-top { position: absolute; top: 0; inset-inline: 0; z-index: 8; background: linear-gradient(to bottom, rgba(0, 28, 50, .75), rgba(0, 28, 50, 0)); padding: 14px 24px 18px; }
+  .desk .fd-card { padding: 96px 28px 18px; }
+  .desk .fd-inner, .desk .shape-wide .fd-inner, .desk .shape-square .fd-inner {
+    height: 100%; width: calc(100cqh * 9 / 16); max-width: calc(100cqw - 110px); }
+  .desk .fd-rail { align-self: flex-end; margin-bottom: 8px; }
+  .desk .fd-type { top: 16px; }
+  .desk .tk-special, .desk .tk-leaders, .desk .tk-mine { padding-top: 20px !important; }
+}
+
+/* ---------- שלי: a sideways carousel, same frame as the posts ---------- */
+.fd-carousel-slide { display: flex; align-items: stretch; justify-content: center; }
+.mcar { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: radial-gradient(circle at 80% 0%, #485cc7 0, #052b7a 45%, #001c32 100%); }
+.mcar-frame { position: relative; flex: 1; min-height: 0; padding-top: 118px; }
+.mcar-track { height: 100%; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+.mcar-track::-webkit-scrollbar { display: none; }
+.mcar-cell { flex: 0 0 100%; height: 100%; box-sizing: border-box; padding: 0 14px 12px; scroll-snap-align: start; scroll-snap-stop: always; }
+.mcar-arrow { display: none; }
+/* The stations: a thin metro line with one station per card. */
+.mcar-metro { flex: none; position: relative; display: flex; justify-content: center; gap: 22px; padding: 10px 0 max(16px, env(safe-area-inset-bottom)); }
+.mcar-metro::before { content: ''; position: absolute; top: 50%; inset-inline: calc(50% - 75px); height: 3px; margin-top: -4px; background: rgba(255, 255, 255, .3); border-radius: 3px; }
+.mcar-metro button { position: relative; width: 14px; height: 14px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .7); background: #001c32; padding: 0; cursor: pointer; }
+.mcar-metro button.past { background: rgba(255, 255, 255, .7); }
+.mcar-metro button.on { border-color: #ffc600; background: #ffc600; transform: scale(1.2); }
+.mcar-metro button:focus-visible { outline: 3px solid #ffc600; outline-offset: 3px; }
+@media (min-width: 1024px) {
+  .desk .fd-carousel-slide { padding: 96px 28px 18px; container-type: size; }
+  .desk .mcar { width: calc((100cqh) * 9 / 16); max-width: calc(100cqw - 110px); border-radius: 22px; overflow: hidden; box-shadow: 0 24px 70px rgba(0, 0, 0, .55); }
+  .desk .mcar-frame { padding-top: 18px; }
+  .desk .mcar-arrow { display: grid; place-items: center; position: absolute; top: 50%; z-index: 3; width: 44px; height: 44px; margin-top: -22px; border-radius: 50%;
+    border: 0; background: #fff; color: #052b7a; font-size: 20px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); }
+  .desk .mcar-arrow.prev { inset-inline-start: 6px; }
+  .desk .mcar-arrow.next { inset-inline-end: 6px; }
+  .desk .mcar-arrow:disabled { opacity: 0; pointer-events: none; }
+  .desk .mcar-arrow:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; }
+}
+.mcar .mc { height: 100%; }
+@media (prefers-reduced-motion: reduce) { .mcar-metro button { transition: none; } }
