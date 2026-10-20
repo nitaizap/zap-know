@@ -6,7 +6,7 @@
 //     for delivery on Teams + email
 // ?only=hot|engine|episodes runs one step; ?email=x@d.co.il limits episodes to one person (demo).
 import { XMLParser } from "npm:fast-xml-parser@4.5.0";
-import { admin, cors, json, llm, log, parseJson, VOICE, weekStart } from "../_shared/core.ts";
+import { admin, cors, json, llm, log, mail, notify, parseJson, VOICE, weekStart } from "../_shared/core.ts";
 
 const week = weekStart();
 const SITE = Deno.env.get("SITE_URL") ?? "https://nitaizap.github.io/zap-know/";
@@ -157,24 +157,21 @@ ${picks.map((i) => `- ${i.title_he}: ${i.why_he ?? ""}`).join("\n")}`,
     await admin.from("episodes").upsert({
       user_id: p.user_id, week, body_he: out.card_he, item_ids: picks.map((i) => i.id), audio_url: audioUrl,
     }, { onConflict: "user_id,week" });
-    const hook = Deno.env.get("EPISODE_WEBHOOK");
-    if (hook) {
-      const r = await fetch(hook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: p.email,
-          subject: "הפרק השבועי שלכם ב-zap KNOW",
-          card_he: out.card_he,
-          audio_url: audioUrl,
-          links: picks.map((i) => ({ title: i.title_he, url: `${SITE}#/item/${i.id}` })),
-          site_url: SITE,
-        }),
-      });
-      if (r.ok) {
-        await admin.from("episodes").update({ sent_at: new Date().toISOString() }).eq("user_id", p.user_id).eq("week", week);
-        sent.push(p.email);
-      }
+    const ok = await notify({
+      kind: "episode", to: p.email,
+      subject: "הפרק השבועי שלכם ב-zap KNOW",
+      html: mail("הפרק השבועי שלכם", out.card_he.split("\n").filter(Boolean), [
+        ...(audioUrl ? [{ label: "להאזנה (2 דקות)", url: audioUrl }] : []),
+        { label: "לפתוח את zap KNOW", url: SITE, primary: !audioUrl },
+      ]),
+      teams_text: `${out.card_he}${audioUrl ? `
+להאזנה: ${audioUrl}` : ""}
+${SITE}`,
+      teams_to: p.email,
+    });
+    if (ok) {
+      await admin.from("episodes").update({ sent_at: new Date().toISOString() }).eq("user_id", p.user_id).eq("week", week);
+      sent.push(p.email);
     }
   }
   return { sent };

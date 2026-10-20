@@ -1,6 +1,6 @@
 // Share an item: to a colleague (lands in their feed + a Teams/Outlook ping), to the Teams
 // channel, or as a plain link. Every share counts toward the ranking.
-import { admin, cors, json, log, zapUser } from "../_shared/core.ts";
+import { admin, cors, json, log, mail, notify, zapUser } from "../_shared/core.ts";
 
 const SITE = Deno.env.get("SITE_URL") ?? "https://nitaizap.github.io/zap-know/";
 
@@ -26,20 +26,19 @@ Deno.serve(async (req) => {
   await admin.from("items").update({ shares_count: count ?? 0 }).eq("id", item.id);
 
   const link = `${SITE}#/item/${item.id}`;
-  const hook = Deno.env.get("SHARE_WEBHOOK");
-  if (hook && b.channel !== "link") {
+  if (b.channel !== "link") {
     const from = me?.display_name ?? me?.email ?? "מישהו מ-zap";
-    await fetch(hook, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        channel: b.channel,
-        to: to?.email ?? null,
-        subject: `${from} שיתף/ה איתך מ-zap KNOW: ${item.title_he}`,
-        message_he: `${from} חושב/ת שזה שווה לך: "${item.title_he}"${item.why_he ? `\n${item.why_he}` : ""}${b.note ? `\nבמילים שלו/ה: ${b.note}` : ""}`,
-        link,
-      }),
-    }).catch(() => {});
+    const lines = [`${from} חושב/ת שזה שווה לך: "${item.title_he}"`, ...(item.why_he ? [item.why_he] : []), ...(b.note ? [`במילים שלו/ה: ${b.note}`] : [])];
+    const channelBox = Deno.env.get("CHANNEL_EMAIL") ?? me?.email ?? "";
+    await notify({
+      kind: "share",
+      to: b.channel === "colleague" ? to!.email : channelBox,
+      subject: `${from} שיתף/ה איתך מ-zap KNOW: ${item.title_he}`,
+      html: mail("שיתפו איתך משהו", lines, [{ label: "לפתוח ב-zap KNOW", url: link }]),
+      teams_text: `${lines.join("\n")}
+${link}`,
+      teams_to: b.channel === "colleague" ? to!.email : "channel",
+    });
   }
   await log("share", true, { item: item.id, channel: b.channel });
   return json({ ok: true, link });

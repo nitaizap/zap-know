@@ -1,6 +1,7 @@
 // Supabase Auth "Send Email Hook": login codes go out through Zapier → Outlook,
 // so they come from a real @d.co.il mailbox instead of Supabase's limited SMTP.
 import { Webhook } from "npm:standardwebhooks@1.0.0";
+import { mail, notify } from "../_shared/core.ts";
 
 type Payload = {
   user: { email: string };
@@ -18,19 +19,17 @@ Deno.serve(async (req) => {
   }
 
   const code = p.email_data.token;
-  const html = `<div dir="rtl" style="font-family:Arial,sans-serif;color:#001c32;font-size:16px;line-height:1.6">
-<p style="font-size:22px;font-weight:900;color:#052b7a;margin:0 0 12px">הקוד שלכם ל-zap KNOW</p>
-<p style="margin:0 0 16px">מעתיקים את הקוד למסך הכניסה, וזהו, אתם בפנים.</p>
-<p style="font-size:32px;font-weight:900;letter-spacing:6px;color:#052b7a;margin:0 0 16px">${code}</p>
-<p style="color:#4d6070;font-size:13px;margin:0">הקוד תקף לשעה. לא ביקשתם להיכנס? אפשר פשוט להתעלם מהמייל.</p>
-</div>`;
-
-  const r = await fetch(Deno.env.get("EMAIL_ZAP_WEBHOOK")!, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ to: p.user.email, subject: `${code} הוא הקוד שלכם ל-zap KNOW`, html }),
+  const ok = await notify({
+    kind: "login",
+    to: p.user.email,
+    subject: `${code} הוא הקוד שלכם ל-zap KNOW`,
+    html: mail("הקוד שלכם ל-zap KNOW", [
+      "מעתיקים את הקוד למסך הכניסה, וזהו, אתם בפנים.",
+      code,
+      "הקוד תקף לשעה. לא ביקשתם להיכנס? אפשר פשוט להתעלם מהמייל.",
+    ]),
   });
-  if (!r.ok) {
+  if (!ok) {
     return new Response(JSON.stringify({ error: { http_code: 502, message: "email relay failed" } }), { status: 502 });
   }
   return new Response("{}", { headers: { "Content-Type": "application/json" } });

@@ -3,7 +3,7 @@
 //    within the monthly budget → auto_approved: buy now with the zap KNOW virtual card
 //    above it → pending_manager: the direct manager gets a one-click request (Zapier → Teams/Outlook)
 //  GET ?id=&t=&d=approve|decline → the manager's one-click link, answers with a small page
-import { admin, cors, json, log, zapUser } from "../_shared/core.ts";
+import { admin, cors, json, log, mail, notify, zapUser } from "../_shared/core.ts";
 
 const SITE = Deno.env.get("SITE_URL") ?? "https://nitaizap.github.io/zap-know/";
 const FN = `${Deno.env.get("SUPABASE_URL")}/functions/v1/purchase`;
@@ -40,20 +40,17 @@ Deno.serve(async (req) => {
     const status = decision === "approve" ? "approved" : "declined";
     await admin.from("purchases").update({ status, decided_at: new Date().toISOString() }).eq("id", id);
     await log("purchase-decision", true, { id, status });
-    const hook = Deno.env.get("APPROVAL_WEBHOOK");
     const { data: who } = await admin.from("profiles").select("email").eq("user_id", p.user_id).single();
-    if (hook && who) {
-      await fetch(hook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "decision", to: who.email, subject: status === "approved" ? `אושר: ${p.title}` : `לא אושר הפעם: ${p.title}`,
-          message_he: status === "approved"
-            ? `המנהל/ת אישר/ה את "${p.title}". אפשר לקנות עכשיו עם הכרטיס של zap KNOW.`
-            : `"${p.title}" לא אושר הפעם. שווה לדבר עם המנהל/ת, או לחפש חלופה ב-zap KNOW.`,
-          link: `${SITE}#/budget`,
-        }),
-      }).catch(() => {});
+    if (who) {
+      const text = status === "approved"
+        ? `המנהל/ת אישר/ה את "${p.title}". אפשר לקנות עכשיו עם הכרטיס של zap KNOW.`
+        : `"${p.title}" לא אושר הפעם. שווה לדבר עם המנהל/ת, או לחפש חלופה ב-zap KNOW.`;
+      await notify({
+        kind: "decision", to: who.email,
+        subject: status === "approved" ? `אושר: ${p.title}` : `לא אושר הפעם: ${p.title}`,
+        html: mail(status === "approved" ? "אושר, אפשר לקנות" : "לא אושר הפעם", [text], [{ label: "לתקציב שלי", url: `${SITE}#/budget` }]),
+        teams_text: text, teams_to: who.email,
+      });
     }
     return status === "approved"
       ? page("אישרתם, תודה", `"${p.title}" אושר. העובד/ת מקבל/ת הודעה ויכול/ה לקנות עכשיו.`)
@@ -84,22 +81,26 @@ Deno.serve(async (req) => {
   }
 
   if (!within) {
-    const hook = Deno.env.get("APPROVAL_WEBHOOK");
-    if (hook) {
-      const link = (d: string) => `${FN}?id=${p.id}&t=${p.approval_token}&d=${d}`;
-      await fetch(hook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "request", to: me!.manager_email,
-          subject: `${me!.display_name ?? me!.email} מבקש/ת אישור ללמידה: ${b.title}`,
-          message_he: `${me!.display_name ?? me!.email} רוצה ללמוד "${b.title}" (${price} ${budget.currency}). ` +
-            `נשארו בתקציב החודשי ${budget.remaining} ${budget.currency}, אז צריך את האישור שלך על ההפרש.` +
-            (b.reason ? `\nלמה: ${b.reason}` : ""),
-          item_url: b.url, approve_url: link("approve"), decline_url: link("decline"),
-        }),
-      }).catch(() => {});
-    }
+    const link = (d: string) => `${FN}?id=${p.id}&t=${p.approval_token}&d=${d}`;
+    const who = me!.display_name ?? me!.email;
+    const lines = [
+      `${who} רוצה ללמוד "${b.title}" (${price} ${budget.currency}).`,
+      `נשארו בתקציב החודשי ${budget.remaining} ${budget.currency}, אז צריך את האישור שלך על ההפרש.`,
+      ...(b.reason ? [`למה: ${b.reason}`] : []),
+    ];
+    await notify({
+      kind: "request", to: me!.manager_email!,
+      subject: `${who} מבקש/ת אישור ללמידה: ${b.title}`,
+      html: mail("בקשת אישור ללמידה", lines, [
+        { label: "לאשר", url: link("approve") },
+        { label: "לא הפעם", url: link("decline"), primary: false },
+        { label: "לראות את הקורס", url: b.url, primary: false },
+      ]),
+      teams_text: `${lines.join(" ")}
+לאשר: ${link("approve")}
+לא הפעם: ${link("decline")}`,
+      teams_to: me!.manager_email!,
+    });
   }
   await log("purchase", true, { id: p.id, status: p.status, price });
   return json({

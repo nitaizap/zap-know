@@ -30,16 +30,53 @@ export async function zapUser(req: Request) {
   return email.toLowerCase().endsWith("@d.co.il") ? data.user : null;
 }
 
-// Every run lands in run_log; failures also alert the owner (via ALERT_WEBHOOK, a Zapier hook).
+// One Zapier hook (NOTIFY_WEBHOOK) delivers everything: it always sends the email
+// (Outlook) and, when teams_text is set, also posts to Teams (a person, or the channel).
+export type Notice = {
+  kind: string;
+  to: string;
+  subject: string;
+  html: string;
+  teams_text?: string;
+  teams_to?: string; // an email for a personal chat, or "channel" for קורה ב-zap
+};
+
+export async function notify(n: Notice) {
+  const hook = Deno.env.get("NOTIFY_WEBHOOK");
+  if (!hook) return false;
+  const r = await fetch(hook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ teams_text: "", teams_to: "", ...n }),
+  }).catch(() => null);
+  return !!r?.ok;
+}
+
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// A small RTL email in the brand colors: title, paragraphs, and up to two buttons.
+export function mail(title: string, lines: string[], buttons: { label: string; url: string; primary?: boolean }[] = []) {
+  return `<div dir="rtl" style="font-family:Arial,sans-serif;color:#001c32;font-size:16px;line-height:1.6;max-width:520px">
+<p style="font-size:22px;font-weight:900;color:#052b7a;margin:0 0 12px">${esc(title)}</p>
+${lines.map((l) => `<p style="margin:0 0 10px">${esc(l)}</p>`).join("")}
+${buttons.map((b) => `<a href="${b.url}" style="display:inline-block;margin:8px 0 0 8px;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:700;${b.primary === false ? "background:#e6eaf2;color:#052b7a" : "background:#052b7a;color:#fff"}">${esc(b.label)}</a>`).join("")}
+<p style="color:#73828e;font-size:12px;margin:18px 0 0">zap KNOW · מרכז הלמידה של zap</p></div>`;
+}
+
+// Every run lands in run_log; failures also alert the owner.
 export async function log(job: string, ok: boolean, detail: unknown) {
   await admin.from("run_log").insert({ job, ok, detail });
-  const hook = Deno.env.get("ALERT_WEBHOOK");
-  if (!ok && hook) {
-    await fetch(hook, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "alert", job, detail, at: new Date().toISOString() }),
-    }).catch(() => {});
+  const owner = Deno.env.get("OWNER_EMAIL");
+  if (!ok && owner) {
+    await notify({
+      kind: "alert",
+      to: owner,
+      subject: `zap KNOW: משהו נתקע ב-${job}`,
+      html: mail(`משהו נתקע ב-${job}`, [
+        "אחת האוטומציות לא הצליחה לרוץ עד הסוף. הפרטים ביומן הפעולות, במסך הניהול.",
+        JSON.stringify(detail).slice(0, 600),
+      ]),
+    });
   }
 }
 
