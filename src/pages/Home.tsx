@@ -8,6 +8,7 @@ import { LeaderTeaser } from '../components/points'
 import { suggestName } from '../components/prefs'
 import { FitTime } from '../components/FitTime'
 import { ICar } from '../components/icons'
+import { Avatar, useFaces } from '../components/Avatar'
 
 type Episode = { id: number; week: string; body_he: string; item_ids: number[]; audio_url: string | null }
 
@@ -170,6 +171,8 @@ export default function Home() {
 
       <LeaderTeaser />
 
+      <Testimonials />
+
       <nav className="more-links" aria-label="עוד ב-zap UP">
         <Link to="/internal">קורה ב-zap</Link>
         <Link to="/agent">שאלו את הצוותים</Link>
@@ -177,5 +180,34 @@ export default function Home() {
         <Link to="/me">האזור שלי</Link>
       </nav>
     </div>
+  )
+}
+
+type Testimonial = { comment_id: number; item_id: number; item_title: string; body: string; author: string; user_id: string; team: string | null }
+
+// "עובדים מספרים": what colleagues took from things they learned, each leading to the item.
+function Testimonials() {
+  const [rows, setRows] = useState<Testimonial[] | null>(null)
+  const face = useFaces((rows ?? []).map((r) => r.user_id))
+  useEffect(() => {
+    supabase.rpc('testimonials', { p_limit: 3 }).then(({ data, error }) => setRows(error ? null : ((data as Testimonial[]) ?? [])))
+  }, [])
+  if (!rows || rows.length === 0) return null
+  return (
+    <section>
+      <h2 className="section">עובדים מספרים</h2>
+      <div className="testi-row">
+        {rows.map((r) => (
+          <figure key={r.comment_id} className="card testi">
+            <q>{r.body.length > 180 ? r.body.slice(0, 180).replace(/\s+\S*$/, '') + ' ←' : r.body}</q>
+            <figcaption className="who">
+              <Avatar face={face(r.user_id) ?? { user_id: r.user_id, name: r.author }} size={30} />
+              <span><b>{r.author}</b>{r.team ? <span className="small"> · {r.team}</span> : null}</span>
+            </figcaption>
+            <Link className="learned" to={`/item/${r.item_id}`}>מה למדו: {r.item_title} ←</Link>
+          </figure>
+        ))}
+      </div>
+    </section>
   )
 }

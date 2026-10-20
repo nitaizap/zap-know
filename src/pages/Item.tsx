@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useApp } from '../App'
 import { ITEM_COLS, Item, PurchaseResult, fmtMoney, supabase, track } from '../lib'
@@ -23,6 +23,9 @@ export default function ItemPage() {
   const [reportOpen, setReportOpen] = useState(false)
   const [note, setNote] = useState('')
   const [reported, setReported] = useState(false)
+  const [why, setWhy] = useState('')
+  const [tab, setTab] = useState<'talk' | 'notes'>('talk')
+  const [talkCount, setTalkCount] = useState<number | null>(null)
   const [price, setPrice] = useState<{ price: number; currency: string } | null>(null)
   const [buyOpen, setBuyOpen] = useState(false)
   const [reason, setReason] = useState('')
@@ -93,7 +96,10 @@ export default function ItemPage() {
 
   async function sendReport(e: React.FormEvent) {
     e.preventDefault()
-    const { error } = await supabase.rpc('report_item', { p_item: itemId, p_note: note.trim() })
+    if (!why) return
+    let { error } = await supabase.rpc('report_item_reason', { p_item: itemId, p_reason: why, p_note: note.trim() || null })
+    // Before the reasons patch is live, fall back to the plain report.
+    if (error) ({ error } = await supabase.rpc('report_item', { p_item: itemId, p_note: [why, note.trim()].filter(Boolean).join(': ') }))
     if (!error) { setReported(true); setReportOpen(false) }
   }
 
@@ -210,19 +216,32 @@ export default function ItemPage() {
         </section>
       )}
 
-      <Comments item={item} myId={profile.user_id} />
+      <div className="itabs" role="tablist" aria-label="דיון והערות">
+        <button role="tab" aria-selected={tab === 'talk'} className={tab === 'talk' ? 'on' : ''} onClick={() => setTab('talk')}>
+          דיון{talkCount !== null ? ` (${talkCount})` : ''}
+        </button>
+        <button role="tab" aria-selected={tab === 'notes'} className={tab === 'notes' ? 'on' : ''} onClick={() => setTab('notes')}>ההערות שלי</button>
+      </div>
+      <div hidden={tab !== 'talk'}><Comments item={item} myId={profile.user_id} bare onCount={setTalkCount} /></div>
+      {tab === 'notes' && <MyNotes itemId={item.id} userId={profile.user_id} />}
 
       <div style={{ marginTop: 24 }}>
         {reported ? (
           <div className="notice ok">תודה. הדיווח הגיע לצוות L&D, והם יבדקו את זה.</div>
         ) : reportOpen ? (
           <form className="card" onSubmit={sendReport}>
+            <b>מה לא מסתדר?</b>
+            <div className="reason-chips" role="radiogroup" aria-label="סיבה">
+              {REASONS.map((r) => (
+                <button type="button" key={r} role="radio" aria-checked={why === r} className={why === r ? 'on' : ''} onClick={() => setWhy(r)}>{r}</button>
+              ))}
+            </div>
             <label className="field">
-              <span>מה לא מסתדר?</span>
-              <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="למשל: התקציר לא תואם לקורס, או שהקישור לא עובד" />
+              <span>עוד משהו? <small className="muted">לא חובה</small></span>
+              <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="למשל: בקורס עצמו יש 6 שיעורים ולא 4" />
             </label>
             <div className="row">
-              <button className="btn red" disabled={!note.trim()}>לשלוח</button>
+              <button className="btn red" disabled={!why}>לשלוח</button>
               <button type="button" className="btn ghost" onClick={() => setReportOpen(false)}>לבטל</button>
             </div>
           </form>
@@ -231,5 +250,41 @@ export default function ItemPage() {
         )}
       </div>
     </article>
+  )
+}
+
+const REASONS = ['הקישור לא עובד', 'התקציר לא מדויק', 'לא רלוונטי', 'משהו אחר']
+
+// "ההערות שלי": private, autosaved, searchable later in the personal zone.
+function MyNotes({ itemId, userId }: { itemId: number; userId: string }) {
+  const [body, setBody] = useState<string | null>(null)
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    supabase.from('notes').select('body').eq('item_id', itemId).eq('user_id', userId).maybeSingle()
+      .then(({ data, error }) => setBody(error ? '' : ((data as { body: string } | null)?.body ?? '')))
+  }, [itemId, userId])
+
+  function onChange(v: string) {
+    setBody(v)
+    setState('saving')
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(async () => {
+      const { error } = await supabase.from('notes').upsert({ user_id: userId, item_id: itemId, body: v, updated_at: new Date().toISOString() })
+      setState(error ? 'error' : 'saved')
+    }, 700)
+  }
+
+  if (body === null) return <div className="card itab-body"><div className="skeleton" style={{ height: 120 }} /></div>
+  return (
+    <section className="card itab-body">
+      <textarea className="textarea notes-area" value={body} onChange={(e) => onChange(e.target.value)}
+        placeholder="מה לקחתם מזה? מה לנסות מחר? רק אתם רואים את זה." aria-label="ההערות שלי" />
+      <div className="notes-meta">
+        <span>רק אתם רואים את זה</span>
+        <span role="status">{state === 'saving' ? 'שומרים' : state === 'saved' ? 'נשמר' : state === 'error' ? 'לא נשמר, נסו שוב' : ''}</span>
+      </div>
+    </section>
   )
 }

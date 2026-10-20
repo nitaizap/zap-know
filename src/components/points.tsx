@@ -155,6 +155,42 @@ function LevelBar({ p }: { p: MyPoints }) {
   )
 }
 
+export type RankGap = { rank: number | null; points: number; gap: number | null; total: number }
+
+export function useRankGap() {
+  const [g, setG] = useState<RankGap | null>(null)
+  useEffect(() => {
+    let alive = true
+    const load = () => supabase.rpc('my_rank_gap').then(({ data, error }) => { if (alive && !error && data) setG(data as RankGap) })
+    load()
+    const on = () => setTimeout(load, 1500)
+    window.addEventListener(EVENT, on)
+    return () => { alive = false; window.removeEventListener(EVENT, on) }
+  }, [])
+  return g
+}
+
+// "מקום 12 · עוד X נקודות למקום 11": the next step, not the whole table.
+export function rankLine(g: RankGap | null) {
+  if (!g) return ''
+  if (!g.points || !g.rank) return 'עוד לא צברתם החודש. פעולה אחת ואתם בטבלה.'
+  if (g.rank === 1) return 'אתם במקום הראשון החודש'
+  if (g.gap === null || g.gap <= 0) return `מקום ${g.rank} החודש`
+  return `מקום ${g.rank} · עוד ${g.gap.toLocaleString('he-IL')} נקודות למקום ${g.rank - 1}`
+}
+
+// Yellow is always points. The ring shows progress to the next level.
+export function PointsRing({ p, small }: { p: MyPoints; small?: boolean }) {
+  const span = p.level.next === null ? 1 : p.level.next - p.level.from
+  const pct = p.level.next === null ? 1 : Math.max(0, Math.min(1, (p.all - p.level.from) / span))
+  return (
+    <div className={`pts-ring${small ? ' sm' : ''}`} style={{ ['--p' as string]: pct } as React.CSSProperties}
+      role="img" aria-label={`${p.all} נקודות, ${Math.round(pct * 100)}% מהדרך לרמה הבאה`}>
+      <div><b>{p.month.toLocaleString('he-IL')}</b>{!small && <span>החודש</span>}</div>
+    </div>
+  )
+}
+
 export function RulesPanel() {
   return (
     <details className="card rules">
@@ -185,12 +221,19 @@ export function RulesPanel() {
 
 export function PointsDashboard() {
   const p = useMyPoints()
+  const gap = useRankGap()
   if (!p) return null
   const earned = new Set(p.badges ?? [])
   return (
     <section className="card pts-dash" style={{ marginTop: 16 }}>
       <h2 className="section" style={{ marginTop: 0 }}>הנקודות שלי</h2>
-      <LevelBar p={p} />
+      <div className="pts-head">
+        <PointsRing p={p} />
+        <div className="grow">
+          <LevelBar p={p} />
+          <div className="rank-gap">{rankLine(gap)}</div>
+        </div>
+      </div>
       <div className="tiles" style={{ marginTop: 14 }}>
         <div className="tile"><span className="tile-num">{p.month.toLocaleString('he-IL')}</span><span className="tile-label">נקודות החודש</span></div>
         <div className="tile"><span className="tile-num">{p.all.toLocaleString('he-IL')}</span><span className="tile-label">מאז שהתחלתם</span></div>
@@ -233,6 +276,7 @@ export function PointsDashboard() {
 
 export function LeaderTeaser() {
   const p = useMyPoints()
+  const gap = useRankGap()
   const [rows, setRows] = useState<BoardRow[] | null>(null)
   useEffect(() => {
     supabase.rpc('leaderboard', { p_period: 'month', p_scope: 'people', p_limit: 3 })
@@ -241,7 +285,10 @@ export function LeaderTeaser() {
   if (!rows) return null
   return (
     <Link to="/leaderboard" className="card link teaser">
-      <div className="hand">מי מוביל החודש</div>
+      <div className="teaser-head">
+        <div className="hand">מי מוביל החודש</div>
+        {p && <PointsRing p={p} small />}
+      </div>
       {rows.length === 0 ? (
         <p className="small" style={{ margin: 0 }}>הטבלה עוד ריקה. המקום הראשון מחכה למי שיתחיל.</p>
       ) : (
@@ -256,7 +303,7 @@ export function LeaderTeaser() {
         </ol>
       )}
       <div className="small" style={{ marginTop: 8 }}>
-        {p?.rank_month ? `אתם במקום ${p.rank_month} עם ${p.month} נקודות. ` : ''}לטבלה המלאה ←
+        {gap ? `${rankLine(gap)}. ` : ''}לטבלה המלאה ←
       </div>
     </Link>
   )

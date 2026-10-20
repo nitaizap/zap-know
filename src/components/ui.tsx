@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Item, KIND_LABEL, fmtDate, fmtMinutes } from '../lib'
 import { ReactionBar } from './social'
+import '../adopt.css'
 import { IBook, IHeadphones, INews, ISpark } from './icons'
 
 // Page hero: Light setup line + Black punch line with the hand-drawn navy swoosh.
@@ -85,7 +86,7 @@ export function ItemCard({ item, progress, reasons }: { item: Item; progress?: n
         {progress !== undefined && (
           <div className="card-progress">
             <div className="bar"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
-            <span>{Math.round(progress * 100)}% מהשיעורים</span>
+            <span>{Math.round(progress * 100)}% הושלם · להמשיך</span>
           </div>
         )}
         <div className="card-src">
@@ -121,11 +122,34 @@ export function Thumb({ item }: { item: Item }) {
   return <div className="thumb thumb-fail"><ThumbFallback item={item} /></div>
 }
 
+// Brand fallback when there is no image: lightest-tint background, a few rounded tiles
+// (logo-style rounding), and one metro line that enters and leaves at the edges with a station.
+const TONE_HEX: Record<string, { base: string; tint: string; tile: string }> = {
+  navy: { base: '#052b7a', tint: '#e6eaf2', tile: '#c1cade' },
+  yellow: { base: '#ffc600', tint: '#fff9e6', tile: '#fff1bf' },
+  pink: { base: '#ff5c9e', tint: '#ffeff5', tile: '#ffd6e7' },
+  green: { base: '#00ab12', tint: '#e6f7e7', tile: '#bfeac4' },
+  purple: { base: '#485cc7', tint: '#edeff9', tile: '#d1d6f1' },
+  red: { base: '#ff210d', tint: '#ffe9e7', tile: '#ffc8c3' },
+}
+
 function ThumbFallback({ item }: { item: Item }) {
+  const t = TONE_HEX[toneOf(item)] ?? TONE_HEX.navy
   const Icon = item.kind === 'podcast' ? IHeadphones : item.kind === 'news' ? INews : IBook
+  const v = item.id % 3 // a little variety between neighbouring cards
+  const y = [70, 96, 58][v]
+  const sx = [196, 150, 220][v]
   return (
-    <div className={`thumb-tile tone-${toneOf(item)}`} aria-hidden="true">
-      <Icon size={34} />
+    <div className="thumb-tile thumb-svgwrap" aria-hidden="true" style={{ background: t.tint }}>
+      <svg className="thumb-metro" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice">
+        <rect x={232 - v * 14} y={-24} width={120} height={120} rx={7} fill={t.tile} />
+        <rect x={-30} y={118 - v * 8} width={92} height={92} rx={6} fill={t.tile} opacity={0.8} />
+        <rect x={250} y={128} width={44} height={44} rx={3} fill="#fff" opacity={0.7} />
+        <path d={`M-10 ${y + 40} H${sx - 60} Q${sx - 40} ${y + 40} ${sx - 26} ${y + 26} L${sx} ${y} H330`}
+          fill="none" stroke={t.base} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={sx} cy={y} r={9} fill="#fff" stroke={t.base} strokeWidth={5} />
+      </svg>
+      <span className="thumb-ico" style={{ color: t.base }}><Icon size={30} /></span>
     </div>
   )
 }

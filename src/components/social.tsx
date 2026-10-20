@@ -217,31 +217,66 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
 
 type Comment = { id: number; user_id: string; author_name: string; body: string; at: string }
 
-export function Comments({ item, myId }: { item: Item; myId: string }) {
+// "@" in a comment opens a colleague picker; whoever is still @mentioned when it's posted gets an email.
+export function Comments({ item, myId, bare, onCount }: { item: Item; myId: string; bare?: boolean; onCount?: (n: number) => void }) {
   const [list, setList] = useState<Comment[] | null>(null)
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
   const [reported, setReported] = useState<number[]>([])
-  const face = useFaces((list ?? []).map((c) => c.user_id))
+  const [mq, setMq] = useState<string | null>(null) // the text after "@" while picking
+  const [matches, setMatches] = useState<Person[]>([])
+  const [mentioned, setMentioned] = useState<Person[]>([])
+  const [notified, setNotified] = useState('')
+  const face = useFaces([...(list ?? []).map((c) => c.user_id), ...matches.map((m) => m.user_id)])
 
   useEffect(() => {
     supabase.from('comments').select('id,user_id,author_name,body,at').eq('item_id', item.id).order('at')
       .then(({ data, error }) => setList(error ? null : (data as Comment[]) ?? []))
   }, [item.id])
 
+  useEffect(() => { if (list) onCount?.(list.length) }, [list?.length])
+
+  useEffect(() => {
+    if (mq === null) { setMatches([]); return }
+    const t = setTimeout(() => {
+      supabase.rpc('people', { p_q: mq }).then(({ data }) => setMatches(((data as Person[]) ?? []).slice(0, 6)))
+    }, 150)
+    return () => clearTimeout(t)
+  }, [mq])
+
   if (list === null || item.kind === 'internal') return null
+
+  function onType(v: string) {
+    setBody(v)
+    const m = v.match(/(?:^|\s)@([^\s@]{0,20})$/)
+    setMq(m ? m[1] : null)
+  }
+
+  function pick(p: Person) {
+    setBody((b) => b.replace(/@([^\s@]{0,20})$/, `@${p.name} `))
+    setMentioned((m) => (m.some((x) => x.user_id === p.user_id) ? m : [...m, p]))
+    setMq(null)
+  }
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
     if (!body.trim()) return
     setBusy(true)
-    const { data, error } = await supabase.rpc('add_comment', { p_item: item.id, p_body: body.trim() })
+    const text = body.trim()
+    const { data, error } = await supabase.rpc('add_comment', { p_item: item.id, p_body: text })
     setBusy(false)
     if (error || !data) return
     setList((l) => [...(l ?? []), data as Comment])
     earn('comment')
     setBody('')
     setSocial(item.id, { comments_count: (store.get(item.id)?.comments_count ?? 0) + 1 })
+    const toTell = mentioned.filter((p) => p.user_id !== myId && text.includes(`@${p.name}`))
+    setMentioned([])
+    if (toTell.length) {
+      await Promise.all(toTell.map((p) => callFn('share', { item_id: item.id, channel: 'colleague', to_user: p.user_id, note: text }).catch(() => null)))
+      setNotified(`שלחנו התראה במייל: ${toTell.map((p) => p.name).join(', ')}`)
+      setTimeout(() => setNotified(''), 4000)
+    }
   }
 
   async function remove(id: number) {
@@ -256,9 +291,9 @@ export function Comments({ item, myId }: { item: Item; myId: string }) {
   }
 
   return (
-    <section id="comments" className="card" style={{ marginTop: 24 }}>
-      <h2 style={{ fontWeight: 900, fontSize: 19, margin: '0 0 10px' }}>מה אומרים פה</h2>
-      {list.length === 0 && <p className="small muted">עוד אין תגובות. מי פותח?</p>}
+    <section id="comments" className={bare ? 'card itab-body' : 'card'} style={bare ? undefined : { marginTop: 24 }}>
+      {!bare && <h2 style={{ fontWeight: 900, fontSize: 19, margin: '0 0 10px' }}>מה אומרים פה</h2>}
+      {list.length === 0 && <p className="small muted">עוד אין תגובות. מה לקחתם מזה?</p>}
       <ul className="comments">
         {list.map((c) => (
           <li key={c.id}>
@@ -280,9 +315,26 @@ export function Comments({ item, myId }: { item: Item; myId: string }) {
         ))}
       </ul>
       <form onSubmit={add} style={{ marginTop: 12 }}>
-        <textarea className="textarea" maxLength={1000} value={body} onChange={(e) => setBody(e.target.value)}
-          placeholder="שווה? לא שווה? טיפ למי שמתחיל? כתבו כאן" style={{ minHeight: 70 }} />
-        <button className="btn" style={{ marginTop: 8 }} disabled={!body.trim() || busy}>{busy ? 'מפרסמים' : 'לפרסם תגובה'}</button>
+        <div className="mention-wrap">
+          <textarea className="textarea" maxLength={1000} value={body} onChange={(e) => onType(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setMq(null) }}
+            placeholder="שווה? לא שווה? טיפ למי שמתחיל? אפשר לתייג עם @" style={{ minHeight: 70 }} aria-describedby="mention-hint" />
+          {mq !== null && matches.length > 0 && (
+            <ul className="mention-pick" role="listbox" aria-label="לתייג עמית או עמיתה">
+              {matches.map((p) => (
+                <li key={p.user_id}>
+                  <button type="button" role="option" aria-selected="false" onClick={() => pick(p)}>
+                    <Avatar face={face(p.user_id) ?? { user_id: p.user_id, name: p.name }} size={26} />
+                    <b>{p.name}</b> <span className="small muted">{p.role ?? ''}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <span id="mention-hint" className="small muted">תיוג שולח את התגובה במייל.</span>
+        <div><button className="btn" style={{ marginTop: 8 }} disabled={!body.trim() || busy}>{busy ? 'מפרסמים' : 'לפרסם תגובה'}</button></div>
+        {notified && <div className="notice ok mention-toast" role="status">{notified}</div>}
       </form>
     </section>
   )
