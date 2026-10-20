@@ -22,8 +22,17 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
   Teams channel posts via a Teams Workflows webhook (`TEAMS_WEBHOOK`, optional).
 - Secrets live only in Supabase Edge Function Secrets. Never in code, docs or chat.
 
+## Product shape (owner-approved, round 4)
+- Two destinations: בית (feed_all with lanes בשבילכם · מבחוץ · מבפנים · ביס קטן) and האזור שלי (my cards first, then שמרתי · אחר כך · היסטוריה). /external and /internal redirect into the home lanes.
+- One fixed 9:16 frame for every post (desktop: stage height, width = height*9/16). On the media only: one type badge (`components/TypeBadge.tsx`), a 2-line title, one source line, the rail.
+- Opening never navigates: `components/detail.tsx` (openDetail / DetailLink). Desktop feed = side panel, phone = full-height sheet; /item/:id and /doc/:id = the feed with it open. Sources open in a new tab.
+- Preview chain (LiveMedia in `src/pages/Feed.tsx`): YouTube loop (id derived from any YouTube URL) → source image → thum.io page capture → microlink og:image/og:video/embedded YouTube (localStorage cache, 6 calls per visit) → text. Podcasts: show art. Team docs: the DocVisual poster. Never AI-generated thumbnails.
+- Sheets render through `components/Layer.tsx` (portal + --vvh). Avatars: `components/Avatar.tsx` (5 sizes, a letter on a deterministic palette colour, or the AI avatar from the `avatar` function; see DEPLOY-avatar.md).
+- The logo is the real mark + wordmark cropped from the brand file (`src/assets/zap-mark-white.png`) plus "UP", with "by zap group" under it.
+- Pushing: the owner's team pulls master into another repo. Commit and push master after every working change, always pull --rebase first, never force-push master.
+
 ## Data model (apply in order)
-`supabase/schema.sql`, then `patch-001` … `patch-015`, then seeds: `seed.sql` (demo items, teams),
+`supabase/schema.sql`, then `patch-001` … `patch-019` (016 AI cap, 017 docs as items, 018 Hebrew sources, 019 AI avatar + item_likers), then seeds: `seed.sql` (demo items, teams),
 `seed-demo-people.sql` (15 demo colleagues on `@zap-up.invalid`, marked "(דמו)"),
 `seed-team-docs.sql` (36 team docs). Cleanup of demo people: `delete from auth.users where email like '%@zap-up.invalid';`
 
@@ -47,5 +56,5 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 ## Working in parallel (two Claude accounts)
 - Work on a branch and open a PR; or agree file ownership before starting. Pull with
   `git pull --rebase --autostash` before every push.
-- Announce SQL patches by number (next free: `patch-016`). Never edit an applied patch; add a new one.
+- Announce SQL patches by number (next free: `patch-020`). Never edit an applied patch; add a new one.
 - Commit messages end with the Co-Authored-By / Claude-Session lines your session gives you.
