@@ -168,11 +168,26 @@ Deno.serve(async (req) => {
   const { question, history = [] } = await req.json() as { question: string; history?: Hist[] };
   if (!question?.trim()) return json({ error: "empty question" }, 400);
 
-  const [{ data: items }, { data: teams }] = await Promise.all([
+  const [{ data: items }, { data: teams }, { data: opened }, { data: reacted }, { data: saved }, { data: prog }] = await Promise.all([
     admin.from("items").select("id,kind,topic_slug,verticals,title_he,summary_he,source_name,source_url")
       .eq("status", "approved").order("opens", { ascending: false }).limit(300),
     admin.from("team_profiles").select("id,team,vertical,summary_he,tools,resources,processes_he,contact_name,is_demo"),
+    // The asker's own history, so "that article I saw about GEO" can be found again.
+    admin.from("events").select("item_id,at").eq("user_id", user.id).eq("type", "open").order("at", { ascending: false }).limit(80),
+    admin.from("reactions").select("item_id,value,at").eq("user_id", user.id).limit(80),
+    admin.from("saves").select("item_id,created_at").eq("user_id", user.id).limit(80),
+    admin.from("progress").select("item_id,lessons_done,updated_at").eq("user_id", user.id).limit(40),
   ]);
+
+  const day = (s: string) => new Date(s).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" });
+  const mine = new Map<number, string[]>();
+  const add = (id: number, what: string) => mine.set(id, [...(mine.get(id) ?? []), what]);
+  const seenOnce = new Set<number>();
+  for (const e of opened ?? []) if (!seenOnce.has(e.item_id)) { seenOnce.add(e.item_id); add(e.item_id, `פתחת ב-${day(e.at)}`); }
+  for (const r of reacted ?? []) add(r.item_id, r.value === 1 ? "עשית לייק" : "עשית דיסלייק");
+  for (const v of saved ?? []) add(v.item_id, "שמרת");
+  for (const g of prog ?? []) add(g.item_id, `סימנת ${g.lessons_done.length} שיעורים`);
+  const historyText = [...mine.entries()].map(([id, what]) => `[E${id}] ${what.join(", ")}`).join("\n") || "אין עדיין היסטוריה.";
 
   const catalog = (items ?? []).map((i) =>
     `[E${i.id}] (${i.kind}/${i.topic_slug}) ${i.title_he} — ${(i.summary_he ?? "").slice(0, 220)} | מקור: ${i.source_name}`
@@ -189,11 +204,15 @@ Deno.serve(async (req) => {
 - שאלה על איך צוות עובד → עונים מפרופיל הצוות: הכלים, המשאבים, התהליך ואיש הקשר. אם הפרופיל מסומן "נתוני דמו", מציינים את זה במשפט קצר.
 - שאלה על למידה → ממליצים על 1-3 פריטים מהקטלוג ומסבירים במשפט למה.
 - כשזה מתחבר, מחברים בין העולמות ("צוות ה-PPC עובד עם X, והנה קורס שמסביר אותו").
+- שאלה על משהו שהעובד/ת כבר ראו, קראו או למדו ("ראיתי כתבה ש...", "מה היה הקורס ההוא על...") → מחפשים קודם בהיסטוריה האישית למטה, מתאימים לפי התוכן בקטלוג גם כשהתיאור לא מדויק, ואומרים מתי זה נפתח.
 - קצר: עד 120 מילים. בלי להמציא קישורים.
 החזירו JSON בלבד: {"answer_he": string, "refs": string[]} כש-refs הם המזהים שהשתמשתם בהם (למשל "E12", "T3").
 
 === פרופילי צוותים (ידע פנימי) ===
 ${teamText}
+
+=== ההיסטוריה האישית של מי ששואל/ת ===
+${historyText}
 
 === קטלוג תוכן (ידע חיצוני) ===
 ${catalog}`;
