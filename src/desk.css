@@ -674,3 +674,12 @@ button.tk-me { padding: 0; background: none; cursor: pointer; }
 
 /* Page captures fill the frame from the top. */
 .st-top .st-img { object-position: top center; }
+
+/* Me chip: avatar + first name (+ level · points); one row high, long names truncate. */
+.me-chip { max-width: 170px; min-width: 0; flex: 0 1 auto; padding: 2px 12px 2px 3px; height: 38px; min-height: 38px; }
+.me-chip span { min-width: 0; }
+.me-chip b, .me-chip small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.me-chip b { font-size: 13.5px; }
+.me-chip small { font-size: 11px; opacity: .9; }
+.me-chip .avatar { flex: none; }
+@media (max-width: 480px) { .me-chip small { display: none; } .me-chip { max-width: 104px; padding-inline-end: 10px; } }

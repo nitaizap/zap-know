@@ -6,7 +6,7 @@ import { BoardRow, earn } from '../components/points'
 import { BoardCard } from '../components/board'
 import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
 import { PageNav, useApp } from '../App'
-import { openProfile, openPublish } from './Me'
+import { MeChip } from './Me'
 import '../feed.css'
 import '../tiktok.css'
 import '../desk.css'
@@ -167,7 +167,7 @@ const EMPTY: Partial<Record<FeedSource, [string, string]>> = {
   history: ['ההיסטוריה עוד ריקה', 'כל מה שתפתחו, תאהבו או תגיבו עליו יופיע כאן.'],
 }
 
-export default function Feed({ source, head, listTo, agent, q = '', chip, prefix, carousel, onLane }: {
+export default function Feed({ source, head, listTo, agent, q = '', prefix, carousel, onLane }: {
   source: FeedSource
   q?: string                   // search inside the personal lanes
   chip?: React.ReactNode       // the profile chip, on האזור שלי
@@ -469,18 +469,10 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg>
               </Link>
             )}
-            {!desk && chip}
-            {desk && <button type="button" className="tk-publish" onClick={() => openPublish()}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-              לפרסם
-            </button>}
             <EpisodeBell />
             <AiButton />
-            {desk && (chip ?? (
-              <button type="button" className="tk-me" aria-label="הפרופיל שלי" onClick={() => openProfile()}>
-                <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} />
-              </button>
-            ))}
+            {/* Me: avatar + first name (+ level and points where there's room); opens the profile panel. */}
+            <MeChip />
           </div>
           {(head || !desk) && <div className="tk-head">{head}{!desk && filterEl}</div>}
         </header>

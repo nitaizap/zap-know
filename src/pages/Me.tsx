@@ -12,7 +12,7 @@ import { useApp } from '../App'
 import { KIND_LABEL, Item, supabase } from '../lib'
 import { Empty, Skeletons, clip } from '../components/ui'
 import { PrefsPanel } from '../components/prefs'
-import { PointsDashboard, useMyPoints } from '../components/points'
+import { LEVELS, PointsDashboard, useMyPoints } from '../components/points'
 import { Avatar } from '../components/Avatar'
 import { PageAgent } from '../components/PageAgent'
 import BudgetPage from './Budget'
@@ -353,7 +353,6 @@ const LANES = [
 ] as const
 
 export default function Me() {
-  const { profile } = useApp()
   const loc = useLocation()
   const [params, setParams] = useSearchParams()
   const lane = LANES.find((l) => l.key === params.get('lane'))?.key ?? 'mine'
@@ -366,8 +365,6 @@ export default function Me() {
     const t = loc.hash && loc.hash !== '#' ? tabOfHash(loc.hash) : null
     return t === 'history' ? null : t
   })
-  const pts = useMyPoints()
-  const name = profile.display_name || profile.email.split('@')[0]
 
   useEffect(() => { const t = setTimeout(() => setDq(q), 300); return () => clearTimeout(t) }, [q])
   useEffect(() => {
@@ -383,12 +380,7 @@ export default function Me() {
     setParams(next, { replace: true })
   }
 
-  const chip = (
-    <button type="button" className="me-chip" onClick={() => setSheet('points')} aria-label={`הפרופיל שלי${pts ? `, ${pts.level.name}, ${pts.month} נקודות החודש` : ''}`}>
-      <Avatar face={{ ...profile, name }} size={30} />
-      {pts && <span><b>{pts.level.name}</b><small>{pts.month.toLocaleString('he-IL')} נק׳</small></span>}
-    </button>
-  )
+  const chip = <MeChip />
   const head = (
     <>
       {LANES.map((l) => (
@@ -533,5 +525,23 @@ export function PublishHost() {
         </section>
       </div>
     </Layer>
+  )
+}
+
+/** Avatar + first name, with "רמה N · X נק׳" under it where there's room. Opens the profile panel. */
+export function MeChip() {
+  const { profile } = useApp()
+  const pts = useMyPoints()
+  const first = (profile.display_name || profile.email.split('@')[0]).replace(/\(דמו\)/g, '').trim().split(/\s+/)[0]
+  const level = pts ? LEVELS.filter((l) => pts.all >= l.from).length : null
+  return (
+    <button type="button" className="me-chip" onClick={() => openProfile()}
+      aria-label={`הפרופיל שלי: ${first}${pts ? `, רמה ${level}, ${pts.all} נקודות` : ''}`}>
+      <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={32} />
+      <span>
+        <b>{first}</b>
+        {pts && <small>רמה {level} · {pts.all.toLocaleString('he-IL')} נק׳</small>}
+      </span>
+    </button>
   )
 }
