@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { callFn } from '../lib'
+import { useEffect, useState } from 'react'
+import { callFn, supabase } from '../lib'
 import '../listen.css'
 
 type Line = { speaker: string; text: string }
-type Result = { script: Line[]; audio_url: string | null }
+type Result = { script: Line[]; audio_url: string | null; pending?: boolean }
 
 // "להאזנה": turns any written resource into a short two-host conversation (audio + transcript).
 // The first listener waits ~20-40 seconds while it's made; everyone after gets it instantly.
@@ -11,6 +11,19 @@ export function Listen({ kind, id }: { kind: 'item' | 'doc'; id: number }) {
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [res, setRes] = useState<Result | null>(null)
   const [showText, setShowText] = useState(false)
+
+  // The transcript arrives first; the voice is made in the background, so poll for it.
+  useEffect(() => {
+    if (state !== 'ready' || !res || res.audio_url) return
+    let tries = 0
+    const t = setInterval(async () => {
+      tries++
+      const { data } = await supabase.from('listens').select('audio_url').eq('kind', kind).eq('ref_id', id).maybeSingle()
+      if (data?.audio_url) { setRes((r) => (r ? { ...r, audio_url: data.audio_url } : r)); clearInterval(t) }
+      if (tries > 40) clearInterval(t)
+    }, 5000)
+    return () => clearInterval(t)
+  }, [state, res, kind, id])
 
   async function make() {
     setState('loading')
@@ -29,7 +42,7 @@ export function Listen({ kind, id }: { kind: 'item' | 'doc'; id: number }) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M3 14v-2a9 9 0 0 1 18 0v2" /><rect x="3" y="14" width="4" height="6" rx="1.5" /><rect x="17" y="14" width="4" height="6" rx="1.5" />
           </svg>
-          להאזנה, כשיחה של 2 דקות
+          להאזנה, כשיחה קצרה
         </button>
         {state === 'error' && <p className="listen-note">לא הצלחנו להכין את השיחה הפעם. שווה לנסות שוב בעוד דקה.</p>}
       </div>
@@ -41,7 +54,7 @@ export function Listen({ kind, id }: { kind: 'item' | 'doc'; id: number }) {
       <div className="listen">
         <div className="listen-loading" role="status">
           <span className="listen-wave" aria-hidden="true"><i /><i /><i /><i /></span>
-          נועה ועידו מתכוננים לשיחה, זה לוקח בערך חצי דקה
+          נועה ועידו מתכוננים לשיחה, עוד כמה שניות
         </div>
       </div>
     )
@@ -51,7 +64,7 @@ export function Listen({ kind, id }: { kind: 'item' | 'doc'; id: number }) {
     <div className="listen listen-ready">
       {res?.audio_url
         ? <audio className="listen-audio" controls autoPlay src={res.audio_url} />
-        : <p className="listen-note">ההקלטה עוד לא מוכנה, אבל אפשר לקרוא את השיחה.</p>}
+        : <div className="listen-loading" role="status"><span className="listen-wave" aria-hidden="true"><i /><i /><i /><i /></span>מקליטים את השיחה, בינתיים אפשר לקרוא אותה</div>}
       <button className="listen-toggle" onClick={() => setShowText((v) => !v)}>
         {showText ? 'להסתיר את התמליל' : 'לקרוא את התמליל'}
       </button>

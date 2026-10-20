@@ -49,6 +49,24 @@ async function speak(script: { speaker: string; text: string }[]) {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
+// Voice a saved transcript and attach the audio; runs after the response (it can take a while).
+async function voiceAndStore(kind: string, id: number, lines: { speaker: string; text: string }[]) {
+  try {
+    const path = `listen/${kind}-${id}-${Date.now()}.wav`;
+    await admin.storage.from("episodes").upload(path, wav(await speak(lines)), { contentType: "audio/wav", upsert: true });
+    const url = admin.storage.from("episodes").getPublicUrl(path).data.publicUrl;
+    await admin.from("listens").update({ audio_url: url }).eq("kind", kind).eq("ref_id", id);
+  } catch (e) {
+    await log("listen-tts", false, { kind, id, error: String(e).slice(0, 400) });
+  }
+}
+
+function background(p: Promise<unknown>) {
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(p);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const user = await zapUser(req);
@@ -56,8 +74,16 @@ Deno.serve(async (req) => {
   const { kind, id } = await req.json() as { kind: "item" | "doc"; id: number };
   if (!["item", "doc"].includes(kind) || !id) return json({ error: "bad request" }, 400);
 
-  const { data: cached } = await admin.from("listens").select("script,audio_url").eq("kind", kind).eq("ref_id", id).maybeSingle();
+  const { data: cached } = await admin.from("listens").select("script,audio_url,created_at").eq("kind", kind).eq("ref_id", id).maybeSingle();
   if (cached?.audio_url) return json({ script: cached.script, audio_url: cached.audio_url, cached: true });
+  if (cached) {
+    // Voicing failed or is still running; retry if it has been quiet for a few minutes.
+    if (Date.now() - new Date(cached.created_at).getTime() > 180_000) {
+      await admin.from("listens").update({ created_at: new Date().toISOString() }).eq("kind", kind).eq("ref_id", id);
+      background(voiceAndStore(kind, id, cached.script));
+    }
+    return json({ script: cached.script, audio_url: null, pending: true, cached: true });
+  }
 
   // Source material: public metadata for items, the document itself for team docs.
   let title = "", material = "";
@@ -79,7 +105,7 @@ Deno.serve(async (req) => {
       { role: "system", content: VOICE },
       {
         role: "user",
-        content: `כתבו שיחת פודקאסט קצרה (כ-2 דקות, 10-14 תורות) בין ${HOSTS[0].name} ל${HOSTS[1].name}, שני קולגות ב-zap, על החומר שלמטה.
+        content: `כתבו שיחת פודקאסט קצרה (כדקה וחצי, 8-10 תורות קצרות) בין ${HOSTS[0].name} ל${HOSTS[1].name}, שני קולגות ב-zap, על החומר שלמטה.
 - פותחים במה זה ולמה זה מעניין, עוברים על 2-3 הנקודות החשובות, וסוגרים במה עושים עם זה מחר בבוקר.
 - שפה מדוברת, משפטים קצרים, הומור קל אם מתאים. בלי להמציא עובדות, מספרים או שמות שלא מופיעים בחומר.
 - כל תור: speaker הוא "${HOSTS[0].name}" או "${HOSTS[1].name}".
@@ -94,17 +120,11 @@ ${material}`,
     }));
     if (!lines.length) throw new Error("empty script");
 
-    let audioUrl: string | null = null;
-    try {
-      const path = `listen/${kind}-${id}-${Date.now()}.wav`;
-      await admin.storage.from("episodes").upload(path, wav(await speak(lines)), { contentType: "audio/wav", upsert: true });
-      audioUrl = admin.storage.from("episodes").getPublicUrl(path).data.publicUrl;
-    } catch (e) {
-      // The transcript is still useful on its own; audio can be retried later.
-      await log("listen-tts", false, { kind, id, error: String(e).slice(0, 400) });
-    }
-    await admin.from("listens").upsert({ kind, ref_id: id, title, script: lines, audio_url: audioUrl }, { onConflict: "kind,ref_id" });
-    return json({ script: lines, audio_url: audioUrl, cached: false });
+    // Save the transcript now and voice it in the background (voicing can outlast a request).
+    await admin.from("listens").upsert({ kind, ref_id: id, title, script: lines, audio_url: null, created_at: new Date().toISOString() }, { onConflict: "kind,ref_id" });
+    background(voiceAndStore(kind, id, lines));
+    const audioUrl: string | null = null;
+    return json({ script: lines, audio_url: audioUrl, pending: true, cached: false });
   } catch (e) {
     await log("listen", false, { kind, id, error: String(e).slice(0, 400) });
     return json({ error: "failed" }, 502);
