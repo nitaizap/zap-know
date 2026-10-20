@@ -16,14 +16,14 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 - Back-end: Supabase Postgres with RLS (`is_zap()` = email ends with `@d.co.il`), Edge Functions in
   `supabase/functions/*`, cron via pg_cron (collect every 10 min — it also sends due reminders —
   linkcheck nightly, weekly on Sunday 06:00).
-- AI: `LLM_PROVIDER` setting. Demo = Gemini free tier (public content + demo data only).
+- AI: `LLM_PROVIDER` setting; Gemini model name in `app_settings.gemini_model` (switchable without redeploy). Demo = Gemini free tier (public content + demo data only).
   Production = Claude via OpenRouter with zero data retention (internal data).
 - Email: Brevo API (`BREVO_API_KEY`), sender address in table `app_settings.sender_email`.
   Teams channel posts via a Teams Workflows webhook (`TEAMS_WEBHOOK`, optional).
 - Secrets live only in Supabase Edge Function Secrets. Never in code, docs or chat.
 
 ## Data model (apply in order)
-`supabase/schema.sql`, then `patch-001` … `patch-014`, then seeds: `seed.sql` (demo items, teams),
+`supabase/schema.sql`, then `patch-001` … `patch-015`, then seeds: `seed.sql` (demo items, teams),
 `seed-demo-people.sql` (15 demo colleagues on `@zap-up.invalid`, marked "(דמו)"),
 `seed-team-docs.sql` (36 team docs). Cleanup of demo people: `delete from auth.users where email like '%@zap-up.invalid';`
 
@@ -47,5 +47,5 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 ## Working in parallel (two Claude accounts)
 - Work on a branch and open a PR; or agree file ownership before starting. Pull with
   `git pull --rebase --autostash` before every push.
-- Announce SQL patches by number (next free: `patch-015`). Never edit an applied patch; add a new one.
+- Announce SQL patches by number (next free: `patch-016`). Never edit an applied patch; add a new one.
 - Commit messages end with the Co-Authored-By / Claude-Session lines your session gives you.
