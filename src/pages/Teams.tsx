@@ -19,7 +19,7 @@ export default function Teams() {
   return (
     <div>
       <Headline light="ככה עובדים פה," black="צוות אחרי צוות" />
-      <p className="muted">באילו כלים כל צוות משתמש, איפה החומרים שלו ולמי פונים. רוצים תשובה מהירה? <Link to="/ask">שאלו את zap KNOW</Link>.</p>
+      <p className="muted">באילו כלים כל צוות משתמש, איפה החומרים שלו ולמי פונים. רוצים תשובה מהירה? <Link to="/ask">שאלו את zap UP</Link>.</p>
       {anyDemo && (
         <div className="notice demo" style={{ margin: '12px 0' }}>
           <DemoBadge /> הפרופילים כאן הם נתוני דמו להאקתון. בגרסה המלאה הם נבנים משיחה חודשית קצרה עם כל צוות ומהמקומות שכל צוות בחר לשתף.

@@ -158,7 +158,7 @@ export default function ItemPage() {
       {lessons.length > 0 && (
         <section className="card" style={{ marginTop: 24 }}>
           <h2 style={{ fontWeight: 900, fontSize: 19, margin: '0 0 6px' }}>מערך השיעור</h2>
-          <p className="small muted" style={{ marginBottom: 10 }}>מסמנים כל שיעור שסיימתם, וככה zap KNOW זוכר איפה עצרתם.</p>
+          <p className="small muted" style={{ marginBottom: 10 }}>מסמנים כל שיעור שסיימתם, וככה zap UP זוכר איפה עצרתם.</p>
           <div className="bar"><i style={{ width: `${Math.round(pct * 100)}%` }} /></div>
           <div className="small muted" style={{ margin: '4px 0 6px' }}>{done.length} מתוך {lessons.length} שיעורים</div>
           <ul className="lessons">

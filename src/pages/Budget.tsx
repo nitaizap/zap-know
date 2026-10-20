@@ -66,7 +66,7 @@ export default function BudgetPage() {
         <div className="vcard" aria-label="כרטיס דמו">
           <div className="vcard-top">
             <img src="/zap-know/img/zap-group-white.svg" alt="zap group" />
-            <b>KNOW</b>
+            <b>UP</b>
           </div>
           <div className="vcard-num" dir="ltr">•••• •••• •••• 4821</div>
           <div className="vcard-bottom">
@@ -83,7 +83,7 @@ export default function BudgetPage() {
         </div>
       </div>
 
-      <h2 className="section">משהו שלא מצאתם ב-zap KNOW?</h2>
+      <h2 className="section">משהו שלא מצאתם ב-zap UP?</h2>
       <form className="card" onSubmit={submit}>
         <label className="field"><span>מה זה?</span>
           <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}

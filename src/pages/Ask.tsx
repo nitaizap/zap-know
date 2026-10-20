@@ -49,8 +49,8 @@ export default function Ask() {
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <Headline light="שאלה על הצוותים או על התחום?" black="שאלו את zap KNOW" />
-      <p className="muted small">התשובות מגיעות רק מהתוכן שב-zap KNOW: פרופילי הצוותים (פנימי) והקורסים והעדכונים (חיצוני). ליד כל תשובה מופיעים המקורות.</p>
+      <Headline light="שאלה על הצוותים או על התחום?" black="שאלו את zap UP" />
+      <p className="muted small">התשובות מגיעות רק מהתוכן שב-zap UP: פרופילי הצוותים (פנימי) והקורסים והעדכונים (חיצוני). ליד כל תשובה מופיעים המקורות.</p>
 
       {msgs.length === 0 && (
         <div className="chips" style={{ marginTop: 14 }}>

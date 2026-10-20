@@ -84,7 +84,14 @@ img { max-width: 100%; }
 .topbar .container { display: flex; align-items: center; gap: 16px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--dark); }
 .brand img { height: 28px; width: auto; }
-.brand b { font-weight: 900; font-size: 18px; letter-spacing: .5px; color: var(--navy); }
+.brand-name { display: flex; flex-direction: column; line-height: 1.05; }
+.brand b { font-weight: 900; font-size: 20px; letter-spacing: .5px; color: var(--navy); }
+.brand small { font-weight: 300; font-size: 11px; color: var(--muted, #4d6070); }
+@media (max-width: 520px) { .brand small { display: none; } }
+.wordmark { font-weight: 900; font-size: 40px; color: var(--navy); margin: 14px 0 4px; line-height: 1.1; direction: ltr; text-align: right; }
+.swoosh-word { position: relative; display: inline-block; }
+.swoosh-word::after { content: ""; position: absolute; left: 2%; right: 2%; bottom: -6px; height: 8px;
+  background: no-repeat center/100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath fill='%23052b7a' d='M1 7 C 25 3, 60 1, 99 4 C 70 4, 30 6, 1 9 Z'/%3E%3C/svg%3E"); }
 .topnav { display: none; gap: 4px; margin-inline-start: auto; }
 .topnav a {
   text-decoration: none; color: var(--dark-60); padding: 8px 12px; border-radius: var(--radius-sm); font-weight: 500;

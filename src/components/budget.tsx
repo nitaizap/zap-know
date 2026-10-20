@@ -81,7 +81,7 @@ export function BuyResult({ result, url }: { result: PurchaseResult; url?: strin
   }
   return (
     <div className="notice ok" style={{ marginTop: 10 }}>
-      אושר אוטומטית. קונים עכשיו באתר עם הכרטיס הווירטואלי של zap KNOW.
+      אושר אוטומטית. קונים עכשיו באתר עם הכרטיס הווירטואלי של zap UP.
       {' '}נשארו לכם {fmtMoney(result.remaining, result.currency)} החודש.
       {url && <> <a href={url} target="_blank" rel="noopener noreferrer">לאתר הרכישה ←</a></>}
     </div>

@@ -63,7 +63,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
     <div className="container" style={{ maxWidth: 640, paddingBottom: 40 }}>
       <div className="texture" />
       <Headline light="כמה שאלות קטנות," black="ומתחילים" hand="15 שניות" />
-      <p className="muted">ככה zap KNOW יודע מה להביא לכם כל שבוע. אפשר לשנות את זה מתי שרוצים.</p>
+      <p className="muted">ככה zap UP יודע מה להביא לכם כל שבוע. אפשר לשנות את זה מתי שרוצים.</p>
 
       <h2 className="section">באיזה תחום אתם עובדים?</h2>
       <div className="chips">

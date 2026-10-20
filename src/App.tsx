@@ -60,9 +60,9 @@ export default function App() {
         <div className="texture" />
         <header className="topbar">
           <div className="container">
-            <NavLink to="/" className="brand" aria-label="zap KNOW">
+            <NavLink to="/" className="brand" aria-label="zap UP">
               <img src="/zap-know/img/zap-group.svg" alt="zap group" />
-              <b>KNOW</b>
+              <span className="brand-name"><b>UP</b><small>zap KNOW · מרכז הלמידה והידע של zap</small></span>
             </NavLink>
             <nav className="topnav">
               <NavLink to="/" end>הבית שלי</NavLink>
@@ -70,7 +70,7 @@ export default function App() {
               <NavLink to="/library">מאגר</NavLink>
               <NavLink to="/internal">קורה ב-zap</NavLink>
               <NavLink to="/teams">איך עובדים פה</NavLink>
-              <NavLink to="/ask">שאלו את zap KNOW</NavLink>
+              <NavLink to="/ask">שאלו את zap UP</NavLink>
               <NavLink to="/budget">התקציב שלי</NavLink>
               {profile.is_admin && <NavLink to="/admin">אישורים</NavLink>}
             </nav>
@@ -92,7 +92,7 @@ export default function App() {
             <Route path="*" element={<Home />} />
           </Routes>
           <footer className="footer">
-            התקצירים ב-zap KNOW נכתבים ב-AI מתוך מידע פומבי על כל קורס ועדכון, וכל פריט מוביל למקור המקורי.
+            zap UP · Learn. Level Up. zap. · התקצירים נכתבים ב-AI מתוך מידע פומבי על כל קורס ועדכון, וכל פריט מוביל למקור המקורי.
             מצאתם טעות? יש כפתור "דווח על טעות" בכל פריט.
             {' '}
             <button className="chip" style={{ fontSize: 12, padding: '2px 10px' }} onClick={() => supabase.auth.signOut()}>יציאה</button>

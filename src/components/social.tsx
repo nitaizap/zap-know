@@ -185,7 +185,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
                       </button>
                     </li>
                   ))}
-                  {people.length === 0 && <li className="small muted" style={{ padding: 8 }}>לא מצאנו. אולי הם עוד לא נכנסו ל-zap KNOW.</li>}
+                  {people.length === 0 && <li className="small muted" style={{ padding: 8 }}>לא מצאנו. אולי הם עוד לא נכנסו ל-zap UP.</li>}
                 </ul>
               </>
             )}

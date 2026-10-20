@@ -228,7 +228,7 @@ export default function Home() {
       ) : <Empty>עוד אין פרויקטים. יש לכם משהו להראות? <Link to="/internal">ספרו לנו</Link></Empty>}
       <form className="card" style={{ marginTop: 28 }} onSubmit={(e) => { e.preventDefault(); if (q.trim()) nav(`/ask?q=${encodeURIComponent(q.trim())}`) }}>
         <label className="field" style={{ marginBottom: 8 }}>
-          <span>שאלו את zap KNOW</span>
+          <span>שאלו את zap UP</span>
         </label>
         <div className="row">
           <input className="input" style={{ flex: 1 }} placeholder="למשל: איך צוות ה-PPC בונה קמפיין?" value={q} onChange={(e) => setQ(e.target.value)} />

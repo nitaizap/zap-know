@@ -47,7 +47,7 @@ export default function Library() {
           <p className="small muted">{items.length} תוצאות</p>
           <div className="grid three">{items.map((i) => <ItemCard key={i.id} item={i} />)}</div>
         </>
-      ) : <Empty>לא מצאנו. אפשר לנסות מילה אחרת, או <a href="#/ask">לשאול את zap KNOW</a>.</Empty>}
+      ) : <Empty>לא מצאנו. אפשר לנסות מילה אחרת, או <a href="#/ask">לשאול את zap UP</a>.</Empty>}
     </div>
   )
 }

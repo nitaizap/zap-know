@@ -13,7 +13,7 @@ export default function Login() {
     e.preventDefault()
     const clean = email.trim().toLowerCase()
     if (!clean.endsWith(ALLOWED_DOMAIN)) {
-      setMsg({ kind: 'err', text: `zap KNOW פתוח לעובדי zap. נכנסים עם כתובת המייל של העבודה (${ALLOWED_DOMAIN}).` })
+      setMsg({ kind: 'err', text: `zap UP פתוח לעובדי zap. נכנסים עם כתובת המייל של העבודה (${ALLOWED_DOMAIN}).` })
       return
     }
     setBusy(true); setMsg(null)
@@ -38,6 +38,8 @@ export default function Login() {
       <MetroLine top={40} />
       <div className="login-card">
         <img src="/zap-know/img/zap-group.svg" alt="zap group" style={{ height: 34 }} />
+        <p className="wordmark">zap <span className="swoosh-word">UP</span></p>
+        <p className="small muted" style={{ margin: '0 0 8px' }}>Learn. Level Up. zap. · zap KNOW, מרכז הלמידה והידע של zap</p>
         <Headline light="כל מה שצריך כדי להשתדרג," black="במקום אחד" hand="בלי לחפש" />
         <p className="muted">קורסים, עדכונים מהתעשייה ומה שקורה אצלנו, בעברית ובקצרה. נכנסים עם מייל העבודה.</p>
         <div className="card" style={{ marginTop: 18 }}>
