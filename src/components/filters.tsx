@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Layer } from './Layer'
 import { Item, Topic, VERTICALS, supabase } from '../lib'
 import { IClose } from './icons'
 
@@ -124,6 +125,7 @@ export function FilterBar({ value, onChange, show, total, icon, extra }: {
       </>}
 
       {open && (
+        <Layer>
         <div className="sheet-wrap" onClick={() => setOpen(false)}>
           <div className="sheet card fsheet" role="dialog" aria-label="סינון ומיון" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -184,6 +186,7 @@ export function FilterBar({ value, onChange, show, total, icon, extra }: {
             </div>
           </div>
         </div>
+        </Layer>
       )}
     </div>
   )

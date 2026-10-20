@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Layer } from './Layer'
 import { supabase } from '../lib'
 import { IClock, IClose } from './icons'
 
@@ -54,6 +55,7 @@ export function Remind({ itemId, docId, trigger: renderTrigger }: {
     <>
       {trigger}
       {open && (
+        <Layer>
         <div className="sheet-wrap" onClick={(e) => { e.stopPropagation(); setOpen(false) }}>
           <div className="sheet card" role="dialog" aria-label="תזכורת" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -89,6 +91,7 @@ export function Remind({ itemId, docId, trigger: renderTrigger }: {
             )}
           </div>
         </div>
+        </Layer>
       )}
     </>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Layer } from './Layer'
 import { Avatar, useFaces } from './Avatar'
 import { Link } from 'react-router-dom'
 import { Item, callFn, supabase } from '../lib'
@@ -37,6 +38,8 @@ async function flush() {
   }
   emit()
 }
+
+export const getSocial = (id: number) => store.get(id) ?? null
 
 export function setSocial(id: number, patch: Partial<Social>) {
   const cur = store.get(id)
@@ -155,6 +158,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
   }
 
   return (
+    <Layer>
     <div className="sheet-wrap" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}>
       <div className="sheet card" role="dialog" aria-label="שיתוף" onClick={(e) => e.stopPropagation()}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -212,6 +216,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
         {err && <div className="notice err" style={{ marginTop: 10 }}>{err}</div>}
       </div>
     </div>
+    </Layer>
   )
 }
 

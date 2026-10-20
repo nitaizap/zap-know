@@ -7,11 +7,6 @@
 .fd-backdrop { position: absolute; inset: -60px; background: radial-gradient(circle at 50% 30%, #052b7a, #001c32 70%) center/cover no-repeat;
   filter: blur(44px) brightness(.5) saturate(1.2); transition: background-image .4s ease; display: none; }
 .fd-col { position: relative; height: 100%; margin: 0 auto; width: 100%; }
-@media (min-width: 1024px) {
-  .fd-wrap { inset: 0; }
-  .fd-backdrop { display: block; }
-  .fd-col { width: min(470px, calc(100dvh * .5625)); }
-}
 
 /* Slim translucent overlay: me + points + tools on one row, tabs under it. */
 .tk-top { position: absolute; top: 0; inset-inline: 0; z-index: 8; padding: max(8px, env(safe-area-inset-top)) 10px 10px;
@@ -40,7 +35,6 @@
 .fd-card { position: relative; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; }
 .fd-inner { position: relative; height: 100%; overflow: hidden; background: var(--fd-dark); color: #fff; touch-action: pan-y; user-select: none; transition: transform .22s ease; }
 .fd-inner.drag { transition: none; }
-@media (min-width: 1024px) { .fd-card { padding: 12px 0; } .fd-inner { border-radius: 18px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); } }
 
 /* Media, alive only on screen. */
 .fd-media { position: absolute; inset: 0; container-type: size; background: linear-gradient(160deg, #052b7a, #001c32); }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Layer } from '../components/Layer'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useApp } from '../App'
 import { ITEM_COLS, Item, supabase } from '../lib'
@@ -204,6 +205,7 @@ function InternalFilters({ value, onChange, teams, tools }: { value: IF; onChang
       <span className="fbar-sum">{SORTS.find((s) => s.v === value.sort)?.label}</span>
       {active > 0 && <button className="fbar-clear" onClick={() => onChange({ ...NO_IF, sort: value.sort })}>ניקוי</button>}
       {open && (
+        <Layer>
         <div className="sheet-wrap" onClick={() => setOpen(false)}>
           <div className="sheet card fsheet" role="dialog" aria-label="סינון ומיון" onClick={(e) => e.stopPropagation()}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -230,6 +232,7 @@ function InternalFilters({ value, onChange, teams, tools }: { value: IF; onChang
             </div>
           </div>
         </div>
+        </Layer>
       )}
     </div>
   )

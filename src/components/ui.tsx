@@ -123,13 +123,23 @@ export function previewLines(text: string | null | undefined, n = 3): string[] {
     .filter((l) => l.length > 3).slice(0, n)
 }
 
-export function DocPreview({ title, lines, by, big }: { title: string; lines: string[]; by?: string | null; big?: boolean }) {
+// Looks like a screenshot of the document itself: a page with its header, the title and the
+// first lines, the key ones highlighted as if someone marked them.
+export function DocPreview({ title, lines, by, big, badge }: {
+  title: string; lines: string[]; by?: string | null; big?: boolean; badge?: { color: string; initials: string } | null
+}) {
   return (
     <div className={`docpv${big ? ' big' : ''}`} aria-hidden="true">
       <div className="docpv-page">
-        {by && <span className="docpv-by">{by}</span>}
+        {(by || badge) && (
+          <span className="docpv-head">
+            {badge && <span className="docpv-badge" style={{ background: badge.color }}>{badge.initials}</span>}
+            {by && <span className="docpv-by">{by}</span>}
+            {big && <span className="docpv-dots"><i /><i /><i /></span>}
+          </span>
+        )}
         <b className="docpv-title">{title}</b>
-        <ul>{lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+        <ul>{lines.map((l, i) => <li key={i}>{big && i < 2 ? <mark>{l}</mark> : l}</li>)}</ul>
       </div>
     </div>
   )

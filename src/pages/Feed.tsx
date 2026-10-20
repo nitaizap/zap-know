@@ -1,23 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ITEM_COLS, Item, KIND_LABEL, fmtDate, fmtMinutes, supabase, track, callFn } from '../lib'
-import { Comments, ShareSheet, react, useSocial } from '../components/social'
+import { Comments, ShareSheet, getSocial, react, useSocial } from '../components/social'
 import { BoardRow, PointsPill, earn, rankLine, useRankGap } from '../components/points'
 import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
 import { useApp } from '../App'
 import '../feed.css'
 import '../tiktok.css'
+import '../desk.css'
 import { Remind } from '../components/Remind'
 import { IClock } from '../components/icons'
 import { Avatar } from '../components/Avatar'
 import { AiButton } from '../components/AiSheet'
 import { teamColor, teamInitials } from './Doc'
 import { DocPreview, previewLines } from '../components/ui'
+import { Layer } from '../components/Layer'
 
 // zap UP is a TikTok for work: one full-screen vertical feed (up/down = next/prev), a horizontal
 // swipe per card (right = save, left = not for me), double-tap = like, and a rail of reactions.
 // Every card previews itself live: the video plays, the podcast's equalizer moves, a web page
-// pans past as a real capture of that page, a team document scrolls by as you'd read it.
+// scrolls past as a real capture of that page, a team document scrolls by as you'd read it.
+// On a desktop the feed is a stage: the card in the middle, its rail beside it, and a panel
+// with the details, comments and what's next, so nothing ever covers the card.
 
 export type FeedSource = 'all' | 'external' | 'internal' | 'bites'
 type FeedItem = Item & { reason?: string | null }
@@ -87,10 +91,34 @@ function interleave(ext: FeedItem[], inn: FeedItem[]) {
   return out
 }
 
-const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-const ytThumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`
-// A real capture of the source page (not generated), for web pages without a video.
-const pageShot = (url: string) => `https://image.thum.io/get/width/720/crop/1600/noanimate/${url}`
+const DESK = '(min-width: 1024px)'
+export function useDesk() {
+  const [desk, setDesk] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(DESK).matches)
+  useEffect(() => {
+    const m = window.matchMedia?.(DESK)
+    if (!m) return
+    const on = () => setDesk(m.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return desk
+}
+
+// Card shape on a desktop stage: video and source images are landscape, podcast art is square,
+// page captures and documents are tall. On a phone every card is the full screen.
+type Shape = 'wide' | 'square' | 'tall'
+const shapeOf = (i: FeedItem): Shape =>
+  i.kind === 'podcast' ? 'square' : i.preview_video_id || i.thumbnail_url ? 'wide' : 'tall'
+
+const reduced = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+const saveData = typeof navigator !== 'undefined' && !!(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData
+const YT_Q = ['maxresdefault', 'sddefault', 'hqdefault']
+const ytStill = (id: string, q = 0) => `https://i.ytimg.com/vi/${id}/${YT_Q[q]}.jpg`
+// A real capture of the source page (never generated): a tall desktop-width shot that scrolls by.
+const pageShot = (url: string) => {
+  const w = Math.min(1400, Math.round(720 * Math.min(2, window.devicePixelRatio || 1)))
+  return `https://image.thum.io/get/width/${w}/crop/2400/viewportWidth/1280/noanimate/${url}`
+}
 
 export default function Feed({ source, head, listTo, agent }: {
   source: FeedSource
@@ -111,6 +139,10 @@ export default function Feed({ source, head, listTo, agent }: {
   const [episode, setEpisode] = useState<Episode | null>(null)
   const [leaders, setLeaders] = useState<BoardRow[] | null>(null)
   const [quotes, setQuotes] = useState<Quote[]>([])
+  const [kept, setKept] = useState<Set<number>>(new Set())
+  const [sheet, setSheet] = useState<{ item: FeedItem; kind: 'comments' | 'share' } | null>(null)
+  const [tab, setTab] = useState<'comments' | 'next'>('next')
+  const desk = useDesk()
   const scroller = useRef<HTMLDivElement>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout>>()
 
@@ -208,11 +240,27 @@ export default function Feed({ source, head, listTo, agent }: {
 
   const removeItem = useCallback((id: number) => setItems((cur) => (cur ? cur.filter((x) => x.id !== id) : cur)), [])
 
+  // Swipe right: saved, and out of the feed.
   const save = useCallback(async (item: FeedItem) => {
     const { error } = await supabase.from('saves').insert({ item_id: item.id, user_id: myId })
     if (!error) { track(item.id, 'save'); earn('save') }
     removeItem(item.id)
   }, [myId, removeItem])
+
+  // The rail's bookmark and "S": saved in place, the card stays.
+  const keep = useCallback((item: FeedItem) => {
+    setKept((cur) => {
+      if (cur.has(item.id)) return cur
+      supabase.from('saves').insert({ item_id: item.id, user_id: myId }).then(({ error }) => { if (!error) { track(item.id, 'save'); earn('save') } })
+      return new Set(cur).add(item.id)
+    })
+  }, [myId])
+
+  // Comments open beside the card on a desktop, as a sheet on a phone.
+  const openComments = useCallback((item: FeedItem) => {
+    if (desk) setTab('comments')
+    else setSheet({ item, kind: 'comments' })
+  }, [desk])
 
   const hide = useCallback((item: FeedItem) => {
     // Private "not for me": never a public dislike.
@@ -232,20 +280,28 @@ export default function Feed({ source, head, listTo, agent }: {
     setUndo(null)
   }
 
-  // Keyboard: ↑↓ move, ← not for me, → save.
+  // Keyboard: ↑↓ or J/K move, L like, C comments, S save, ← not for me, → save and next.
+  // Physical keys (e.code), so it works on a Hebrew layout too.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
-      if (t.closest('input, textarea, [role="dialog"]') || document.querySelector('.ai-back, .sheet-wrap, .fd-sheet-back')) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (t.closest('input, textarea, select, [contenteditable], [role="dialog"]')) return
+      if (document.querySelector('.ai-back, .sheet-wrap, .fd-sheet-back, .dt-back')) return
       const en = entries[active]
-      if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); goTo(Math.min(active + 1, entries.length - 1)) }
-      else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); goTo(Math.max(active - 1, 0)) }
-      else if (e.key === 'ArrowRight' && en?.t === 'item') save(en.item)
-      else if (e.key === 'ArrowLeft' && en?.t === 'item') hide(en.item)
+      const it = en?.t === 'item' ? en.item : null
+      if (e.key === 'ArrowDown' || e.code === 'KeyJ') { e.preventDefault(); goTo(Math.min(active + 1, entries.length - 1)) }
+      else if (e.key === 'ArrowUp' || e.code === 'KeyK') { e.preventDefault(); goTo(Math.max(active - 1, 0)) }
+      else if (!it) return
+      else if (e.code === 'KeyL') { if (getSocial(it.id)?.mine !== 1) react(it.id, 1) }
+      else if (e.code === 'KeyC') openComments(it)
+      else if (e.code === 'KeyS') keep(it)
+      else if (e.key === 'ArrowRight') save(it)
+      else if (e.key === 'ArrowLeft') hide(it)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [entries, active, goTo, save, hide])
+  }, [entries, active, goTo, save, hide, keep, openComments])
 
   const authorOf = (it: FeedItem) => {
     const d = it.doc_id ? docs?.get(it.doc_id) : null
@@ -257,16 +313,17 @@ export default function Feed({ source, head, listTo, agent }: {
     return previewLines(d?.body_md || it.summary_he, 16)
   }
   const cur = entries[active]
-  const backdrop = cur?.t === 'item' ? cur.item.thumbnail_url || (cur.item.preview_video_id ? ytThumb(cur.item.preview_video_id) : null) : null
+  const backdrop = cur?.t === 'item' ? (cur.item.preview_video_id ? ytStill(cur.item.preview_video_id, 2) : cur.item.thumbnail_url) || null : null
+  const progress = entries.length > 1 ? active / (entries.length - 1) : 0
 
   return (
-    <div className={`fd-wrap tk-${source}`}>
+    <div className={`fd-wrap tk-${source}${desk ? ' desk' : ''}`}>
       <div className="fd-backdrop" style={backdrop ? { backgroundImage: `url("${backdrop}")` } : undefined} aria-hidden />
       <div className="fd-col">
         <div className="tk-top">
           <div className="tk-top-row">
-            <Link to="/me" className="tk-me" aria-label="האזור שלי">
-              <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} />
+            <Link to="/" className="tk-brand" aria-label="zap UP, הבית">
+              <img src="/zap-know/img/zap-group.svg" alt="zap" /><span className="brand-up">UP</span>
             </Link>
             <PointsPill />
             <span className="tk-grow" />
@@ -278,8 +335,15 @@ export default function Feed({ source, head, listTo, agent }: {
               </Link>
             )}
             <AiButton />
+            <Link to="/me" className="tk-me" aria-label="האזור שלי">
+              <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} />
+            </Link>
           </div>
           {head && <div className="tk-head">{head}</div>}
+          {/* Feed position as a thin metro line with a station at the current card. */}
+          {entries.length > 1 && (
+            <div className="tk-metro" aria-hidden><i style={{ width: `${progress * 100}%` }} /><b style={{ insetInlineStart: `${progress * 100}%` }} /></div>
+          )}
         </div>
 
         <div className="fd-scroller" ref={scroller}>
@@ -299,7 +363,8 @@ export default function Feed({ source, head, listTo, agent }: {
             return (
               <FeedCard key={it.id} item={it} index={i} active={i === active} near={near}
                 topicName={topicName.get(it.topic_slug ?? '') ?? ''} lines={linesOf(it)} team={authorOf(it)}
-                myId={myId} onSave={() => save(it)} onHide={() => hide(it)} />
+                kept={kept.has(it.id)} onKeep={() => keep(it)} onSave={() => save(it)} onHide={() => hide(it)}
+                onComments={() => openComments(it)} onShare={() => setSheet({ item: it, kind: 'share' })} />
             )
           })}
           {items && items.length > 0 && more === 'done' && (
@@ -310,6 +375,13 @@ export default function Feed({ source, head, listTo, agent }: {
           )}
         </div>
 
+        {desk && entries.length > 1 && (
+          <div className="fd-arrows">
+            <button onClick={() => goTo(Math.max(active - 1, 0))} disabled={active === 0} aria-label="הקודם"><IcoUp /></button>
+            <button onClick={() => goTo(Math.min(active + 1, entries.length - 1))} disabled={active >= entries.length - 1} aria-label="הבא"><IcoDownArrow /></button>
+          </div>
+        )}
+
         {undo && (
           <div className="fd-snack" role="status">
             הסתרנו את זה מהפיד שלכם
@@ -317,19 +389,114 @@ export default function Feed({ source, head, listTo, agent }: {
           </div>
         )}
       </div>
+
+      {desk && (
+        <FeedPanel cur={cur} entries={entries} active={active} tab={tab} setTab={setTab} goTo={goTo} myId={myId}
+          team={cur?.t === 'item' ? authorOf(cur.item) : null} topicName={cur?.t === 'item' ? topicName.get(cur.item.topic_slug ?? '') ?? '' : ''} />
+      )}
+
+      {sheet?.kind === 'comments' && (
+        <Layer>
+          <div className="fd-sheet-back" onClick={() => setSheet(null)}>
+            <div className="fd-sheet" role="dialog" aria-modal="true" aria-label="תגובות" onClick={(e) => e.stopPropagation()}>
+              <div className="fd-sheet-head">
+                <b>תגובות</b>
+                <button onClick={() => setSheet(null)} aria-label="לסגור"><IcoX /></button>
+              </div>
+              <div className="fd-sheet-body"><Comments item={sheet.item} myId={myId} bare /></div>
+            </div>
+          </div>
+        </Layer>
+      )}
+      {sheet?.kind === 'share' && <ShareSheet item={sheet.item} onClose={() => setSheet(null)} />}
     </div>
   )
 }
 
-function FeedCard({ item, index, active, near, topicName, lines, team, myId, onSave, onHide }: {
+const SPECIAL_LABEL = { episode: 'הפרק השבועי שלכם', leaders: 'המובילים החודש', quote: 'עובדים מספרים' } as const
+
+// Desktop only: what's on screen, its comments, and what comes next. Never covers the card.
+function FeedPanel({ cur, entries, active, tab, setTab, goTo, myId, team, topicName }: {
+  cur: Entry | undefined; entries: Entry[]; active: number; tab: 'comments' | 'next'; setTab: (t: 'comments' | 'next') => void
+  goTo: (i: number) => void; myId: string; team: TeamLite | null; topicName: string
+}) {
+  const item = cur?.t === 'item' ? cur.item : null
+  const s = useSocial(item?.id ?? -1)
+  const next = entries.map((en, i) => ({ en, i })).slice(active + 1, active + 9)
+  const showComments = !!item && tab === 'comments'
+  return (
+    <aside className="fd-panel" aria-label="פרטים">
+      {item ? (
+        <div className="fp-item">
+          <div className="fp-by">
+            {team
+              ? <span className="tk-av" style={{ background: teamColor(team.id) }} aria-hidden>{teamInitials(team.team)}</span>
+              : <span className="tk-av src" aria-hidden>{(item.source_name || 'z').trim().charAt(0).toUpperCase()}</span>}
+            <span>
+              <b><bdi>{team ? `צוות ${team.team}` : item.source_name}</bdi></b>
+              <small>{[fmtDate(item.published_at ?? item.created_at), item.minutes ? fmtMinutes(item.minutes) : null, item.is_demo ? 'דמו' : null].filter(Boolean).join(' · ')}</small>
+            </span>
+          </div>
+          <h2>{item.title_he}</h2>
+          {item.why_he && <p className="fp-why">{item.why_he}</p>}
+          {item.summary_he && item.summary_he !== item.why_he && <p className="fp-sum">{item.summary_he}</p>}
+          <div className="fp-chips">
+            {item.reason && <span className="fp-chip hot">{item.reason}</span>}
+            {item.lang === 'he' && <span className="fp-chip">עברית</span>}
+            {topicName && <span className="fp-chip">{topicName}</span>}
+            <span className="fp-chip">{KIND_LABEL[item.kind]}</span>
+          </div>
+          <div className="fp-actions">
+            <Link className="fp-btn" to={item.doc_id ? `/doc/${item.doc_id}` : `/item/${item.id}`}>לפתוח</Link>
+            {!item.doc_id && /^https?:/.test(item.source_url) && (
+              <a className="fp-btn ghost" href={item.source_url} target="_blank" rel="noopener noreferrer" onClick={() => track(item.id, 'click_source')}>למקור ↗</a>
+            )}
+          </div>
+        </div>
+      ) : cur && cur.t !== 'item' ? <div className="fp-item"><h2>{SPECIAL_LABEL[cur.t]}</h2></div> : null}
+
+      <div className="fp-tabs" role="tablist">
+        {item && (
+          <button role="tab" aria-selected={showComments} className={showComments ? 'on' : ''} onClick={() => setTab('comments')}>
+            תגובות{s ? ` · ${s.comments_count}` : ''}
+          </button>
+        )}
+        <button role="tab" aria-selected={!showComments} className={!showComments ? 'on' : ''} onClick={() => setTab('next')}>הבא בתור</button>
+      </div>
+      <div className="fp-body">
+        {showComments ? <Comments key={item!.id} item={item!} myId={myId} bare /> : (
+          <ol className="fp-next">
+            {next.map(({ en, i }) => {
+              if (en.t !== 'item') {
+                return <li key={i}><button onClick={() => goTo(i)}><span className="fp-th special" aria-hidden>✦</span><span><b>{SPECIAL_LABEL[en.t]}</b></span></button></li>
+              }
+              const th = en.item.preview_video_id ? ytStill(en.item.preview_video_id, 2) : en.item.thumbnail_url
+              return (
+                <li key={i}>
+                  <button onClick={() => goTo(i)}>
+                    <span className="fp-th">{th ? <img src={th} alt="" loading="lazy" decoding="async" /> : <span className="fp-th-doc">{en.item.title_he}</span>}</span>
+                    <span><b>{en.item.title_he}</b><small><bdi>{en.item.source_name}</bdi>{en.item.minutes ? ` · ${fmtMinutes(en.item.minutes)}` : ''}</small></span>
+                  </button>
+                </li>
+              )
+            })}
+            {next.length === 0 && <li className="fp-empty">זה הסוף של הרשימה כרגע.</li>}
+          </ol>
+        )}
+      </div>
+      <p className="fp-keys">↑ ↓ הבא והקודם · L אהבתי · C תגובות · S לשמור · / AI</p>
+    </aside>
+  )
+}
+
+function FeedCard({ item, index, active, near, topicName, lines, team, kept, onKeep, onSave, onHide, onComments, onShare }: {
   item: FeedItem; index: number; active: boolean; near: boolean; topicName: string; lines: string[]
-  team: TeamLite | null; myId: string; onSave: () => void; onHide: () => void
+  team: TeamLite | null; kept: boolean; onKeep: () => void; onSave: () => void; onHide: () => void
+  onComments: () => void; onShare: () => void
 }) {
   const s = useSocial(item.id)
   const [dx, setDx] = useState(0)
   const [drag, setDrag] = useState(false)
-  const [sheet, setSheet] = useState<'comments' | 'share' | null>(null)
-  const [saved, setSaved] = useState(false)
   const [burst, setBurst] = useState<{ n: number; x: number; y: number } | null>(null)
   const start = useRef<{ x: number; y: number; locked: 'x' | 'y' | null } | null>(null)
   const lastTap = useRef(0)
@@ -342,7 +509,7 @@ function FeedCard({ item, index, active, near, topicName, lines, team, myId, onS
     return () => clearTimeout(t)
   }, [active, item.id])
 
-  const like = () => { if (s?.mine !== 1) { react(item.id, 1); earn('react') } }
+  const like = () => { if (s?.mine !== 1) react(item.id, 1) }
 
   const onDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button, a, audio, iframe')) return
@@ -388,19 +555,21 @@ function FeedCard({ item, index, active, near, topicName, lines, team, myId, onS
   const openTo = item.doc_id ? `/doc/${item.doc_id}` : `/item/${item.id}`
   const authorName = team ? `צוות ${team.team}` : item.kind === 'internal' ? 'קורה ב-zap' : item.source_name
   const why = item.why_he || item.summary_he
+  // Light media (a document page, a web capture) gets a dark band behind the text.
+  const band = !item.preview_video_id && !item.thumbnail_url && item.kind !== 'podcast'
   const chips = [
     item.reason ? { label: item.reason, cls: 'hot' } : null,
     item.lang === 'he' ? { label: 'עברית', cls: 'he' } : null,
     item.minutes ? { label: fmtMinutes(item.minutes), cls: 'ghost' } : null,
     topicName ? { label: topicName, cls: 'ghost' } : null,
-  ].filter((c): c is { label: string; cls: string } => !!c).slice(0, 2)
+  ].filter((c): c is { label: string; cls: string } => !!c).slice(0, 3)
 
   return (
-    <section className="fd-card" data-index={index} aria-label={item.title_he}>
+    <section className={`fd-card shape-${shapeOf(item)}`} data-index={index} aria-label={item.title_he}>
       <div className={`fd-inner ${drag ? 'drag' : ''}`}
         style={{ transform: dx ? `translateX(${dx}px) rotate(${dx / 22}deg)` : undefined }}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { start.current = null; setDrag(false); setDx(0) }}>
-        <LiveMedia item={item} active={active} near={near} lines={lines} by={team ? `צוות ${team.team}` : item.source_name}
+        <LiveMedia item={item} active={active} near={near} lines={lines} team={team}
           playing={listen.playing} onPlay={listen.toggle} />
         {burst && <span key={burst.n} className="tk-heart" style={{ left: burst.x, top: burst.y }} aria-hidden>
           <svg viewBox="0 0 24 24" width="110" height="110"><path fill="#ff5c9e" d="M12 21s-7.5-4.6-9.6-9.3C.8 7.9 3.2 4 7 4c2.1 0 3.7 1.1 5 2.9C13.3 5.1 14.9 4 17 4c3.8 0 6.2 3.9 4.6 7.7C19.5 16.4 12 21 12 21z" /></svg>
@@ -409,7 +578,7 @@ function FeedCard({ item, index, active, near, topicName, lines, team, myId, onS
         <div className="fd-stamp save" style={{ opacity: stampSave }} aria-hidden>שומר לי</div>
         <div className="fd-stamp hide" style={{ opacity: stampHide }} aria-hidden>לא בשבילי</div>
 
-        <div className="fd-body">
+        <div className={`fd-body${band ? ' band' : ''}`}>
           <div className="tk-author">
             {team
               ? <span className="tk-av" style={{ background: teamColor(team.id) }} aria-hidden>{teamInitials(team.team)}</span>
@@ -420,83 +589,144 @@ function FeedCard({ item, index, active, near, topicName, lines, team, myId, onS
           {why && <p className="fd-why1">{why}</p>}
           <div className="fd-foot">
             {chips.map((c) => <span key={c.label} className={`fd-chip ${c.cls}`}>{c.label}</span>)}
-            <Link className="fd-open" to={openTo}>לפתוח ←</Link>
+            <Link className="fd-open" to={openTo}>לפתוח</Link>
           </div>
-        </div>
-
-        <div className="fd-rail" aria-label="פעולות">
-          <RailBtn label="אהבתי" count={s?.likes ?? item.likes ?? 0} on={s?.mine === 1} pop
-            onClick={() => { react(item.id, 1); if (s?.mine !== 1) earn('react') }}><IcoHeart /></RailBtn>
-          <RailBtn label="פחות" on={s?.mine === -1} onClick={() => react(item.id, -1)}><IcoDown /></RailBtn>
-          <RailBtn label="תגובות" count={s?.comments_count ?? 0} onClick={() => setSheet('comments')}><IcoChat /></RailBtn>
-          <RailBtn label="לשתף" count={s?.shares_count || undefined} onClick={() => setSheet('share')}><IcoShare /></RailBtn>
-          <RailBtn label={saved ? 'נשמר' : 'לשמור'} on={saved} pop
-            onClick={() => { if (!saved) { setSaved(true); supabase.from('saves').insert({ item_id: item.id, user_id: myId }).then(({ error }) => { if (!error) { track(item.id, 'save'); earn('save') } }) } }}>
-            <IcoSave />
-          </RailBtn>
-          <Remind itemId={item.id} trigger={(open) => <RailBtn label="אחר כך" onClick={open}><IClock size={24} /></RailBtn>} />
-          <RailBtn label={listen.label} on={listen.playing} busy={listen.state === 'making'} onClick={listen.toggle}>
-            {listen.state === 'making' ? <span className="listen-wave"><i /><i /><i /><i /></span> : listen.playing ? <IcoPause /> : <IcoHead />}
-          </RailBtn>
         </div>
       </div>
 
-      {sheet === 'comments' && (
-        <div className="fd-sheet-back" onClick={() => setSheet(null)}>
-          <div className="fd-sheet" role="dialog" aria-label="תגובות" onClick={(e) => e.stopPropagation()}>
-            <div className="fd-sheet-head">
-              <b>תגובות</b>
-              <button onClick={() => setSheet(null)} aria-label="לסגור"><IcoX /></button>
-            </div>
-            <div className="fd-sheet-body"><Comments item={item} myId={myId} /></div>
-          </div>
-        </div>
-      )}
-      {sheet === 'share' && <ShareSheet item={item} onClose={() => setSheet(null)} />}
+      <div className="fd-rail" aria-label="פעולות">
+        <RailBtn label="אהבתי" count={s?.likes ?? item.likes ?? 0} on={s?.mine === 1} pop onClick={() => react(item.id, 1)}><IcoHeart /></RailBtn>
+        <RailBtn label="פחות" on={s?.mine === -1} onClick={() => react(item.id, -1)}><IcoDown /></RailBtn>
+        <RailBtn label="תגובות" count={s?.comments_count ?? 0} onClick={onComments}><IcoChat /></RailBtn>
+        <RailBtn label="לשתף" count={s?.shares_count || undefined} onClick={onShare}><IcoShare /></RailBtn>
+        <RailBtn label={kept ? 'נשמר' : 'לשמור'} on={kept} pop onClick={onKeep}><IcoSave /></RailBtn>
+        <Remind itemId={item.id} trigger={(open) => <RailBtn label="אחר כך" onClick={open}><IClock size={24} /></RailBtn>} />
+        <RailBtn label={listen.label} on={listen.playing} busy={listen.state === 'making'} onClick={listen.toggle}>
+          {listen.state === 'making' ? <span className="listen-wave"><i /><i /><i /><i /></span> : listen.playing ? <IcoPause /> : <IcoHead />}
+        </RailBtn>
+      </div>
     </section>
   )
 }
 
-// The media layer, alive only while the card is on screen (and never under reduced motion).
-function LiveMedia({ item, active, near, lines, by, playing, onPlay }: {
-  item: FeedItem; active: boolean; near: boolean; lines: string[]; by: string; playing: boolean; onPlay: () => void
+// A source still that looks good at any size and ratio: a blurred, darkened copy fills the card,
+// the sharp image sits on top (cover when its shape is close to the card's, contain otherwise),
+// a shimmer holds the place until it loads, and a slow Ken Burns keeps it alive.
+function Still({ src, live, onLoad, onFail }: {
+  src: string; live: boolean; onLoad?: (img: HTMLImageElement) => boolean | void; onFail: () => void
+}) {
+  const box = useRef<HTMLDivElement>(null)
+  const [state, setState] = useState<'wait' | 'cover' | 'contain'>('wait')
+  useEffect(() => setState('wait'), [src])
+  const loaded = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget
+    if (onLoad?.(img) === false) return
+    const r = box.current?.getBoundingClientRect()
+    const card = r && r.height ? r.width / r.height : 9 / 16
+    const ratio = img.naturalWidth / Math.max(1, img.naturalHeight)
+    setState(img.naturalWidth >= 600 && Math.abs(Math.log(ratio / card)) < 0.28 ? 'cover' : 'contain')
+  }
+  return (
+    <div ref={box} className={`st st-${state}${live ? ' live' : ''}`}>
+      {state !== 'wait' && <img className="st-bg" src={src} alt="" aria-hidden draggable={false} />}
+      <img className="st-img" src={src} alt="" decoding="async" draggable={false} onLoad={loaded} onError={onFail} />
+      {state === 'wait' && <span className="st-shim" aria-hidden />}
+    </div>
+  )
+}
+
+// The media layer, alive only while the card is on screen (and never under reduced motion or Save-Data).
+function LiveMedia({ item, active, near, lines, team, playing, onPlay }: {
+  item: FeedItem; active: boolean; near: boolean; lines: string[]; team: TeamLite | null; playing: boolean; onPlay: () => void
 }) {
   const live = active && !reduced
   const vid = item.preview_video_id
-  const poster = item.thumbnail_url || (vid ? ytThumb(vid) : null)
   const isPage = !vid && item.kind !== 'internal' && item.kind !== 'podcast' && /^https?:\/\//.test(item.source_url)
+  const [ytQ, setYtQ] = useState(0)
+  const [stillOk, setStillOk] = useState(true)
+  const [useShot, setUseShot] = useState(isPage && !item.thumbnail_url)
   const [shot, setShot] = useState<'wait' | 'ok' | 'bad'>('wait')
-  const [posterOk, setPosterOk] = useState(true)
+  const [clip, setClip] = useState(false)
   const frame = useRef<HTMLIFrameElement>(null)
+  const from = useRef(20)
 
-  // YouTube: muted, from 0:20, looping a 15-second stretch.
+  const still = vid ? ytStill(vid, ytQ) : item.thumbnail_url || null
+
+  // YouTube: a muted clip from a lively point, looping a 15-second stretch. It fades in over the
+  // still only once the player says it's playing, so there's never a black flash.
   useEffect(() => {
-    if (!live || !vid) return
-    const t = setInterval(() => frame.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'seekTo', args: [20, true] }), '*'), 15000)
-    return () => clearInterval(t)
+    setClip(false)
+    if (!live || !vid || saveData) return
+    from.current = 20
+    let seeked = false
+    const post = (func: string, args: unknown[] = []) =>
+      frame.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*')
+    const onMsg = (e: MessageEvent) => {
+      if (e.source !== frame.current?.contentWindow || typeof e.data !== 'string') return
+      let d: { event?: string; info?: unknown }
+      try { d = JSON.parse(e.data) } catch { return }
+      const info = d.info as { playerState?: number; duration?: number } | number | undefined
+      const st = d.event === 'onStateChange' ? info : typeof info === 'object' ? info?.playerState : undefined
+      if (st === 1) setClip(true)
+      const dur = typeof info === 'object' ? info?.duration : undefined
+      if (dur && dur > 90 && !seeked) { seeked = true; from.current = Math.round(dur * 0.25); post('seekTo', [from.current, true]) }
+    }
+    window.addEventListener('message', onMsg)
+    const loop = setInterval(() => post('seekTo', [from.current, true]), 15000)
+    return () => { window.removeEventListener('message', onMsg); clearInterval(loop) }
   }, [live, vid])
 
-  const paper = <div className="fd-docpv"><DocPreview big title={item.title_he} lines={lines} by={by} /></div>
+  const listenTo = () => {
+    const w = frame.current?.contentWindow
+    if (!w) return
+    w.postMessage(JSON.stringify({ event: 'listening', id: item.id, channel: 'widget' }), '*')
+    w.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), '*')
+  }
+
+  const paper = (
+    <div className="fd-docpv">
+      <DocPreview big title={item.title_he} lines={lines} by={team ? `צוות ${team.team}` : item.source_name}
+        badge={team ? { color: teamColor(team.id), initials: teamInitials(team.team) } : { color: '#001c32', initials: (item.source_name || 'z').trim().charAt(0).toUpperCase() }} />
+    </div>
+  )
+
+  if (item.kind === 'podcast') {
+    const art = stillOk ? item.thumbnail_url : null
+    return (
+      <div className={`fd-media pod${live ? ' live' : ''}`}>
+        {art && <img className="pod-bg" src={art} alt="" aria-hidden draggable={false} />}
+        <button className={`fd-pod${playing ? ' on' : ''}`} onClick={(e) => { e.stopPropagation(); onPlay() }} aria-label={playing ? 'לעצור' : 'להאזין לפרק'}>
+          {art
+            ? <img className="pod-art" src={art} alt="" decoding="async" draggable={false} onError={() => setStillOk(false)} />
+            : <span className="pod-art none" aria-hidden><IcoHead /></span>}
+          <span className="fd-eq" aria-hidden>{Array.from({ length: 11 }, (_, k) => <i key={k} />)}</span>
+          <span className="fd-pod-pill" aria-hidden>{playing ? <><IcoPause /> מנגן</> : <><IcoPlay /> האזנה</>}</span>
+        </button>
+        <div className="fd-shade" />
+      </div>
+    )
+  }
+
   return (
     <div className={`fd-media${live ? ' live' : ''}`}>
-      {poster && posterOk
-        ? <img className="fd-thumb" src={poster} alt="" loading={near ? 'eager' : 'lazy'} draggable={false} onError={() => setPosterOk(false)} />
-        : (shot !== 'ok' || !isPage) && paper}
-      {isPage && near && shot !== 'bad' && (
-        <img className={`fd-shot${shot === 'ok' ? ' on' : ''}`} src={pageShot(item.source_url)} alt="" draggable={false}
+      {still && stillOk && !useShot ? (
+        <Still src={still} live={live}
+          onLoad={(img) => {
+            // YouTube answers a missing size with a 120x90 grey placeholder: step down a size.
+            if (vid && img.naturalWidth < 200 && ytQ < YT_Q.length - 1) { setYtQ(ytQ + 1); return false }
+            // A small og:image on a web page: the page itself looks better.
+            if (isPage && img.naturalWidth < 600) { setUseShot(true); return false }
+          }}
+          onFail={() => { if (vid && ytQ < YT_Q.length - 1) setYtQ(ytQ + 1); else if (isPage) setUseShot(true); else setStillOk(false) }} />
+      ) : (shot !== 'ok' || !isPage) && paper}
+      {isPage && useShot && near && shot !== 'bad' && (
+        <img className={`fd-shot${shot === 'ok' ? ' on' : ''}`} src={pageShot(item.source_url)} alt="" draggable={false} decoding="async"
           onLoad={(e) => setShot(e.currentTarget.naturalHeight > 200 ? 'ok' : 'bad')} onError={() => setShot('bad')} />
       )}
-      {vid && live && (
-        <iframe ref={frame} className="fd-video" title={item.title_he} tabIndex={-1}
-          src={`https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&controls=0&playsinline=1&start=20&enablejsapi=1&modestbranding=1&rel=0&iv_load_policy=3`}
+      {vid && live && !saveData && (
+        <iframe ref={frame} className={`fd-video${clip ? ' on' : ''}`} title={item.title_he} tabIndex={-1} onLoad={listenTo}
+          src={`https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&controls=0&playsinline=1&loop=1&playlist=${vid}&start=20&enablejsapi=1&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1`}
           allow="autoplay; encrypted-media; picture-in-picture" />
-      )}
-      {item.kind === 'podcast' && (
-        <button className={`fd-pod${playing ? ' on' : ''}`} onClick={(e) => { e.stopPropagation(); onPlay() }} aria-label={playing ? 'לעצור' : 'להאזין לפרק'}>
-          <span className="fd-eq" aria-hidden>{Array.from({ length: 9 }, (_, k) => <i key={k} />)}</span>
-          <span className="fd-pod-btn" aria-hidden>{playing ? <IcoPause /> : <IcoPlay />}</span>
-          <span className="fd-pod-label">{playing ? 'מנגן' : 'נגיעה אחת, וזה מתנגן'}</span>
-        </button>
       )}
       <div className="fd-shade" />
     </div>
@@ -553,7 +783,7 @@ function EpisodeSlide({ ep, index }: { ep: Episode; index: number }) {
     if (playing) { audio.current.pause(); setPlaying(false) } else audio.current.play().then(() => setPlaying(true), () => setPlaying(false))
   }
   return (
-    <section className="fd-card" data-index={index} aria-label="הפרק השבועי שלכם">
+    <section className="fd-card shape-tall" data-index={index} aria-label="הפרק השבועי שלכם">
       <div className="fd-inner tk-special tk-episode">
         <span className="tk-kicker">הפרק השבועי שלכם</span>
         <h2>מה שווה להכיר השבוע</h2>
@@ -582,7 +812,7 @@ function LeadersSlide({ rows, index }: { rows: BoardRow[]; index: number }) {
   const gap = useRankGap()
   const order = [rows[1], rows[0], rows[2]].filter(Boolean)
   return (
-    <section className="fd-card" data-index={index} aria-label="המובילים החודש">
+    <section className="fd-card shape-tall" data-index={index} aria-label="המובילים החודש">
       <div className="fd-inner tk-special tk-leaders">
         <span className="tk-kicker">המובילים החודש</span>
         <div className="tk-podium">
@@ -604,7 +834,7 @@ function LeadersSlide({ rows, index }: { rows: BoardRow[]; index: number }) {
 
 function QuoteSlide({ q, index }: { q: Quote; index: number }) {
   return (
-    <section className="fd-card" data-index={index} aria-label={`${q.author} כתבו`}>
+    <section className="fd-card shape-tall" data-index={index} aria-label={`${q.author} כתבו`}>
       <div className="fd-inner tk-special tk-quote">
         <span className="tk-kicker">עובדים מספרים</span>
         <blockquote>{q.body}</blockquote>
@@ -637,6 +867,8 @@ const IcoChat = () => <svg {...svg}><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.
 const IcoShare = () => <svg {...svg}><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v14" /></svg>
 const IcoSave = () => <svg {...svg}><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" /></svg>
 const IcoHead = () => <svg {...svg}><path d="M4 15v-3a8 8 0 0 1 16 0v3M4 15a2 2 0 0 1 2-2h1v6H6a2 2 0 0 1-2-2zM20 15a2 2 0 0 0-2-2h-1v6h1a2 2 0 0 0 2-2z" /></svg>
+const IcoUp = () => <svg {...svg}><path d="M6 15l6-6 6 6" /></svg>
+const IcoDownArrow = () => <svg {...svg}><path d="M6 9l6 6 6-6" /></svg>
 const IcoX = () => <svg {...svg}><path d="M18 6 6 18M6 6l12 12" /></svg>
 const IcoPlay = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z" /></svg>
 const IcoPause = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>

@@ -16,6 +16,7 @@ import { IBook, IClose, IHome, ILogout, IMenu, IShield, IUser, IUsers } from './
 import { Avatar } from './components/Avatar'
 import { SearchBox } from './components/SearchBox'
 import { AiButton, AiSheet } from './components/AiSheet'
+import { useViewportVar } from './components/Layer'
 
 const Doc = lazy(() => import('./pages/Doc'))
 const Drive = lazy(() => import('./pages/Drive'))
@@ -53,6 +54,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined)
   const [topics, setTopics] = useState<Topic[]>([])
+  useViewportVar()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -145,9 +147,15 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
             <img src="/zap-know/img/zap-group.svg" alt="zap group" />
             <span className="brand-up">UP</span>
           </NavLink>
+          <p className="imm-tag">Learn. Level Up. zap.</p>
           <nav>{PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><n.icon size={22} />{n.label}</NavLink>)}</nav>
           <AiButton />
-          <p className="imm-keys">↑ ↓ הבא והקודם · → שומר לי · ← לא בשבילי · / לשאול את ה-AI</p>
+          <PointsPill />
+          <NavLink to="/me" className="imm-me">
+            <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={38} />
+            <span><b>{profile.display_name || profile.email.split('@')[0]}</b><small>{profile.role ?? 'האזור שלי'}</small></span>
+          </NavLink>
+          <p className="imm-keys">→ שומר לי · ← לא בשבילי</p>
         </aside>
       )}
       <header className="topbar">
