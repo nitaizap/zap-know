@@ -179,6 +179,21 @@ async function sendDueReminders() {
     await admin.from("reminders").update({ sent_at: new Date().toISOString() }).eq("id", r.id);
   }
   if (due?.length) await log("reminders", true, { sent: due.length });
+
+  // "עדכנו אותי כשזה באוויר": topics that went live since someone asked to be told.
+  const { data: watch } = await admin.from("topic_watch").select("user_id,topic_slug,topics(name_he,status)").is("notified_at", null).limit(100);
+  for (const w of (watch ?? []) as unknown as { user_id: string; topic_slug: string; topics: { name_he: string; status: string } }[]) {
+    if (w.topics?.status !== "live") continue;
+    const { data: who } = await admin.from("profiles").select("email").eq("user_id", w.user_id).single();
+    if (who?.email) {
+      await notify({
+        kind: "topic-live", to: who.email, subject: `התחום ${w.topics.name_he} עלה ל-zap UP`,
+        html: mail(`${w.topics.name_he} באוויר`, ["ביקשתם שנעדכן, אז הנה: יש תכנים חדשים בתחום, מסוכמים בעברית."],
+          [{ label: "לתחום", url: `${site}#/topic/${w.topic_slug}` }]),
+      });
+    }
+    await admin.from("topic_watch").update({ notified_at: new Date().toISOString() }).eq("user_id", w.user_id).eq("topic_slug", w.topic_slug);
+  }
 }
 
 Deno.serve(async (req) => {

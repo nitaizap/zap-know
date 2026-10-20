@@ -215,7 +215,12 @@ export function weekStart(d = new Date()) {
 //  - the short form on the site, authenticated with the employee's session
 // The post is summarized in One Tone and published as a kind='internal' item.
 
-type Body = { title?: string; team?: string; text: string; link?: string; author?: string; channel?: string };
+type Body = {
+  title?: string; team?: string; text: string; link?: string; author?: string; channel?: string;
+  // A draft the person already reviewed (from the voice/doc/link flow): published as written.
+  draft?: { title_he: string; summary_he: string; bullets?: string[]; topic_slug?: string; tags?: string[] };
+  purpose?: "internal" | "external";
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -225,12 +230,18 @@ Deno.serve(async (req) => {
 
   const b = await req.json() as Body;
   const text = (b.text ?? "").replace(/<[^>]+>/g, " ").trim();
-  if (text.length < 20) return json({ error: "too short" }, 400);
+  if (!b.draft && text.length < 20) return json({ error: "too short" }, 400);
   const channel = b.channel ?? (viaZapier ? "teams" : "form");
 
   try {
     const { data: topics } = await admin.from("topics").select("slug,name_he");
-    const out = parseJson<{ title_he: string; summary_he: string; why_he: string; topic_slug: string; verticals: string[] }>(
+    const out = b.draft ? {
+      title_he: b.draft.title_he.slice(0, 160),
+      summary_he: [b.draft.summary_he, ...(b.draft.bullets ?? []).map((x) => `• ${x}`)].join("\n").slice(0, 2000),
+      why_he: (b.draft.bullets ?? [])[3] ?? "",
+      topic_slug: b.draft.topic_slug ?? "",
+      verticals: (b.draft.tags ?? []).filter((t) => ["zap", "zapstore", "Wisebuy", "דפי זהב", "Doctors", "משפטי", "REST", "Weekend", "zapX", "zap לעסקים"].includes(t)),
+    } : parseJson<{ title_he: string; summary_he: string; why_he: string; topic_slug: string; verticals: string[] }>(
       await llm([
         { role: "system", content: VOICE },
         {
@@ -250,7 +261,8 @@ ${text.slice(0, 6000)}`,
         },
       ], true),
     );
-    const auto = (Deno.env.get("INTERNAL_AUTO_APPROVE") ?? "true") === "true";
+    const external = b.purpose === "external";
+    const auto = !external && (Deno.env.get("INTERNAL_AUTO_APPROVE") ?? "true") === "true";
     const sourceUrl = b.link?.startsWith("http") ? b.link : `https://zap-know.internal/${channel}/${Date.now()}`;
     // The author earns points for the post: the form knows the user, Zapier passes the sender's email.
     let author = user?.id ?? null;
@@ -259,7 +271,7 @@ ${text.slice(0, 6000)}`,
       author = who?.user_id ?? null;
     }
     const { data, error } = await admin.from("items").insert({
-      kind: "internal",
+      kind: external ? "news" : "internal",
       author_user: author,
       topic_slug: (topics ?? []).some((t) => t.slug === out.topic_slug) ? out.topic_slug : null,
       verticals: out.verticals ?? [],
