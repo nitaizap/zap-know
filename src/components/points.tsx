@@ -176,7 +176,8 @@ export function rankLine(g: RankGap | null) {
   if (!g.points || !g.rank) return 'עוד לא צברתם החודש. פעולה אחת ואתם בטבלה.'
   if (g.rank === 1) return 'אתם במקום הראשון החודש'
   if (g.gap === null || g.gap <= 0) return `מקום ${g.rank} החודש`
-  return `מקום ${g.rank} · עוד ${g.gap.toLocaleString('he-IL')} נקודות למקום ${g.rank - 1}`
+  const pts = g.gap === 1 ? 'נקודה אחת' : `${g.gap.toLocaleString('he-IL')} נקודות`
+  return `מקום ${g.rank} · עוד ${pts} למקום ${g.rank - 1}`
 }
 
 // Yellow is always points. The ring shows progress to the next level.

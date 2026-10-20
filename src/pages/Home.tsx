@@ -190,7 +190,16 @@ function Testimonials() {
   const [rows, setRows] = useState<Testimonial[] | null>(null)
   const face = useFaces((rows ?? []).map((r) => r.user_id))
   useEffect(() => {
-    supabase.rpc('testimonials', { p_limit: 3 }).then(({ data, error }) => setRows(error ? null : ((data as Testimonial[]) ?? [])))
+    // Ask for more than we show, so repeated sentences and repeated items can be skipped.
+    supabase.rpc('testimonials', { p_limit: 15 }).then(({ data, error }) => {
+      if (error) { setRows(null); return }
+      const seenBody = new Set<string>(); const seenItem = new Set<number>()
+      setRows(((data as Testimonial[]) ?? []).filter((r) => {
+        const k = r.body.trim()
+        if (seenBody.has(k) || seenItem.has(r.item_id)) return false
+        seenBody.add(k); seenItem.add(r.item_id); return true
+      }).slice(0, 3))
+    })
   }, [])
   if (!rows || rows.length === 0) return null
   return (
