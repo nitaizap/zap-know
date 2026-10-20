@@ -306,3 +306,25 @@ table.log td, table.log th { padding: 6px 8px; border-bottom: 1px solid var(--da
 .lane > * { scroll-snap-align: start; }
 @media (min-width: 640px) { .lane { grid-auto-flow: row; grid-template-columns: 1fr 1fr; overflow: visible; margin-inline: 0; padding-inline: 0; } }
 @media (min-width: 960px) { .lane { grid-template-columns: 1fr 1fr 1fr; } }
+
+/* Personal zone (/me) */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.tile { background: #fff; border: 1px solid var(--navy-5); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+.tile-num { font-weight: 900; font-size: 26px; color: var(--navy); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile-label { font-size: 13px; color: var(--dark-60); }
+.input-lg { font-size: 18px; min-height: 52px; }
+.hint-card { display: flex; flex-direction: column; gap: 4px; background: var(--pink-5); border-color: transparent; text-decoration: none; color: inherit; }
+.tl-day { margin-bottom: 18px; }
+.tl-label { font-weight: 900; font-size: 15px; color: var(--navy); margin: 0 0 8px; }
+.timeline { list-style: none; margin: 0; padding: 0; border-inline-start: 2px solid var(--navy-5); }
+.tl-row { position: relative; padding: 10px 14px 12px; margin-inline-start: 10px; display: flex; flex-direction: column; gap: 4px; }
+.tl-row::before { content: ''; position: absolute; inset-inline-start: -18px; top: 16px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--navy); background: #fff; }
+.tl-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.tl-title { font-weight: 800; color: var(--dark, #001c32); text-decoration: none; }
+.tl-title:hover { color: var(--navy); text-decoration: underline; }
+.tl-detail { color: var(--dark-60); font-style: italic; }
+.sub-line { display: block; }
+.me-link { display: inline-flex; align-items: center; gap: 8px; margin-inline-start: auto; text-decoration: none; color: var(--navy); font-weight: 700; font-size: 14px; }
+.me-avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 900; }
+.me-link.active .me-avatar { background: var(--pink); }
+@media (max-width: 520px) { .me-text { display: none; } }

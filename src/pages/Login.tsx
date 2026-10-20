@@ -43,7 +43,10 @@ export default function Login() {
       <div className="login-card">
         <img src="/zap-know/img/zap-group.svg" alt="zap group" style={{ height: 34 }} />
         <p className="wordmark">zap <span className="swoosh-word">UP</span></p>
-        <p className="small muted" style={{ margin: '0 0 8px' }}>Learn. Level Up. zap. · zap KNOW, מרכז הלמידה והידע של zap</p>
+        <p className="small muted" style={{ margin: '0 0 8px' }}>
+          <bdi dir="ltr" className="sub-line">Learn. Level Up. zap.</bdi>
+          <span className="sub-line"><bdi dir="ltr">zap KNOW</bdi>, מרכז הלמידה והידע של zap</span>
+        </p>
         <Headline light="כל מה שצריך כדי להשתדרג," black="במקום אחד" hand="בלי לחפש" />
         <p className="muted">קורסים, עדכונים מהתעשייה ומה שקורה אצלנו, בעברית ובקצרה. נכנסים עם מייל העבודה.</p>
         <div className="card" style={{ marginTop: 18 }}>

@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useApp } from '../App'
 import {
   Budget, CATEGORY_LABEL, Purchase, PurchaseCategory, PurchaseResult, fmtDate, fmtMoney, loadBudget, supabase,
 } from '../lib'
 import { Empty, Headline } from '../components/ui'
 import { BudgetBar, BuyResult, ManagerPrompt, StatusChip, buy } from '../components/budget'
-import { PrefsPanel } from '../components/prefs'
 
 const EMPTY = { title: '', url: '', category: 'course' as PurchaseCategory, price: '', reason: '' }
 
 export default function BudgetPage() {
-  const { profile, topics, setProfile } = useApp()
+  const { profile } = useApp()
   const loc = useLocation()
   const prefsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -135,8 +134,10 @@ export default function BudgetPage() {
           </ul>
         </div>
       )}
-      <div ref={prefsRef} style={{ marginTop: 24 }}>
-        <PrefsPanel profile={profile} topics={topics} onSaved={setProfile} />
+      <div ref={prefsRef} className="card" style={{ marginTop: 24 }}>
+        <b>ההעדפות שלי עברו לאזור שלי</b>
+        <p className="small muted" style={{ margin: '4px 0 10px' }}>שם אפשר לעדכן תפקיד, נושאים ומה אתם צריכים עכשיו, ולראות את כל מה שראיתם ולמדתם.</p>
+        <Link to="/me" className="btn ghost">לאזור שלי</Link>
       </div>
     </div>
   )

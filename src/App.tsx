@@ -15,6 +15,7 @@ import Ask from './pages/Ask'
 import Admin from './pages/Admin'
 import Topics from './pages/Topics'
 import BudgetPage from './pages/Budget'
+import Me from './pages/Me'
 
 type Ctx = {
   session: Session
@@ -62,7 +63,7 @@ export default function App() {
           <div className="container">
             <NavLink to="/" className="brand" aria-label="zap UP">
               <img src="/zap-know/img/zap-group.svg" alt="zap group" />
-              <span className="brand-name"><b>UP</b><small>zap KNOW · מרכז הלמידה והידע של zap</small></span>
+              <span className="brand-name"><b>UP</b><small><bdi dir="ltr">zap KNOW</bdi> · מרכז הלמידה והידע של zap</small></span>
             </NavLink>
             <nav className="topnav">
               <NavLink to="/" end>הבית שלי</NavLink>
@@ -71,9 +72,14 @@ export default function App() {
               <NavLink to="/internal">קורה ב-zap</NavLink>
               <NavLink to="/teams">איך עובדים פה</NavLink>
               <NavLink to="/ask">שאלו את zap UP</NavLink>
+              <NavLink to="/me">האזור שלי</NavLink>
               <NavLink to="/budget">התקציב שלי</NavLink>
               {profile.is_admin && <NavLink to="/admin">אישורים</NavLink>}
             </nav>
+            <NavLink to="/me" className="me-link" aria-label="האזור שלי">
+              <span className="me-avatar">{(profile.display_name || profile.email).trim().charAt(0).toUpperCase()}</span>
+              <span className="me-text">האזור שלי</span>
+            </NavLink>
           </div>
         </header>
         <main className="container">
@@ -88,6 +94,7 @@ export default function App() {
             <Route path="/teams/:id" element={<TeamDetail />} />
             <Route path="/ask" element={<Ask />} />
             <Route path="/budget" element={<BudgetPage />} />
+            <Route path="/me" element={<Me />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<Home />} />
           </Routes>

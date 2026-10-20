@@ -134,7 +134,7 @@ export default function Home() {
       <MetroLine top={10} />
       <Headline light={`היי ${firstName}, זה השבוע שלכם`} black="מה חדש בתחום" />
       <div className="small" style={{ margin: '-6px 0 12px' }}>
-        <Link to="/budget" state={{ prefs: true }} style={{ fontWeight: 600 }}>ההעדפות שלי ←</Link>
+        <Link to="/me" style={{ fontWeight: 600 }}>האזור שלי וההעדפות ←</Link>
       </div>
 
       <div className="card episode">
