@@ -41,7 +41,7 @@ export const pageShot = (url: string, w = 1080) =>
 export function choosePreview(i: PreviewInput): Preview {
   const thumb = (i.thumbnail_url ?? '').trim()
   const vid = ytId(i)
-  if (i.doc_id || (i.kind === 'internal' && !thumb && !vid)) return { type: 'doc poster' }
+  if ((i.doc_id || i.kind === 'internal') && !thumb && !vid) return { type: 'doc poster' }
   if (i.kind === 'podcast') return thumb ? { type: 'podcast art', still: proxied(thumb, 900) } : { type: 'text' }
   if (vid) return { type: 'video', vid, still: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg` }
   const list = i.source_url?.match(YT_LIST)?.[1]

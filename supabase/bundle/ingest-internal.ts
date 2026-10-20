@@ -1,8 +1,7 @@
-import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-
 // Shared helpers for zap KNOW edge functions.
 // LLM provider is a setting: demo runs on the Gemini free tier (public content and
 // demo data only); production switches LLM_PROVIDER=openrouter for internal data.
+import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 export const admin = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -244,6 +243,7 @@ export function weekStart(d = new Date()) {
   return x.toISOString().slice(0, 10);
 }
 
+// ---- ingest-internal ----
 // "קורה ב-zap" intake. Three doors, one flow:
 //  - Teams channel and mail group, via Zapier, authenticated with the x-zap-secret header
 //  - the short form on the site, authenticated with the employee's session
@@ -254,6 +254,7 @@ type Body = {
   // A draft the person already reviewed (from the voice/doc/link flow): published as written.
   draft?: { title_he: string; summary_he: string; bullets?: string[]; topic_slug?: string; tags?: string[] };
   purpose?: "internal" | "external";
+  thumbnail_url?: string;   // an image the person uploaded with the post (our public storage only)
 };
 
 Deno.serve(async (req) => {
@@ -318,6 +319,7 @@ ${text.slice(0, 6000)}`,
       published_at: new Date().toISOString(),
       summarized_at: new Date().toISOString(),
       status: auto ? "approved" : "pending",
+      ...(b.thumbnail_url?.startsWith(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/`) ? { thumbnail_url: b.thumbnail_url } : {}),
     }).select("id").single();
     if (error) throw error;
     // Posts that didn't come from Teams are echoed to the קורה ב-zap channel.

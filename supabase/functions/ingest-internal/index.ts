@@ -9,6 +9,7 @@ type Body = {
   // A draft the person already reviewed (from the voice/doc/link flow): published as written.
   draft?: { title_he: string; summary_he: string; bullets?: string[]; topic_slug?: string; tags?: string[] };
   purpose?: "internal" | "external";
+  thumbnail_url?: string;   // an image the person uploaded with the post (our public storage only)
 };
 
 Deno.serve(async (req) => {
@@ -73,6 +74,7 @@ ${text.slice(0, 6000)}`,
       published_at: new Date().toISOString(),
       summarized_at: new Date().toISOString(),
       status: auto ? "approved" : "pending",
+      ...(b.thumbnail_url?.startsWith(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/`) ? { thumbnail_url: b.thumbnail_url } : {}),
     }).select("id").single();
     if (error) throw error;
     // Posts that didn't come from Teams are echoed to the קורה ב-zap channel.

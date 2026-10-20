@@ -9,6 +9,10 @@ async function inflate(data: Uint8Array): Promise<Uint8Array> {
 }
 
 async function entries(buf: ArrayBuffer, want: (name: string) => boolean): Promise<{ name: string; text: string }[]> {
+  return (await rawEntries(buf, want)).map((e) => ({ name: e.name, text: new TextDecoder().decode(e.bytes) }))
+}
+
+async function rawEntries(buf: ArrayBuffer, want: (name: string) => boolean): Promise<{ name: string; bytes: Uint8Array }[]> {
   const v = new DataView(buf)
   const u8 = new Uint8Array(buf)
   // End of central directory: the last 0x06054b50 signature.
@@ -18,7 +22,7 @@ async function entries(buf: ArrayBuffer, want: (name: string) => boolean): Promi
   const count = v.getUint16(eocd + 10, true)
   let p = v.getUint32(eocd + 16, true)
   const dec = new TextDecoder()
-  const out: { name: string; text: string }[] = []
+  const out: { name: string; bytes: Uint8Array }[] = []
   for (let n = 0; n < count; n++) {
     if (v.getUint32(p, true) !== 0x02014b50) break
     const method = v.getUint16(p + 10, true)
@@ -31,7 +35,7 @@ async function entries(buf: ArrayBuffer, want: (name: string) => boolean): Promi
     const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true)
     const raw = u8.subarray(start, start + size)
     const body = method === 8 ? await inflate(raw) : raw
-    out.push({ name, text: dec.decode(body) })
+    out.push({ name, bytes: body })
   }
   return out
 }
@@ -48,4 +52,32 @@ export async function officeText(file: File): Promise<string> {
   const slides = (await entries(buf, (n) => /^ppt\/slides\/slide\d+\.xml$/.test(n)))
     .sort((a, b) => Number(a.name.match(/\d+/)![0]) - Number(b.name.match(/\d+/)![0]))
   return slides.map((s, i) => `שקף ${i + 1}: ` + unxml((s.text.match(/<a:t>([^<]*)<\/a:t>/g) ?? []).map((t) => t.slice(5, -6)).join(' '))).join('\n').trim()
+}
+
+/** The first picture inside a .docx or .pptx (its own media), for the post's thumbnail. */
+export async function officeFirstImage(file: File): Promise<Blob | null> {
+  try {
+    const media = (await rawEntries(await file.arrayBuffer(), (n) => /^(ppt|word)\/media\/[^/]+\.(png|jpe?g)$/i.test(n)))
+      .sort((a, b) => b.bytes.length - a.bytes.length)
+    const m = media[0]
+    if (!m || m.bytes.length < 15000) return null
+    return new Blob([m.bytes], { type: /\.png$/i.test(m.name) ? 'image/png' : 'image/jpeg' })
+  } catch { return null }
+}
+
+/** Page 1 of a PDF as a JPEG (pdf.js from cdnjs, loaded only when needed). */
+export async function pdfFirstPage(file: File): Promise<Blob | null> {
+  try {
+    const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/'
+    // deno-lint-ignore no-explicit-any
+    const pdfjs: any = await import(/* @vite-ignore */ base + 'pdf.min.mjs')
+    pdfjs.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.mjs'
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
+    const page = await doc.getPage(1)
+    const v1 = page.getViewport({ scale: 1 })
+    const viewport = page.getViewport({ scale: Math.min(2, 1080 / v1.width) })
+    const c = document.createElement('canvas'); c.width = Math.round(viewport.width); c.height = Math.round(viewport.height)
+    await page.render({ canvasContext: c.getContext('2d')!, viewport }).promise
+    return await new Promise<Blob | null>((ok) => c.toBlob((b) => ok(b), 'image/jpeg', 0.85))
+  } catch { return null }
 }

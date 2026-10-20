@@ -394,6 +394,10 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
     return () => window.removeEventListener('keydown', onKey)
   }, [entries, active, goTo, save, hide, keep, openComments, panel])
 
+  const extOf = (it: FeedItem) => {
+    const text = [it.doc_id ? docs?.get(it.doc_id)?.body_md : null, it.summary_he].filter(Boolean).join('\n')
+    return (text.match(/https?:\/\/[^\s)<>"']+/g) ?? []).map((u) => u.replace(/[.,;:!?]+$/, '')).find((u) => !/zap-know|nitaizap\.github\.io|#\/doc\//i.test(u)) ?? null
+  }
   const toolsOf = (it: FeedItem) => (it.doc_id ? docs?.get(it.doc_id)?.tools : null) ?? it.tools ?? []
   const authorOf = (it: FeedItem) => {
     const d = it.doc_id ? docs?.get(it.doc_id) : null
@@ -458,7 +462,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
             const it = en.item
             return (
               <FeedCard key={it.id} item={it} index={i} active={i === active} near={near} bite={source === 'bites'}
-                lines={linesOf(it)} team={authorOf(it)} faces={faces.get(authorOf(it)?.team ?? '') ?? []} tools={toolsOf(it)}
+                lines={linesOf(it)} team={authorOf(it)} faces={faces.get(authorOf(it)?.team ?? '') ?? []} tools={toolsOf(it)} ext={extOf(it)}
                 likers={likers.get(it.id) ?? []} myId={myId} onLikers={() => setLikersOf(it.id)}
                 kept={kept.has(it.id)} onKeep={() => keep(it)} onSave={() => save(it)} onHide={() => hide(it)}
                 onComments={() => openComments(it)} onShare={() => setSheet({ item: it, kind: 'share' })} />
@@ -563,9 +567,9 @@ function LikersSheet({ itemId, onClose }: { itemId: number; onClose: () => void 
 type Panel = { kind: 'details'; target: Target } | { kind: 'comments'; item: FeedItem }
 const targetOf = (i: FeedItem): Target => (i.doc_id ? { kind: 'doc', id: i.doc_id } : { kind: 'item', id: i.id })
 
-function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, likers, myId, onLikers, kept, onKeep, onSave, onHide, onComments, onShare }: {
+function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, ext, likers, myId, onLikers, kept, onKeep, onSave, onHide, onComments, onShare }: {
   item: FeedItem; index: number; active: boolean; near: boolean; bite: boolean; lines: string[]
-  team: TeamLite | null; faces: BoardRow[]; tools: string[]; likers: Liker[]; myId: string; onLikers: () => void; kept: boolean; onKeep: () => void; onSave: () => void; onHide: () => void
+  team: TeamLite | null; faces: BoardRow[]; tools: string[]; ext: string | null; likers: Liker[]; myId: string; onLikers: () => void; kept: boolean; onKeep: () => void; onSave: () => void; onHide: () => void
   onComments: () => void; onShare: () => void
 }) {
   const s = useSocial(item.id)
@@ -664,7 +668,7 @@ function FeedCard({ item, index, active, near, bite, lines, team, faces, tools, 
       <div className={`fd-inner ${drag ? 'drag' : ''}`}
         style={{ transform: dx ? `translateX(${dx}px) rotate(${dx / 22}deg)` : undefined }}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { start.current = null; setDrag(false); setDx(0) }}>
-        <LiveMedia item={item} active={active} near={near} lines={lines} team={team} faces={faces} tools={tools}
+        <LiveMedia item={item} active={active} near={near} lines={lines} team={team} faces={faces} tools={tools} ext={ext}
           playing={listen.playing} onPlay={listen.toggle} />
         {burst && <span key={burst.n} className="tk-heart" style={{ left: burst.x, top: burst.y }} aria-hidden>
           <svg viewBox="0 0 24 24" width="110" height="110"><path fill="#ff5c9e" d="M12 21s-7.5-4.6-9.6-9.3C.8 7.9 3.2 4 7 4c2.1 0 3.7 1.1 5 2.9C13.3 5.1 14.9 4 17 4c3.8 0 6.2 3.9 4.6 7.7C19.5 16.4 12 21 12 21z" /></svg>
@@ -918,8 +922,8 @@ const remember = (id: number, st: Stage) => {
   try { localStorage.setItem(`zapup.pv.${id}`, st) } catch { /* storage blocked */ }
 }
 
-function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onPlay }: {
-  item: FeedItem; active: boolean; near: boolean; lines: string[]; team: TeamLite | null; faces: BoardRow[]; tools: string[]
+function LiveMedia({ item, active, near, lines, team, faces, tools, ext, playing, onPlay }: {
+  item: FeedItem; active: boolean; near: boolean; lines: string[]; team: TeamLite | null; faces: BoardRow[]; tools: string[]; ext?: string | null
   playing: boolean; onPlay: () => void
 }) {
   const live = active
@@ -932,6 +936,14 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
   const [shotOk, setShotOk] = useState(false)
   const [meta, setMeta] = useState<Meta | null>(null)
   const [artOk, setArtOk] = useState(true)
+  // A post or doc without an image of its own: the image of the page it links to, if any.
+  const [docMeta, setDocMeta] = useState<Meta | null>(null)
+  useEffect(() => {
+    if (!isDoc || !ext || !near || docMeta || stageOf(item.id) === 'text') return
+    let alive = true
+    metaOf(ext).then((m) => { if (alive) { setDocMeta(m); if (!m.image) remember(item.id, 'text') } })
+    return () => { alive = false }
+  }, [isDoc, ext, near, docMeta, item.id])
 
   // Ask microlink only when the page's own capture failed and the card is about to be seen.
   useEffect(() => {
@@ -961,7 +973,9 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, playing, onP
   if (isDoc) {
     return (
       <div className={`fd-media${live ? ' live' : ''}`}>
-        <DocVisual item={item} team={team} lines={lines} faces={faces} tools={tools} live={live} />
+        {docMeta?.image
+          ? <Still src={proxied(docMeta.image)} live={live} onLoad={() => { remember(item.id, 'meta') }} onFail={() => setDocMeta({ image: null, video: null, yt: null })} />
+          : <DocVisual item={item} team={team} lines={lines} faces={faces} tools={tools} live={live} />}
         <div className="fd-shade" />
       </div>
     )

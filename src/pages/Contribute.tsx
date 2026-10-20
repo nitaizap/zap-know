@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../App'
 import { callFn, supabase } from '../lib'
 import { DetailLink } from '../components/detail'
-import { officeText } from '../officeText'
+import { officeFirstImage, officeText, pdfFirstPage } from '../officeText'
 import { Headline } from '../components/ui'
 import { earn } from '../components/points'
 import '../contribute.css'
@@ -12,7 +12,7 @@ import '../contribute.css'
 type Purpose = 'internal' | 'external'
 type Mode = 'voice' | 'doc' | 'link' | 'text'
 type Draft = { title_he: string; summary_he: string; bullets: string[]; topic_slug: string; tags: string[]; transcript_he?: string; source_url?: string | null }
-type Input = { mode: 'voice' | 'doc' | 'link' | 'text'; data?: string; mime?: string; url?: string; text?: string }
+type Input = { mode: 'voice' | 'doc' | 'link' | 'text'; data?: string; mime?: string; url?: string; text?: string; thumb?: Blob | null }
 
 const MAX_MB = 15
 
@@ -64,29 +64,41 @@ export function ContributeFlow({ embedded }: { embedded?: boolean }) {
   async function makeDraft(src: Input) {
     setInput(src); setErr(''); setStep('thinking')
     try {
-      const d = await callFn<Partial<Draft>>('draft', { ...src, purpose })
+      const { thumb: _thumb, ...body } = src
+      const d = await callFn<Partial<Draft>>('draft', { ...body, purpose })
       const next: Draft = {
         title_he: d.title_he ?? '', summary_he: d.summary_he ?? '', bullets: d.bullets ?? [],
         topic_slug: d.topic_slug ?? '', tags: d.tags ?? [], transcript_he: d.transcript_he, source_url: d.source_url ?? src.url ?? null,
       }
       setDraft(next)
       if (editFirst || !next.title_he.trim()) setStep('draft')
-      else await send(next)
+      else await send(next, src)
     } catch {
       setErr('ה-AI לא הצליח לקרוא את זה הפעם. אפשר לנסות שוב, או לכתוב כמה מילים בטקסט.')
       setStep('input')
     }
   }
 
-  async function send(d: Draft | null = draft) {
+  // The picture that came with the post (the image itself, a PDF's first page, a slide's picture).
+  async function uploadThumb(blob?: Blob | null): Promise<string | undefined> {
+    if (!blob) return undefined
+    const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg'
+    const path = `${profile.user_id}/posts/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('avatars').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true })
+    return error ? undefined : supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl
+  }
+
+  async function send(d: Draft | null = draft, src: Input | null = input) {
     if (!d) return
     setStep('sending'); setErr('')
     try {
+      const thumbnail_url = await uploadThumb(src?.thumb)
       const r = await callFn<{ id: number }>('ingest-internal', {
         channel: 'form', purpose, team: team || profile.role || undefined,
         text: d.transcript_he || [d.summary_he, ...d.bullets].join('\n'),
         link: d.source_url ?? undefined,
         draft: { title_he: d.title_he, summary_he: d.summary_he, bullets: d.bullets.filter(Boolean), topic_slug: d.topic_slug, tags: d.tags },
+        thumbnail_url,
       })
       earn('post')
       setPosted({ id: r.id, link: d.source_url ?? null })
@@ -277,13 +289,13 @@ function DocInput({ onReady, onError }: { onReady: (i: Input) => void; onError: 
     if (f.size > MAX_MB * 1024 * 1024) { onError(`הקובץ גדול מ-${MAX_MB}MB.`); return }
     const name = f.name.toLowerCase()
     if (/\.(docx|pptx)$/.test(name)) {
-      try { const text = await officeText(f); if (text.length < 20) throw new Error('empty'); onReady({ mode: 'text', text: text.slice(0, 12000) }) }
+      try { const text = await officeText(f); if (text.length < 20) throw new Error('empty'); onReady({ mode: 'text', text: text.slice(0, 12000), thumb: await officeFirstImage(f) }) }
       catch { onError('לא הצלחנו לקרוא את הקובץ. אפשר לשמור אותו כ-PDF ולהעלות.') }
       return
     }
     if (/\.(doc|ppt)$/.test(name)) { onError('את הפורמט הישן של Word ו-PowerPoint כדאי לשמור כ-docx, pptx או PDF.'); return }
-    if (f.type.startsWith('image/')) { onReady({ mode: 'doc', data: await toBase64(f), mime: f.type }); return }
-    if (name.endsWith('.pdf') || f.type === 'application/pdf') { onReady({ mode: 'doc', data: await toBase64(f), mime: 'application/pdf' }); return }
+    if (f.type.startsWith('image/')) { onReady({ mode: 'doc', data: await toBase64(f), mime: f.type, thumb: f }); return }
+    if (name.endsWith('.pdf') || f.type === 'application/pdf') { onReady({ mode: 'doc', data: await toBase64(f), mime: 'application/pdf', thumb: await pdfFirstPage(f) }); return }
     if (/\.(txt|md|markdown)$/.test(name) || f.type.startsWith('text/')) { onReady({ mode: 'text', text: await f.text() }); return }
     onError('אפשר להעלות PDF, Word, PowerPoint, תמונה, txt או md.')
   }
