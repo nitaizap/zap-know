@@ -80,6 +80,7 @@ export type Budget = {
   spent: number
   remaining: number
   pending: number
+  bonus?: number
 }
 
 export type PurchaseStatus = 'auto_approved' | 'pending_manager' | 'approved' | 'declined' | 'purchased'

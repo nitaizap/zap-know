@@ -34,6 +34,11 @@ export function BudgetBar({ b }: { b: Budget }) {
           {b.pending === 1 ? 'בקשה אחת מחכה לאישור' : `${b.pending} בקשות מחכות לאישור`}
         </div>
       )}
+      {(b.bonus ?? 0) > 0 && (
+        <div className="small" style={{ marginTop: 6, color: 'var(--green)', fontWeight: 700 }}>
+          🏆 כולל {fmtMoney(b.bonus!, b.currency)} בונוס, כי סיימתם את החודש שעבר בין המובילים בטבלה.
+        </div>
+      )}
       {b.is_placeholder && (
         <div className="small muted" style={{ marginTop: 6 }}>סכום לדוגמה. את הסכום האמיתי קובעים ב-L&amp;D.</div>
       )}

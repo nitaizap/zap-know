@@ -16,6 +16,8 @@ import Admin from './pages/Admin'
 import Topics from './pages/Topics'
 import BudgetPage from './pages/Budget'
 import Me from './pages/Me'
+import Leaderboard from './pages/Leaderboard'
+import { PointsPill, Toaster } from './components/points'
 
 type Ctx = {
   session: Session
@@ -67,6 +69,7 @@ export default function App() {
             </NavLink>
             <nav className="topnav">
               <NavLink to="/" end>הבית שלי</NavLink>
+              <NavLink to="/leaderboard">הטבלה</NavLink>
               <NavLink to="/topics">נושאים</NavLink>
               <NavLink to="/library">מאגר</NavLink>
               <NavLink to="/internal">קורה ב-zap</NavLink>
@@ -76,6 +79,7 @@ export default function App() {
               <NavLink to="/budget">התקציב שלי</NavLink>
               {profile.is_admin && <NavLink to="/admin">אישורים</NavLink>}
             </nav>
+            <PointsPill />
             <NavLink to="/me" className="me-link" aria-label="האזור שלי">
               <span className="me-avatar">{(profile.display_name || profile.email).trim().charAt(0).toUpperCase()}</span>
               <span className="me-text">האזור שלי</span>
@@ -95,6 +99,7 @@ export default function App() {
             <Route path="/ask" element={<Ask />} />
             <Route path="/budget" element={<BudgetPage />} />
             <Route path="/me" element={<Me />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<Home />} />
           </Routes>
@@ -109,11 +114,10 @@ export default function App() {
           <NavLink to="/" end><span className="ico">⌂</span>הבית</NavLink>
           <NavLink to="/topics"><span className="ico">▦</span>נושאים</NavLink>
           <NavLink to="/ask"><span className="ico">✦</span>שאלו</NavLink>
-          <NavLink to="/teams"><span className="ico">◎</span>צוותים</NavLink>
-          <NavLink to={profile.is_admin ? '/admin' : '/internal'}>
-            <span className="ico">{profile.is_admin ? '✓' : '⚑'}</span>{profile.is_admin ? 'אישורים' : 'קורה ב-zap'}
-          </NavLink>
+          <NavLink to="/leaderboard"><span className="ico">🏆</span>הטבלה</NavLink>
+          <NavLink to="/me"><span className="ico">☺</span>האזור שלי</NavLink>
         </nav>
+        <Toaster />
       </div>
     </AppCtx.Provider>
   )

@@ -4,6 +4,7 @@ import { useApp } from '../App'
 import { KIND_LABEL, Item, supabase } from '../lib'
 import { Empty, Headline, Skeletons, clip } from '../components/ui'
 import { PrefsPanel } from '../components/prefs'
+import { PointsDashboard } from '../components/points'
 
 type Action = 'open' | 'like' | 'dislike' | 'save' | 'comment' | 'shared_by_me' | 'shared_with_me' | 'progress' | 'purchase'
 type Row = {
@@ -112,6 +113,17 @@ export default function Me() {
   return (
     <div>
       <Headline light="כל מה שראיתם, שמרתם ולמדתם," black="האזור שלי" hand="הכל נשמר" />
+
+      <div className="chips" style={{ marginTop: 4 }}>
+        <Link to="/leaderboard" className="chip">🏆 הטבלה</Link>
+        <Link to="/internal" className="chip">קורה ב-zap</Link>
+        <Link to="/teams" className="chip">איך עובדים פה</Link>
+        <Link to="/library" className="chip">המאגר</Link>
+        <Link to="/budget" className="chip">התקציב שלי</Link>
+        {profile.is_admin && <Link to="/admin" className="chip">אישורים</Link>}
+      </div>
+
+      <PointsDashboard />
 
       {stats && (
         <div className="tiles" style={{ marginTop: 16 }}>

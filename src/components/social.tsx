@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Item, callFn, supabase } from '../lib'
+import { earn } from './points'
 
 export type Social = { likes: number; dislikes: number; comments_count: number; shares_count: number; mine: 1 | -1 | null }
 
@@ -56,6 +57,8 @@ export function useSocial(id: number): Social | null {
 
 export async function react(id: number, value: 1 | -1) {
   const cur = store.get(id)
+  // Pressing the same reaction again removes it, and removing earns nothing.
+  if (cur?.mine !== value) earn('react')
   if (cur) {
     // Optimistic: flip locally, then trust the server's counters.
     const was = cur.mine
@@ -130,6 +133,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
         item_id: item.id, channel, to_user: to?.user_id, note: note.trim() || undefined,
       })
       setSocial(item.id, { shares_count: (store.get(item.id)?.shares_count ?? 0) + 1 })
+      earn('share')
       if (channel === 'link') {
         let copied = false
         try { await navigator.clipboard.writeText(r.link); copied = true } catch { /* show it instead */ }
@@ -228,6 +232,7 @@ export function Comments({ item, myId }: { item: Item; myId: string }) {
     setBusy(false)
     if (error || !data) return
     setList((l) => [...(l ?? []), data as Comment])
+    earn('comment')
     setBody('')
     setSocial(item.id, { comments_count: (store.get(item.id)?.comments_count ?? 0) + 1 })
   }

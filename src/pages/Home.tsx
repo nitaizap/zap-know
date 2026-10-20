@@ -5,6 +5,7 @@ import { Budget, ITEM_COLS, Item, loadBudget, supabase, weekStart } from '../lib
 import { Empty, Headline, ItemCard, MetroLine, Skeletons } from '../components/ui'
 import { BudgetBar } from '../components/budget'
 import { FeedRow, loadFeed, reasonChips } from '../components/social'
+import { LeaderTeaser } from '../components/points'
 
 type Lane = { item: Item; chips: string[] }
 
@@ -157,6 +158,8 @@ export default function Home() {
           {episode ? 'הפרק הזה נשלח גם ב-Teams ובמייל.' : 'כל שבוע מגיע פרק חדש ב-Teams ובמייל, לפי הנושאים שבחרתם.'}
         </p>
       </div>
+
+      <LeaderTeaser />
 
       {inbox.length > 0 && (
         <div className="card" style={{ marginTop: 14 }}>

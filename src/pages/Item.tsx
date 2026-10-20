@@ -5,6 +5,7 @@ import { ITEM_COLS, Item, PurchaseResult, fmtMoney, supabase, track } from '../l
 import { Empty, ItemMeta, Skeletons } from '../components/ui'
 import { BuyResult, ManagerPrompt, buy } from '../components/budget'
 import { Comments, ReactionBar } from '../components/social'
+import { earn } from '../components/points'
 
 export default function ItemPage() {
   const { id } = useParams()
@@ -43,12 +44,18 @@ export default function ItemPage() {
       if (alive && !error && row && row.price != null) setPrice({ price: Number(row.price), currency: row.currency })
     })
     track(itemId, 'open')
+    earn('open')
     return () => { alive = false }
   }, [itemId, profile.user_id])
 
   async function toggleLesson(idx: number) {
     const next = done.includes(idx) ? done.filter((d) => d !== idx) : [...done, idx].sort((a, b) => a - b)
     setDone(next)
+    if (next.length > done.length) {
+      earn('lesson')
+      const total = item?.lesson_plan?.length ?? 0
+      if (total > 0 && next.length >= total) earn('course_done')
+    }
     await supabase.from('progress').upsert({
       user_id: profile.user_id, item_id: itemId, lessons_done: next, updated_at: new Date().toISOString(),
     })
@@ -62,6 +69,7 @@ export default function ItemPage() {
       setSaved(true)
       await supabase.from('saves').insert({ user_id: profile.user_id, item_id: itemId })
       track(itemId, 'save')
+      earn('save')
     }
   }
 

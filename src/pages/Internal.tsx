@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ITEM_COLS, Item, callFn, supabase } from '../lib'
 import { Empty, Headline, ItemCard, Skeletons } from '../components/ui'
+import { earn } from '../components/points'
 
 export default function Internal() {
   const [items, setItems] = useState<Item[] | null>(null)
@@ -19,6 +20,7 @@ export default function Internal() {
     try {
       await callFn('ingest-internal', { ...form, channel: 'form' })
       setState('ok')
+      earn('post')
       setForm({ title: '', team: '', what: '', link: '' })
     } catch {
       setState('err')
