@@ -51,9 +51,12 @@ async function pull(s: Source): Promise<Raw[]> {
       }));
     }
     case "rss": {
-      const doc = xml.parse(await fetchText(s.ref));
-      const items = doc.rss ? asArray(doc.rss.channel.item) : asArray(doc.feed?.entry);
-      return items.slice(0, 8).map((e: Record<string, any>) => ({
+      // Cut out the first 8 entries before parsing: full feeds can blow the CPU budget.
+      const raw = await fetchText(s.ref);
+      const blocks = raw.match(/<(item|entry)[\s>][\s\S]*?<\/(item|entry)>/g)?.slice(0, 8) ?? [];
+      const items = blocks.map((b) => xml.parse(b.replace(/<content:encoded>[\s\S]*?<\/content:encoded>/g, "")))
+        .map((d: Record<string, any>) => d.item ?? d.entry);
+      return items.map((e: Record<string, any>) => ({
         kind: "news" as const,
         title: strip(e.title?.["#text"] ?? e.title),
         description: strip(e.description ?? e.summary ?? e["content:encoded"]).slice(0, 1500),
@@ -133,12 +136,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.headers.get("x-cron-secret") !== Deno.env.get("CRON_SECRET")) return json({ error: "forbidden" }, 403);
   const max = Number(new URL(req.url).searchParams.get("max") ?? 10);
-  const { data: sources } = await admin.from("sources").select("id,name,kind,ref,topic_slug").eq("status", "active");
+  const perRun = Number(new URL(req.url).searchParams.get("sources") ?? 3);
+  const { data: sources } = await admin.from("sources").select("id,name,kind,ref,topic_slug").eq("status", "active")
+    .order("last_pulled_at", { ascending: true, nullsFirst: true }).limit(perRun);
   const report = { sources: 0, new_items: 0, failures: [] as string[] };
 
   for (const s of (sources ?? []) as Source[]) {
     if (report.new_items >= max) break;
     try {
+      await admin.from("sources").update({ last_pulled_at: new Date().toISOString() }).eq("id", s.id);
       const raws = await pull(s);
       report.sources++;
       const urls = raws.map((r) => r.url);

@@ -129,11 +129,10 @@ export const VERTICALS = ['zap', 'zapstore', 'Wisebuy', 'דפי זהב', 'Doctor
 
 export const KIND_LABEL: Record<Item['kind'], string> = { course: 'קורס', news: 'עדכון', internal: 'קורה ב-zap' }
 
-// Monday of the current week, as YYYY-MM-DD (matches items.hot_week).
+// Sunday of the current week (the Israeli work week), as YYYY-MM-DD; matches items.hot_week.
 export function weekStart(d = new Date()): string {
   const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-  const day = x.getUTCDay() || 7
-  x.setUTCDate(x.getUTCDate() - day + 1)
+  x.setUTCDate(x.getUTCDate() - x.getUTCDay())
   return x.toISOString().slice(0, 10)
 }
 

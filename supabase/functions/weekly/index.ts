@@ -16,7 +16,7 @@ async function hot() {
   const { data: topics } = await admin.from("topics").select("slug,name_he").eq("status", "live");
   const picked: Record<string, number[]> = {};
   for (const t of topics ?? []) {
-    const { data: cands } = await admin.from("items").select("id,title_he,summary_he,opens,saves")
+    const { data: cands } = await admin.from("items").select("id,title_he,summary_he,opens,saves,likes,dislikes,comments_count,shares_count")
       .eq("topic_slug", t.slug).eq("status", "approved").gte("created_at", since).limit(25);
     if (!cands?.length) continue;
     let ids = cands.slice(0, 3).map((c) => c.id);
@@ -25,8 +25,8 @@ async function hot() {
         { role: "system", content: VOICE },
         {
           role: "user",
-          content: `בחרו את 3 העדכונים החשובים השבוע בתחום ${t.name_he} לאנשי שיווק ודיגיטל ב-zap. העדיפו מה שמשנה עבודה בפועל, ושקללו גם עניין של עובדים (opens/saves). JSON: {"ids":[...]}\n` +
-            cands.map((c) => `${c.id}: ${c.title_he} — ${c.summary_he} (opens ${c.opens}, saves ${c.saves})`).join("\n"),
+          content: `בחרו את 3 העדכונים החשובים השבוע בתחום ${t.name_he} לאנשי שיווק ודיגיטל ב-zap. העדיפו מה שמשנה עבודה בפועל, ושקללו גם את התגובות של העובדים (פתיחות, שמירות, לייקים, דיסלייקים, תגובות ושיתופים). JSON: {"ids":[...]}\n` +
+            cands.map((c) => `${c.id}: ${c.title_he} — ${c.summary_he} (opens ${c.opens}, saves ${c.saves}, likes ${c.likes}, dislikes ${c.dislikes}, comments ${c.comments_count}, shares ${c.shares_count})`).join("\n"),
         },
       ], true));
       ids = out.ids.filter((id) => cands.some((c) => c.id === id)).slice(0, 3);
@@ -39,11 +39,11 @@ async function hot() {
 
 async function engine() {
   const { data: sources } = await admin.from("sources").select("id,name,kind,ref,topic_slug,status");
-  const { data: items } = await admin.from("items").select("source_id,opens,saves,status").not("source_id", "is", null);
+  const { data: items } = await admin.from("items").select("source_id,opens,saves,likes,dislikes,comments_count,shares_count,status").not("source_id", "is", null);
   const flagged: string[] = [];
   for (const s of sources ?? []) {
     const mine = (items ?? []).filter((i) => i.source_id === s.id && i.status === "approved");
-    const score = mine.length ? mine.reduce((a, i) => a + i.opens + 3 * i.saves, 0) / mine.length : 0;
+    const score = mine.length ? mine.reduce((a, i) => a + i.opens + 3 * i.saves + 2 * i.likes - 2 * i.dislikes + i.comments_count + 2 * i.shares_count, 0) / mine.length : 0;
     const weak = s.status === "active" && mine.length >= 5 && score < 0.5;
     await admin.from("sources").update({
       score,
