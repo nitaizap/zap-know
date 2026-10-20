@@ -37,8 +37,9 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 `seed-team-docs.sql` (36 team docs). Cleanup of demo people: `delete from auth.users where email like '%@zap-up.invalid';`
 
 ## Deploying
-- Site: `npm run build`, copy `dist/` to a temp dir, add `404.html` (copy of index) + `.nojekyll`,
-  fresh `git init -b gh-pages`, force-push to `https://github.com/nitaizap/zap-know.git` gh-pages.
+- Site: push to `master`. GitHub Actions (`.github/workflows/deploy.yml`) builds and publishes to
+  Pages in ~2 min; check with `gh run list --workflow "Deploy site" -L 1`. One branch only: there is
+  no gh-pages branch any more. Never force-push master; don't edit `.github/` without the owner.
 - Functions: the dashboard editor takes ONE file. `supabase/bundle/<fn>.ts` = function + inlined
   `_shared/core.ts`. Regenerate bundles after editing core or a function, push, then paste/deploy.
   New functions need "Verify JWT with legacy secret" turned OFF (they check auth themselves).

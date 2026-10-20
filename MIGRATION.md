@@ -15,10 +15,10 @@ to this repo only. No Snowflake, Azure or other system access is needed or reque
      (or temporarily allow members to create repos), or tell us and we'll transfer to your personal account instead.
    - **Into your personal account:** nothing to prepare; accept the transfer email from GitHub.
 2. **After the transfer:** Settings → Collaborators → add `nitaizap` with **Write** (repo-level only).
-3. **Pages:** Settings → Pages → Source: *Deploy from a branch* → `gh-pages` / root. Check that
-   `https://<your-account>.github.io/zap-know/` loads.
-4. **Recommended:** Settings → Branches → protect `main` (require a pull request and your approval).
-   Our deploy pushes the built site to `gh-pages`, so leave that branch unprotected, or allow `nitaizap` to push to it.
+3. **Pages:** Settings → Pages → Source: *GitHub Actions*. The workflow in `.github/workflows/deploy.yml`
+   builds and publishes on every push to `master`. Check that `https://<your-account>.github.io/zap-know/` loads.
+4. **Recommended:** Settings → Branches → protect `master` (require a pull request and your approval).
+   There is only one branch; the site deploys from it, so nothing else needs to stay unprotected.
 5. Send us the final repo address. We update the login redirect, the email links and the deck on our side.
 
 ## For your Claude session
