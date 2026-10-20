@@ -215,7 +215,7 @@ export default function Feed() {
         {items?.length === 0 && (
           <div className="fd-card fd-empty">
             <p className="fd-empty-title">עברתם על הכול</p>
-            <p>תוכן חדש נכנס כל כמה שעות. בינתיים אפשר לבדוק את <Link to="/topics">הנושאים</Link>.</p>
+            <p>תוכן חדש נכנס כל כמה שעות. בינתיים אפשר לבדוק את <Link to="/external">הרשימה המלאה</Link>.</p>
           </div>
         )}
         {items?.map((it, i) => (

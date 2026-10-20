@@ -5,7 +5,7 @@ import { IClose } from './icons'
 // One lightweight filter/sort bar for every browsing surface: collapsed into a single
 // "סינון ומיון" pill (with an active-filter count) that opens a compact sheet.
 export type Sort = 'top' | 'new' | 'short' | 'long' | 'liked'
-export type Len = '' | '5' | '15' | '60' | 'more'
+export type Len = '' | '5' | '10' | '15' | '60' | 'more'
 export type Lang = '' | 'he' | 'en'
 export type Level = '' | 'beginner' | 'intermediate' | 'advanced'
 export type Filters = {

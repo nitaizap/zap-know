@@ -207,14 +207,14 @@ export default function Doc() {
     return (
       <div className="ag">
         <p className="doc-state">המסמך הזה כבר לא כאן. אולי הצוות עדכן או הזיז אותו.</p>
-        <p style={{ textAlign: 'center' }}><Link className="doc-btn ghost" to="/agent">לשאול את הצוותים</Link></p>
+        <p style={{ textAlign: 'center' }}><Link className="doc-btn ghost" to="/internal">לשאול את הצוותים</Link></p>
       </div>
     )
   }
 
   const ask = () => {
     const q = `ספרו לי עוד על "${doc.title}"${team ? ` של צוות ${team.team}` : ''}`
-    navigate(`/agent?q=${encodeURIComponent(q)}${team ? `&team=${team.id}` : ''}`)
+    navigate(`/internal?ask=${encodeURIComponent(q)}${team ? `&team=${team.id}` : ''}`)
   }
 
   return (
@@ -222,7 +222,7 @@ export default function Doc() {
       <header className="doc-head">
         <div className="doc-meta">
           <span className="ag-chip">{DOC_KIND_HE[doc.kind] ?? doc.kind}</span>
-          {team && <Link to={`/agent?team=${team.id}`}>צוות {team.team}</Link>}
+          {team && <Link to={`/internal?team=${team.id}`}>צוות {team.team}</Link>}
           <span>עודכן ב-{fmtDate(doc.updated_at)}</span>
           {doc.is_demo && <DemoNote />}
         </div>

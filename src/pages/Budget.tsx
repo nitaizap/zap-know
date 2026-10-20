@@ -10,7 +10,7 @@ import '../calm.css'
 
 const EMPTY = { title: '', url: '', category: 'course' as PurchaseCategory, price: '', reason: '' }
 
-export default function BudgetPage() {
+export default function BudgetPage({ embedded }: { embedded?: boolean } = {}) {
   const { profile } = useApp()
   const [budget, setBudget] = useState<Budget | null | undefined>(undefined)
   const [list, setList] = useState<Purchase[]>([])
@@ -57,8 +57,8 @@ export default function BudgetPage() {
   const name = profile.display_name || profile.email.split('@')[0]
 
   return (
-    <div className="calm-narrow">
-      <Headline light="קורס, ספר או כנס," black="בלי טפסים ובלי לחכות" hand="פשוט ככה" />
+    <div className={embedded ? "" : "calm-narrow"}>
+      {!embedded && <Headline light="קורס, ספר או כנס," black="בלי טפסים ובלי לחכות" hand="פשוט ככה" />}
 
       <div className="bcard" aria-label="כרטיס הלמידה">
         <div className="vc-top">
@@ -141,9 +141,11 @@ export default function BudgetPage() {
         )}
       </section>
 
-      <p className="small muted" style={{ marginTop: 'var(--s8, 32px)' }}>
-        ההעדפות נמצאות עכשיו <Link className="textlink" to="/me">באזור שלי</Link>.
-      </p>
+      {!embedded && (
+        <p className="small muted" style={{ marginTop: 'var(--s8, 32px)' }}>
+          ההעדפות נמצאות <Link className="textlink" to="/me">באזור שלי</Link>.
+        </p>
+      )}
     </div>
   )
 }

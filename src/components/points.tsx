@@ -238,7 +238,7 @@ export function PointsDashboard() {
       <div className="tiles" style={{ marginTop: 14 }}>
         <div className="tile"><span className="tile-num">{p.month.toLocaleString('he-IL')}</span><span className="tile-label">נקודות החודש</span></div>
         <div className="tile"><span className="tile-num">{p.all.toLocaleString('he-IL')}</span><span className="tile-label">מאז שהתחלתם</span></div>
-        <Link to="/leaderboard" className="tile tile-link">
+        <Link to="/me#leaderboard" className="tile tile-link">
           <span className="tile-num">{p.rank_month ? `#${p.rank_month}` : '–'}</span>
           <span className="tile-label">{p.rank_month ? `מקום ${p.rank_month} החודש` : 'עוד לא בטבלה'}</span>
         </Link>
@@ -285,7 +285,7 @@ export function LeaderTeaser() {
   }, [])
   if (!rows) return null
   return (
-    <Link to="/leaderboard" className="card link teaser">
+    <Link to="/me#leaderboard" className="card link teaser">
       <div className="teaser-head">
         <div className="hand">מי מוביל החודש</div>
         {p && <PointsRing p={p} small />}

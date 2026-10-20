@@ -190,7 +190,7 @@ export default function ItemPage() {
           {buyErr && <div className="notice err" style={{ marginTop: 10 }}>משהו נתקע בדרך. נסו שוב עוד רגע.</div>}
           {bought && <BuyResult result={bought} url={item.source_url} />}
           <div className="small muted" style={{ marginTop: 10 }}>
-            עד גובה התקציב החודשי זה מאושר מיד. מעל זה, הבקשה הולכת ישר למי שמנהל אתכם. <Link to="/budget">התקציב שלי ←</Link>
+            עד גובה התקציב החודשי זה מאושר מיד. מעל זה, הבקשה הולכת ישר למי שמנהל אתכם. <Link to="/me#budget">התקציב שלי ←</Link>
           </div>
         </section>
       )}

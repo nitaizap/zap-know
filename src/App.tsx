@@ -1,38 +1,39 @@
 import { Suspense, createContext, lazy, useContext, useEffect, useState } from 'react'
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { Profile, Topic, probeMediaCols, supabase } from './lib'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
-import TopicPage from './pages/Topic'
-import Library from './pages/Library'
+import External from './pages/External'
+import InternalHub from './pages/InternalHub'
 import ItemPage from './pages/Item'
-import Internal from './pages/Internal'
-import Teams from './pages/Teams'
 import TeamDetail from './pages/TeamDetail'
-import Ask from './pages/Ask'
 import Admin from './pages/Admin'
-import Topics from './pages/Topics'
-import BudgetPage from './pages/Budget'
 import Me from './pages/Me'
-import Leaderboard from './pages/Leaderboard'
 import { PointsPill, Toaster } from './components/points'
-import { IBook, ICar, IChat, IClose, IGrid, IHome, ILogout, IMenu, INews, IPlay, IShield, ISpark, ITrophy, IUser, IUsers, IWallet } from './components/icons'
+import { IBook, IClose, IHome, ILogout, IMenu, IShield, IUser, IUsers } from './components/icons'
 import { Avatar } from './components/Avatar'
 import { SearchBox } from './components/SearchBox'
 
-// Pages built separately load lazily; a route appears only once its file exists.
-const pageModules = import.meta.glob(['./pages/Feed.tsx', './pages/TeamAgent.tsx', './pages/Doc.tsx'])
-const lazyPage = (path: string) =>
-  pageModules[path] ? lazy(pageModules[path] as () => Promise<{ default: React.ComponentType }>) : null
-const Feed = lazyPage('./pages/Feed.tsx')
-const TeamAgent = lazyPage('./pages/TeamAgent.tsx')
-const Doc = lazyPage('./pages/Doc.tsx')
+const Doc = lazy(() => import('./pages/Doc'))
 const Drive = lazy(() => import('./pages/Drive'))
 const Contribute = lazy(() => import('./pages/Contribute'))
-const page = (P: React.ComponentType | null) =>
-  P ? <Suspense fallback={<div className="skeleton" style={{ marginTop: 28 }} />}><P /></Suspense> : <Home />
+const page = (P: React.ComponentType) => <Suspense fallback={<div className="skeleton" style={{ marginTop: 28 }} />}><P /></Suspense>
+
+// Old addresses keep working: each lands on its place inside the four pages.
+function To({ path, keep = [] }: { path: string; keep?: [string, string][] }) {
+  const [params] = useSearchParams()
+  const next = new URLSearchParams()
+  for (const [from, to] of keep) { const v = params.get(from); if (v) next.set(to, v) }
+  const [base, hash] = path.split('#')
+  const qs = next.toString()
+  return <Navigate to={`${base}${qs ? (base.includes('?') ? '&' : '?') + qs : ''}${hash ? '#' + hash : ''}`} replace />
+}
+function TopicRedirect() {
+  const { slug } = useParams()
+  return <Navigate to={`/external?topic=${slug ?? ''}`} replace />
+}
 
 type Ctx = {
   session: Session
@@ -81,23 +82,24 @@ export default function App() {
         <main className="container main">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/feed" element={page(Feed)} />
-            <Route path="/agent" element={page(TeamAgent)} />
-            <Route path="/doc/:id" element={page(Doc)} />
-            <Route path="/drive" element={page(Drive)} />
-            <Route path="/contribute" element={page(Contribute)} />
-            <Route path="/topics" element={<Topics />} />
-            <Route path="/topic/:slug" element={<TopicPage />} />
-            <Route path="/library" element={<Library />} />
-            <Route path="/item/:id" element={<ItemPage />} />
-            <Route path="/internal" element={<Internal />} />
-            <Route path="/teams" element={<Teams />} />
-            <Route path="/teams/:id" element={<TeamDetail />} />
-            <Route path="/ask" element={<Ask />} />
-            <Route path="/budget" element={<BudgetPage />} />
+            <Route path="/external" element={<External />} />
+            <Route path="/internal" element={<InternalHub />} />
             <Route path="/me" element={<Me />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/item/:id" element={<ItemPage />} />
+            <Route path="/teams/:id" element={<TeamDetail />} />
+            <Route path="/doc/:id" element={page(Doc)} />
+            <Route path="/contribute" element={page(Contribute)} />
+            <Route path="/drive" element={page(Drive)} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/feed" element={<To path="/external?view=feed" />} />
+            <Route path="/library" element={<To path="/external" keep={[['q', 'q'], ['topic', 'topic']]} />} />
+            <Route path="/topics" element={<To path="/external" />} />
+            <Route path="/topic/:slug" element={<TopicRedirect />} />
+            <Route path="/agent" element={<To path="/internal" keep={[['q', 'ask'], ['team', 'team']]} />} />
+            <Route path="/ask" element={<To path="/external" keep={[['q', 'ask']]} />} />
+            <Route path="/teams" element={<To path="/internal?tab=teams" />} />
+            <Route path="/budget" element={<To path="/me#budget" />} />
+            <Route path="/leaderboard" element={<To path="/me#leaderboard" />} />
             <Route path="*" element={<Home />} />
           </Routes>
           <footer className="footer">
@@ -114,33 +116,19 @@ export default function App() {
   )
 }
 
-// Primary destinations stay in the header; everything else lives in the "עוד" menu, so the nav
-// is always one line. Below 1024px the header collapses to a drawer and the bottom tab bar.
+// Four pages, nothing else in the nav. Admin and sign-out live in the avatar menu.
 const PRIMARY = [
-  { to: '/', label: 'הבית', icon: IHome, end: true },
-  { to: '/feed', label: 'פיד', icon: IPlay },
-  { to: '/agent', label: 'שאלו את הצוותים', icon: IUsers },
-  { to: '/topics', label: 'נושאים', icon: IGrid },
-  { to: '/leaderboard', label: 'הטבלה', icon: ITrophy },
+  { to: '/', label: 'בית', icon: IHome, end: true },
+  { to: '/external', label: 'ידע מבחוץ', icon: IBook },
+  { to: '/internal', label: 'ידע מבפנים', icon: IUsers },
+  { to: '/me', label: 'האזור שלי', icon: IUser },
 ]
 
 function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[]; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  const [more, setMore] = useState(false)
+  const [menu, setMenu] = useState(false)
   const loc = useLocation()
-  useEffect(() => { setOpen(false); setMore(false) }, [loc.pathname])
-
-  const secondary = [
-    { to: '/me', label: 'האזור שלי', icon: IUser },
-    { to: '/drive', label: 'אני בדרך', icon: ICar },
-    { to: '/library', label: 'חיפוש', icon: IBook },
-    { to: '/internal', label: 'קורה ב-zap', icon: INews },
-    { to: '/contribute', label: 'לשתף פרויקט או תוכן', icon: ISpark },
-    { to: '/ask', label: 'שאלו את zap UP', icon: IChat },
-    { to: '/teams', label: 'איך עובדים פה', icon: IUsers },
-    { to: '/budget', label: 'התקציב שלי', icon: IWallet },
-    ...(profile.is_admin ? [{ to: '/admin', label: 'אישורים וניהול', icon: IShield }] : []),
-  ]
+  useEffect(() => { setOpen(false); setMenu(false) }, [loc.pathname])
 
   return (
     <div className="app">
@@ -153,24 +141,24 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
 
           <nav className="topnav" aria-label="ניווט ראשי">
             {PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}>{n.label}</NavLink>)}
-            <div className={`more ${more ? 'open' : ''}`}>
-              <button className="more-btn" aria-expanded={more} onClick={() => setMore((m) => !m)}>עוד</button>
-              {more && (
-                <div className="more-menu" role="menu">
-                  {secondary.map((n) => <NavLink key={n.to} to={n.to} role="menuitem"><n.icon size={18} />{n.label}</NavLink>)}
-                  <button role="menuitem" onClick={() => supabase.auth.signOut()}><ILogout size={18} />לצאת</button>
-                </div>
-              )}
-            </div>
           </nav>
 
           <SearchBox topics={topics} />
 
           <div className="topbar-end">
             <PointsPill />
-            <NavLink to="/me" className="me-link" aria-label="האזור שלי">
-              <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} className="me-avatar-img" />
-            </NavLink>
+            <div className={`more ${menu ? 'open' : ''}`}>
+              <button className="me-link more-btn" aria-label="התפריט שלי" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
+                <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} className="me-avatar-img" />
+              </button>
+              {menu && (
+                <div className="more-menu" role="menu">
+                  <NavLink to="/me" role="menuitem"><IUser size={18} />האזור שלי</NavLink>
+                  {profile.is_admin && <NavLink to="/admin" role="menuitem"><IShield size={18} />ניהול ואישורים</NavLink>}
+                  <button role="menuitem" onClick={() => supabase.auth.signOut()}><ILogout size={18} />לצאת</button>
+                </div>
+              )}
+            </div>
             <button className="icon-btn menu-btn" aria-label="תפריט" aria-expanded={open} onClick={() => setOpen(true)}><IMenu /></button>
           </div>
         </div>
@@ -188,9 +176,8 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
               <div><b>{profile.display_name || profile.email.split('@')[0]}</b><div className="small muted">{profile.role ?? ''}</div></div>
             </div>
             <nav className="drawer-nav">
-              {[...PRIMARY, ...secondary].map((n) => (
-                <NavLink key={n.to} to={n.to} end={'end' in n ? Boolean(n.end) : undefined}><n.icon />{n.label}</NavLink>
-              ))}
+              {PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><n.icon />{n.label}</NavLink>)}
+              {profile.is_admin && <NavLink to="/admin"><IShield />ניהול ואישורים</NavLink>}
               <button onClick={() => supabase.auth.signOut()}><ILogout />לצאת</button>
             </nav>
           </aside>
@@ -200,11 +187,7 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
       {children}
 
       <nav className="tabbar" aria-label="ניווט">
-        <NavLink to="/feed"><IPlay size={22} /><span>פיד</span></NavLink>
-        <NavLink to="/" end><IHome size={22} /><span>הבית</span></NavLink>
-        <NavLink to="/agent"><IUsers size={22} /><span>צוותים</span></NavLink>
-        <NavLink to="/leaderboard"><ITrophy size={22} /><span>הטבלה</span></NavLink>
-        <NavLink to="/me"><IUser size={22} /><span>שלי</span></NavLink>
+        {PRIMARY.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><n.icon size={22} /><span>{n.label}</span></NavLink>)}
       </nav>
     </div>
   )

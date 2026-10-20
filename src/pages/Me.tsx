@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { useApp } from '../App'
 import { KIND_LABEL, Item, supabase } from '../lib'
 import { Empty, Headline, Skeletons, clip } from '../components/ui'
 import { PrefsPanel } from '../components/prefs'
 import { PointsDashboard } from '../components/points'
+import { PageAgent } from '../components/PageAgent'
+import Leaderboard from './Leaderboard'
+import BudgetPage from './Budget'
+import '../lean.css'
 import { SUPABASE_URL, fmtMinutes } from '../lib'
 import { fmtWhen } from '../components/Remind'
 import { ICopy, IHeadphones } from '../components/icons'
@@ -74,7 +78,7 @@ export default function Me() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [rows, setRows] = useState<Row[] | null | undefined>(undefined)
   const [progress, setProgress] = useState<Row[]>([])
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.hash.split('?')[1]?.split('#')[0] ?? '').get('q') ?? '')
   const [filter, setFilter] = useState<Action | null>(null)
 
   useEffect(() => {
@@ -115,70 +119,36 @@ export default function Me() {
 
   return (
     <div>
-      <Headline light="כל מה שראיתם, שמרתם ולמדתם," black="האזור שלי" hand="הכול נשמר" />
+      <Headline light="מה ראיתם, איפה אתם עומדים, ומה הלאה," black="האזור שלי" />
 
-      <div className="chips" style={{ marginTop: 4 }}>
-        <Link to="/leaderboard" className="chip">הטבלה</Link>
-        <Link to="/internal" className="chip">קורה ב-zap</Link>
-        <Link to="/teams" className="chip">הצוותים</Link>
-        <Link to="/library" className="chip">חיפוש</Link>
-        <Link to="/budget" className="chip">התקציב שלי</Link>
-        {profile.is_admin && <Link to="/admin" className="chip">ניהול</Link>}
-      </div>
+      <PageAgent mode="me" placeholder='שאלו את הדף הזה, למשל: "ראיתי כתבה ש-GEO הוא הדבר הבא"'
+        starters={['ראיתי כתבה ש-GEO הוא הדבר הבא, איפה היא?', 'מה כדאי לי ללמוד עכשיו?', 'איך אני עולה מקום בטבלה?']} />
 
-      <PointsDashboard />
-
-      <WeekTime goal={(profile as { weekly_time?: string | null }).weekly_time ?? null} />
-      <MyPodcast />
-      <MyReminders />
-
-      {stats && (
-        <div className="tiles" style={{ marginTop: 16 }}>
-          {TILES.map((t) => (
-            <div key={t.key} className="tile">
-              <span className="tile-num">{stats[t.key]}</span>
-              <span className="tile-label">{t.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {progress.length > 0 && (
-        <section style={{ marginTop: 24 }}>
-          <h2 className="section" style={{ marginTop: 0 }}>ממשיכים ללמוד</h2>
-          <div className="lane">
-            {progress.map((r) => (
+      <Fold id="history" title="מה ראיתם" sub="כל מה שפתחתם, שמרתם ולמדתם" defaultOpen>
+        {progress.length > 0 && (
+          <div className="lane" style={{ marginBottom: 16 }}>
+            {progress.slice(0, 3).map((r) => (
               <Link key={r.item_id} to={`/item/${r.item_id}`} className="card link">
+                <span className="small muted">ממשיכים ללמוד</span>
                 <b>{r.title_he}</b>
                 <div className="bar" style={{ margin: '10px 0 4px' }}><i style={{ width: `${Math.round(progressPct(r.detail) * 100)}%` }} /></div>
                 <span className="small muted">{(r.detail ?? '').replace('/', ' מתוך ')} שיעורים</span>
               </Link>
             ))}
           </div>
-        </section>
-      )}
-
-      <section style={{ marginTop: 24 }}>
-        <label className="field">
-          <span>מה ראיתם?</span>
-          <input className="input input-lg" value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="למשל GEO, Reels, דאטה" aria-label="חיפוש בהיסטוריה שלי" />
-        </label>
-        <div className="chips" style={{ marginTop: 10 }}>
+        )}
+        <div className="page-tools" style={{ marginTop: 0 }}>
+          <input className="input grow" value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש בהיסטוריה, למשל GEO או Reels" aria-label="חיפוש בהיסטוריה שלי" />
+        </div>
+        <div className="chips" style={{ marginTop: 4 }}>
           {FILTERS.map((f) => (
             <button key={f.label} className={`chip${filter === f.key ? ' on' : ''}`} onClick={() => setFilter(f.key)}>{f.label}</button>
           ))}
         </div>
-
-        <Link to={`/ask?q=${encodeURIComponent('ראיתי כתבה ש-GEO הוא הדבר הבא, איפה היא?')}`} className="card link hint-card" style={{ marginTop: 14 }}>
-          <b>לא זוכרים איפה זה היה?</b>
-          <span className="small">שאלו את zap UP, למשל: "ראיתי כתבה ש-GEO הוא הדבר הבא". הוא מחפש גם בהיסטוריה שלכם.</span>
-        </Link>
-
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 14 }}>
           {rows === undefined && <Skeletons n={3} />}
           {rows !== undefined && rows !== null && rows.length === 0 && (
-            <Empty>{q || filter ? 'לא מצאנו משהו כזה בהיסטוריה שלכם. אולי במילה אחרת?' : 'עוד אין כאן כלום. כל מה שתפתחו, תשמרו ותלמדו יחכה לכם פה.'}</Empty>
+            <Empty>{q || filter ? 'לא מצאנו משהו כזה בהיסטוריה שלכם. אולי במילה אחרת, או לשאול את הדף למעלה.' : 'עוד אין כאן כלום. כל מה שתפתחו, תשמרו ותלמדו יחכה לכם פה.'}</Empty>
           )}
           {groups.map((g) => (
             <div key={g.label} className="tl-day">
@@ -188,9 +158,8 @@ export default function Me() {
                   <li key={key} className="tl-row">
                     <div className="tl-acts">
                       {actions.map((a) => (
-                        <span key={a.action} className="badge" title={ACTION[a.action].label}>
-                          {ACTION[a.action].ico} {ACTION[a.action].label}
-                          {a.action === 'progress' && a.detail ? ` · ${a.detail}` : ''}
+                        <span key={a.action} className="badge">
+                          {ACTION[a.action].label}{a.action === 'progress' && a.detail ? ` · ${a.detail}` : ''}
                         </span>
                       ))}
                     </div>
@@ -201,21 +170,65 @@ export default function Me() {
                     {actions.filter((a) => (a.action === 'comment' || a.action.startsWith('shared')) && a.detail).map((a) => (
                       <div key={a.action + 'd'} className="small tl-detail">"{clip(a.detail!, 140)}"</div>
                     ))}
-                    {!first.source_url.includes('zap-know.internal') && (
-                      <a href={first.source_url} target="_blank" rel="noopener noreferrer" className="small">למקור ↗</a>
-                    )}
                   </li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
-      </section>
+      </Fold>
 
-      <div id="prefs" style={{ marginTop: 32 }}>
-        <PrefsPanel profile={profile} topics={topics} onSaved={setProfile} />
-      </div>
+      <Fold id="points" title="הנקודות שלי" sub="רמה, תגים ומה צברתם לאחרונה" defaultOpen>
+        <PointsDashboard />
+        <WeekTime goal={(profile as { weekly_time?: string | null }).weekly_time ?? null} />
+        {stats && (
+          <div className="tiles" style={{ marginTop: 16 }}>
+            {TILES.map((t) => (
+              <div key={t.key} className="tile">
+                <span className="tile-num">{stats[t.key]}</span>
+                <span className="tile-label">{t.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Fold>
+
+      <Fold id="leaderboard" title="הטבלה" sub="אנשים וצוותים, החודש וכל הזמנים">
+        <Leaderboard embedded />
+      </Fold>
+
+      <Fold id="budget" title="תקציב הלמידה" sub="קורס, ספר או כנס, בלי טפסים">
+        <BudgetPage embedded />
+      </Fold>
+
+      <Fold id="more" title="עוד אצלי" sub="תזכורות, הפודקאסט האישי וההעדפות">
+        <MyReminders />
+        <MyPodcast />
+        <div id="prefs" style={{ marginTop: 16 }}>
+          <PrefsPanel profile={profile} topics={topics} onSaved={setProfile} />
+        </div>
+        {profile.is_admin && <p style={{ marginTop: 16 }}><Link className="textlink" to="/admin">לניהול ואישורים</Link></p>}
+      </Fold>
     </div>
+  )
+}
+
+// A collapsible section; opens by itself when the URL points at it (/me#budget).
+function Fold({ id, title, sub, defaultOpen, children }: { id: string; title: string; sub?: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const loc = useLocation()
+  const hit = loc.hash === `#${id}`
+  const [open, setOpen] = useState(!!defaultOpen || hit)
+  const ref = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    if (!hit) return
+    setOpen(true)
+    setTimeout(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }, [hit])
+  return (
+    <details id={id} ref={ref} className="fold" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary><span>{title}{sub && <span className="sub">{sub}</span>}</span></summary>
+      <div className="fold-body">{open && children}</div>
+    </details>
   )
 }
 

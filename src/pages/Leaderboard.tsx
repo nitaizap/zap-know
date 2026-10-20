@@ -7,7 +7,7 @@ import { Avatar } from '../components/Avatar'
 type Scope = 'people' | 'teams'
 type Period = 'month' | 'all'
 
-export default function Leaderboard() {
+export default function Leaderboard({ embedded }: { embedded?: boolean } = {}) {
   const [scope, setScope] = useState<Scope>('people')
   const [period, setPeriod] = useState<Period>('month')
   const [rows, setRows] = useState<BoardRow[] | null | undefined>(undefined)
@@ -25,9 +25,11 @@ export default function Leaderboard() {
 
   return (
     <div style={{ position: 'relative' }}>
-      <Headline light="מי לומד, משתף ומשתדרג הכי הרבה," black="הטבלה" hand="בהצלחה">
-        <MetroLine top={6} />
-      </Headline>
+      {!embedded && (
+        <Headline light="מי לומד, משתף ומשתדרג הכי הרבה," black="הטבלה" hand="בהצלחה">
+          <MetroLine top={6} />
+        </Headline>
+      )}
 
       <div className="board-controls">
         <div className="seg" role="tablist" aria-label="מי מתחרה">
@@ -90,7 +92,7 @@ export default function Leaderboard() {
         </div>
       )}
 
-      <div style={{ marginTop: 20 }}><RulesPanel /></div>
+      {!embedded && <div style={{ marginTop: 20 }}><RulesPanel /></div>}
     </div>
   )
 }

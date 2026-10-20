@@ -68,7 +68,7 @@ export default function TopicPage() {
 }
 
 // "מי ב-zap מבין בזה": the team that knows this topic, one tap from asking them.
-function ExpertCard({ team }: { team: TeamProfile }) {
+export function ExpertCard({ team }: { team: TeamProfile }) {
   return (
     <div className="card expert-card">
       <span className="expert-badge" aria-hidden="true">{team.team.slice(0, 2)}</span>
@@ -78,7 +78,7 @@ function ExpertCard({ team }: { team: TeamProfile }) {
         <p className="small expert-sum">{team.summary_he}</p>
       </div>
       <div className="expert-actions">
-        <Link className="btn sm" to={`/agent?team=${team.id}`}>לשאול את הצוות</Link>
+        <Link className="btn sm" to={`/internal?team=${team.id}`}>לשאול את הצוות</Link>
         <Link className="small" to={`/teams/${team.id}`}>לפרופיל</Link>
       </div>
     </div>
@@ -86,7 +86,7 @@ function ExpertCard({ team }: { team: TeamProfile }) {
 }
 
 // "עדכנו אותי כשזה באוויר": a quiet subscription, emailed when the topic goes live.
-function WatchButton({ slug }: { slug: string }) {
+export function WatchButton({ slug }: { slug: string }) {
   const [on, setOn] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
 

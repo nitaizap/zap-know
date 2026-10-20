@@ -23,7 +23,7 @@ export default function TeamDetail() {
   if (team === null) return <Empty>לא מצאנו את הצוות הזה.</Empty>
 
   const tools = team.tools as Tool[]
-  const ask = `/agent?team=${team.id}`
+  const ask = `/internal?team=${team.id}`
 
   return (
     <article className="calm-narrow">
