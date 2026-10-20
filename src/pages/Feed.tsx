@@ -777,6 +777,7 @@ function Still({ src, live, onLoad, onFail }: {
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [state, setState] = useState<'wait' | 'cover' | 'contain'>('wait')
+  const capture = /image\.thum\.io/.test(src)
   useEffect(() => setState('wait'), [src])
   const loaded = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget
@@ -784,10 +785,10 @@ function Still({ src, live, onLoad, onFail }: {
     const r = box.current?.getBoundingClientRect()
     const card = r && r.height ? r.width / r.height : 9 / 16
     const ratio = img.naturalWidth / Math.max(1, img.naturalHeight)
-    setState(img.naturalWidth >= 600 && Math.abs(Math.log(ratio / card)) < 0.28 ? 'cover' : 'contain')
+    setState(capture || (img.naturalWidth >= 600 && Math.abs(Math.log(ratio / card)) < 0.28) ? 'cover' : 'contain')
   }
   return (
-    <div ref={box} className={`st st-${state}${live && !reduced ? ' live' : ''}`}>
+    <div ref={box} className={`st st-${state}${capture ? ' st-top' : ''}${live && !reduced ? ' live' : ''}`}>
       {state !== 'wait' && <img className="st-bg" src={src} alt="" aria-hidden draggable={false} />}
       <img className="st-img" src={src} alt="" decoding="async" draggable={false} onLoad={loaded} onError={onFail} />
       {state === 'wait' && <span className="st-shim" aria-hidden />}
@@ -957,12 +958,12 @@ type Stage = 'still' | 'shot' | 'meta' | 'text'
 const stageMem = new Map<number, Stage>()
 const stageOf = (id: number): Stage | null => {
   if (stageMem.has(id)) return stageMem.get(id)!
-  try { const v = localStorage.getItem(`zapup.pv.${id}`) as Stage | null; if (v) { stageMem.set(id, v); return v } } catch { /* storage blocked */ }
+  try { const v = localStorage.getItem(`zapup.pv2.${id}`) as Stage | null; if (v) { stageMem.set(id, v); return v } } catch { /* storage blocked */ }
   return null
 }
 const remember = (id: number, st: Stage) => {
   stageMem.set(id, st)
-  try { localStorage.setItem(`zapup.pv.${id}`, st) } catch { /* storage blocked */ }
+  try { localStorage.setItem(`zapup.pv2.${id}`, st) } catch { /* storage blocked */ }
 }
 
 function LiveMedia({ item, active, near, lines, team, faces, tools, ext, playing, onPlay }: {
@@ -974,7 +975,11 @@ function LiveMedia({ item, active, near, lines, team, faces, tools, ext, playing
   const vid = pv.vid
   const isDoc = pv.type === 'doc poster'
   const isPage = !vid && !isDoc && item.kind !== 'podcast' && /^https?:\/\//.test(item.source_url) && !/zap-know/.test(item.source_url)
-  const [stage, setStage] = useState<Stage>(() => stageOf(item.id) ?? (pv.type === 'source image' ? 'still' : pv.type === 'page capture' ? 'shot' : 'text'))
+  const [stage, setStage] = useState<Stage>(() => {
+    const cached = stageOf(item.id)
+    const fresh: Stage = pv.type === 'source image' ? 'still' : pv.type === 'page capture' ? 'shot' : 'text'
+    return cached && !(cached === 'text' && fresh !== 'text') ? cached : fresh
+  })
   useEffect(() => { if (stage === 'text') remember(item.id, 'text') }, [stage, item.id])
   const [shotOk, setShotOk] = useState(false)
   const [meta, setMeta] = useState<Meta | null>(null)

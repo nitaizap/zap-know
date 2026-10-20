@@ -671,3 +671,6 @@ button.tk-me { padding: 0; background: none; cursor: pointer; }
 .tk-tab.on[data-lane="hot"] { background: #ff5c9e; color: #001c32; text-shadow: none; }
 .tk-tab.on[data-lane="team"] { background: #00ab12; color: #001c32; text-shadow: none; }
 .hot-links { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Page captures fill the frame from the top. */
+.st-top .st-img { object-position: top center; }
