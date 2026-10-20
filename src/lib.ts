@@ -57,6 +57,7 @@ export type Profile = {
   role: string | null
   topics: string[]
   is_admin: boolean
+  manager_email?: string | null
 }
 
 export type Source = {
@@ -69,6 +70,58 @@ export type Source = {
   score: number
   reason_he: string | null
 }
+
+export type Budget = {
+  monthly_amount: number
+  currency: string
+  is_placeholder: boolean
+  spent: number
+  remaining: number
+  pending: number
+}
+
+export type PurchaseStatus = 'auto_approved' | 'pending_manager' | 'approved' | 'declined' | 'purchased'
+export type PurchaseCategory = 'course' | 'book' | 'tool' | 'event'
+
+export type Purchase = {
+  id: number
+  user_id?: string
+  title: string
+  url: string
+  category: PurchaseCategory
+  price: number
+  currency: string
+  status: PurchaseStatus
+  manager_email: string | null
+  created_at: string
+  is_demo: boolean
+}
+
+export const CATEGORY_LABEL: Record<PurchaseCategory, string> = {
+  course: 'קורס', book: 'ספר', tool: 'כלי', event: 'כנס או אירוע',
+}
+
+export const STATUS_LABEL: Record<PurchaseStatus, string> = {
+  auto_approved: 'אושר אוטומטית',
+  pending_manager: 'מחכה למנהל/ת',
+  approved: 'אושר',
+  declined: 'לא אושר',
+  purchased: 'נקנה',
+}
+
+export function fmtMoney(n: number, currency = 'ILS'): string {
+  const v = Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 })
+  return currency === 'ILS' ? `₪${v}` : `${v} ${currency}`
+}
+
+// Null when the budget isn't set up yet (the card simply doesn't show).
+export async function loadBudget(): Promise<Budget | null> {
+  const { data, error } = await supabase.rpc('my_budget')
+  if (error || !data) return null
+  return data as Budget
+}
+
+export type PurchaseResult = { status: PurchaseStatus; purchase_id: number; remaining: number; currency: string }
 
 export const ROLES = ['שיווק', 'PPC', 'סושיאל', 'מכירות', 'מוצר', 'פיתוח', 'דאטה', 'שירות לקוחות', 'HR', 'אחר']
 
@@ -105,7 +158,7 @@ export async function callFn<T>(name: string, body: unknown): Promise<T> {
     },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`${name} ${res.status}`)
+  if (!res.ok) throw Object.assign(new Error(`${name} ${res.status}`), { status: res.status })
   return (await res.json()) as T
 }
 

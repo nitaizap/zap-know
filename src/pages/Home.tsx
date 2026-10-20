@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
-import { ITEM_COLS, Item, supabase, weekStart } from '../lib'
+import { Budget, ITEM_COLS, Item, loadBudget, supabase, weekStart } from '../lib'
 import { Empty, Headline, ItemCard, MetroLine, Skeletons } from '../components/ui'
+import { BudgetBar } from '../components/budget'
 
 type Episode = { id: number; week: string; body_he: string; item_ids: number[]; audio_url: string | null }
 type Continue = { item: Item; done: number }
@@ -17,6 +18,7 @@ export default function Home() {
   const [internal, setInternal] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
+  const [budget, setBudget] = useState<Budget | null>(null)
 
   const week = weekStart()
   const myTopics = topics.filter((t) => profile.topics.includes(t.slug))
@@ -70,6 +72,7 @@ export default function Home() {
       setLoading(false)
     }
     load()
+    loadBudget().then((b) => { if (alive) setBudget(b) })
     return () => { alive = false }
   }, [profile.user_id, profile.topics.join(','), week])
 
@@ -100,6 +103,16 @@ export default function Home() {
           {episode ? 'הפרק הזה נשלח גם ב-Teams ובמייל.' : 'כל שבוע מגיע פרק חדש ב-Teams ובמייל, לפי הנושאים שבחרתם.'}
         </p>
       </div>
+
+      {budget && (
+        <Link to="/budget" className="card link" style={{ marginTop: 14 }}>
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+            <h3 style={{ margin: 0 }}>תקציב הלמידה שלכם החודש</h3>
+            <span className="small" style={{ fontWeight: 600 }}>לתקציב ←</span>
+          </div>
+          <BudgetBar b={budget} />
+        </Link>
+      )}
 
       {cont.length > 0 && (
         <>

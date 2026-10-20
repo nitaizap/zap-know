@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Profile, ROLES, Topic, supabase } from '../lib'
+import { ALLOWED_DOMAIN, Profile, ROLES, Topic, supabase } from '../lib'
 import { Headline } from '../components/ui'
 
 export default function Onboarding({ session, topics, existing, onDone }: {
@@ -8,9 +8,11 @@ export default function Onboarding({ session, topics, existing, onDone }: {
 }) {
   const [role, setRole] = useState(existing?.role ?? '')
   const [picked, setPicked] = useState<string[]>(existing?.topics ?? [])
+  const [manager, setManager] = useState(existing?.manager_email ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
+  const managerOk = !manager.trim() || manager.trim().toLowerCase().endsWith(ALLOWED_DOMAIN)
   const live = topics.filter((t) => t.status === 'live')
 
   function toggle(slug: string) {
@@ -24,6 +26,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
       email: session.user.email ?? '',
       role,
       topics: picked,
+      ...(manager.trim() ? { manager_email: manager.trim().toLowerCase() } : {}),
     }
     const { data, error } = await supabase.from('profiles').upsert(row).select('*').single()
     setBusy(false)
@@ -53,8 +56,17 @@ export default function Onboarding({ session, topics, existing, onDone }: {
         ))}
       </div>
 
+      <h2 className="section">מי המנהל/ת הישיר/ה שלכם? <small>לא חובה</small></h2>
+      <label className="field">
+        <span className="small muted" style={{ fontWeight: 300 }}>
+          המייל של המנהל/ת הישיר/ה. צריך אותו רק כשרוצים לקנות משהו מעל תקציב הלמידה. בגרסה המלאה הוא מגיע אוטומטית מ-M365.
+        </span>
+        <input className="input" dir="ltr" placeholder={`name${ALLOWED_DOMAIN}`} value={manager} onChange={(e) => setManager(e.target.value)} />
+      </label>
+      {manager.trim() && !managerOk && <div className="small" style={{ color: 'var(--red)' }}>המייל צריך להסתיים ב-{ALLOWED_DOMAIN}</div>}
+
       <div style={{ marginTop: 24 }}>
-        <button className="btn block" disabled={!role || picked.length < 2 || busy} onClick={save}>
+        <button className="btn block" disabled={!role || picked.length < 2 || busy || !managerOk} onClick={save}>
           {busy ? 'שומרים' : 'לבית שלי'}
         </button>
         {err && <div className="notice err" style={{ marginTop: 10 }}>{err}</div>}

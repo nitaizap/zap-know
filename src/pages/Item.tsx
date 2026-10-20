@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useApp } from '../App'
-import { ITEM_COLS, Item, supabase, track } from '../lib'
+import { ITEM_COLS, Item, PurchaseResult, fmtMoney, supabase, track } from '../lib'
 import { Empty, ItemMeta, Skeletons } from '../components/ui'
+import { BuyResult, ManagerPrompt, buy } from '../components/budget'
 
 export default function ItemPage() {
   const { id } = useParams()
@@ -14,6 +15,13 @@ export default function ItemPage() {
   const [reportOpen, setReportOpen] = useState(false)
   const [note, setNote] = useState('')
   const [reported, setReported] = useState(false)
+  const [price, setPrice] = useState<{ price: number; currency: string } | null>(null)
+  const [buyOpen, setBuyOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const [buying, setBuying] = useState(false)
+  const [bought, setBought] = useState<PurchaseResult | null>(null)
+  const [needManager, setNeedManager] = useState(false)
+  const [buyErr, setBuyErr] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -26,6 +34,11 @@ export default function ItemPage() {
       setItem((it.data as Item) ?? null)
       setDone((pr.data as { lessons_done: number[] } | null)?.lessons_done ?? [])
       setSaved(!!sv.data)
+    })
+    // Price is optional and fetched on its own, so a missing column never breaks the page.
+    supabase.from('items').select('price,currency').eq('id', itemId).maybeSingle().then(({ data, error }) => {
+      const row = data as { price: number | null; currency: string } | null
+      if (alive && !error && row && row.price != null) setPrice({ price: Number(row.price), currency: row.currency })
     })
     track(itemId, 'open')
     return () => { alive = false }
@@ -54,6 +67,19 @@ export default function ItemPage() {
     e.preventDefault()
     const { error } = await supabase.rpc('report_item', { p_item: itemId, p_note: note.trim() })
     if (!error) { setReported(true); setReportOpen(false) }
+  }
+
+  async function purchase() {
+    if (!item || !price) return
+    setBuying(true); setBuyErr(false); setNeedManager(false)
+    const r = await buy({
+      item_id: item.id, title: item.title_he, url: item.source_url, category: 'course', price: price.price,
+      reason: reason.trim() || undefined,
+    })
+    setBuying(false)
+    if (r === 'no_manager') setNeedManager(true)
+    else if (r === 'error') setBuyErr(true)
+    else { setBought(r); setBuyOpen(false) }
   }
 
   if (item === undefined) return <div style={{ marginTop: 28 }}><Skeletons n={1} /></div>
@@ -90,6 +116,33 @@ export default function ItemPage() {
         </a>
         <button className="btn ghost" onClick={toggleSave}>{saved ? 'שמור אצלכם ✓' : 'שמירה לאחר כך'}</button>
       </div>
+
+      {price && (
+        <section className="card buy" style={{ marginTop: 18 }}>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <div><span className="muted small">מחיר </span><b className="price">{fmtMoney(price.price, price.currency)}</b></div>
+            {!bought && !buyOpen && <button className="btn green" onClick={() => setBuyOpen(true)}>לקנות מהתקציב</button>}
+          </div>
+          {buyOpen && !bought && (
+            <div style={{ marginTop: 12 }}>
+              <label className="field">
+                <span>למה זה שווה לכם? <small className="muted">לא חובה, אבל עוזר אם צריך אישור</small></span>
+                <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="למשל: מכין אותי לקמפיין של הרבעון הבא" />
+              </label>
+              <div className="row">
+                <button className="btn green" disabled={buying} onClick={purchase}>{buying ? 'בודקים תקציב' : `לאשר רכישה של ${fmtMoney(price.price, price.currency)}`}</button>
+                <button className="btn ghost" onClick={() => setBuyOpen(false)}>ביטול</button>
+              </div>
+            </div>
+          )}
+          {needManager && <ManagerPrompt onSaved={purchase} />}
+          {buyErr && <div className="notice err" style={{ marginTop: 10 }}>משהו נתקע בדרך. נסו שוב עוד רגע.</div>}
+          {bought && <BuyResult result={bought} url={item.source_url} />}
+          <div className="small muted" style={{ marginTop: 10 }}>
+            עד גובה התקציב החודשי זה מאושר מיד. מעל זה, הבקשה הולכת ישר למנהל/ת. <Link to="/budget">התקציב שלי ←</Link>
+          </div>
+        </section>
+      )}
 
       {lessons.length > 0 && (
         <section className="card" style={{ marginTop: 24 }}>

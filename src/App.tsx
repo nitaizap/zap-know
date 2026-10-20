@@ -14,6 +14,7 @@ import TeamDetail from './pages/TeamDetail'
 import Ask from './pages/Ask'
 import Admin from './pages/Admin'
 import Topics from './pages/Topics'
+import BudgetPage from './pages/Budget'
 
 type Ctx = {
   session: Session
@@ -70,6 +71,7 @@ export default function App() {
               <NavLink to="/internal">קורה ב-zap</NavLink>
               <NavLink to="/teams">איך עובדים פה</NavLink>
               <NavLink to="/ask">שאלו את zap KNOW</NavLink>
+              <NavLink to="/budget">התקציב שלי</NavLink>
               {profile.is_admin && <NavLink to="/admin">אישורים</NavLink>}
             </nav>
           </div>
@@ -85,6 +87,7 @@ export default function App() {
             <Route path="/teams" element={<Teams />} />
             <Route path="/teams/:id" element={<TeamDetail />} />
             <Route path="/ask" element={<Ask />} />
+            <Route path="/budget" element={<BudgetPage />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<Home />} />
           </Routes>
