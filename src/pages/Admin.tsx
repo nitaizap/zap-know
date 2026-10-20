@@ -36,6 +36,7 @@ export default function Admin() {
   const { profile } = useApp()
   const [tab, setTab] = useState<Tab>('overview')
   const [kpis, setKpis] = useState<Kpis | null>(null)
+  const [kpisFailed, setKpisFailed] = useState(false)
   const [confirmAll, setConfirmAll] = useState(false)
   const [approvedAll, setApprovedAll] = useState<number | null>(null)
   const [queue, setQueue] = useState<Item[] | null>(null)
@@ -63,7 +64,7 @@ export default function Admin() {
     setSources((s.data as Source[]) ?? [])
     setReports((r.data as Report[]) ?? [])
     setRuns((l.data as Run[]) ?? [])
-    supabase.rpc('admin_kpis').then(({ data, error }) => { if (!error && data) setKpis(data as Kpis) })
+    supabase.rpc('admin_kpis').then(({ data, error }) => { if (!error && data) setKpis(data as Kpis); else setKpisFailed(true) })
 
     // Budget tables may not exist yet; the tab just stays hidden.
     const month = new Date().toISOString().slice(0, 7) + '-01'
@@ -159,7 +160,7 @@ export default function Admin() {
       </nav>
 
 
-      {tab === 'overview' && (kpis === null ? <div className="skeleton" /> : <Overview k={kpis} onQueue={() => setTab('queue')} />)}
+      {tab === 'overview' && (kpis === null ? (kpisFailed ? <div className="empty-calm"><b>תמונת המצב עוד לא זמינה</b>היא תופיע אחרי עדכון הנתונים הבא. בינתיים אפשר לאשר בלשונית לאשר.</div> : <div className="skeleton" />) : <Overview k={kpis} onQueue={() => setTab('queue')} />)}
 
       {tab === 'queue' && approvedAll !== null && (
         <div className="notice ok" style={{ marginTop: 12 }}>אישרתם {approvedAll} פריטים. הם כבר באוויר.</div>
