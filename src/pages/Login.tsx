@@ -17,11 +17,15 @@ export default function Login() {
       return
     }
     setBusy(true); setMsg(null)
-    const { error } = await supabase.auth.signInWithOtp({ email: clean, options: { shouldCreateUser: true } })
+    // The redirect makes the email's sign-in link work too (Supabase's default template sends a link).
+    const { error } = await supabase.auth.signInWithOtp({
+      email: clean,
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname },
+    })
     setBusy(false)
     if (error) { setMsg({ kind: 'err', text: 'לא הצלחנו לשלוח קוד. נסו שוב בעוד דקה.' }); return }
     setEmail(clean); setStep('code')
-    setMsg({ kind: 'info', text: `שלחנו קוד ל-${clean}. הוא מגיע תוך דקה, שווה להציץ גם בספאם.` })
+    setMsg({ kind: 'info', text: `שלחנו מייל ל-${clean}. מעתיקים את הקוד, או פשוט לוחצים על הקישור במייל. שווה להציץ גם בספאם.` })
   }
 
   async function verify(e: React.FormEvent) {
