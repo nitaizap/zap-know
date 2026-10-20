@@ -165,7 +165,7 @@ export async function llm(messages: Msg[], asJson = false): Promise<string> {
     if (!r.ok) throw new Error(`openrouter ${r.status}: ${await r.text()}`);
     return (await r.json()).choices[0].message.content;
   }
-  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-latest";
+  const model = await setting("gemini_model", Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-latest");
   const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
   const contents = messages.filter((m) => m.role !== "system").map((m) => ({
     role: m.role === "assistant" ? "model" : "user",

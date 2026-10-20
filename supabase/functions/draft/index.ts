@@ -1,7 +1,7 @@
 // "מספרים בקול, ה-AI כותב": turns a voice note, a document or a link into an editable draft
 // (title, summary, bullets, topic, tags). Nothing is published here; the person edits and sends.
 // Voice and documents go to Gemini as inline data (approved tool), links are read for public metadata only.
-import { admin, cors, json, log, parseJson, VOICE, zapUser } from "../_shared/core.ts";
+import { admin, cors, json, log, parseJson, setting, VOICE, zapUser } from "../_shared/core.ts";
 
 type Body = {
   mode: "voice" | "doc" | "link" | "text";
@@ -52,7 +52,7 @@ ${b.mode === "voice" ? "transcript_he: תמלול נקי של ההקלטה." : "
     } else {
       parts.push({ text: `החומר:\n${(b.text ?? "").slice(0, 12000)}` });
     }
-    const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-latest";
+    const model = await setting("gemini_model", Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-latest");
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": Deno.env.get("GEMINI_API_KEY")! },
