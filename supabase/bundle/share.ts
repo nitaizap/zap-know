@@ -31,8 +31,9 @@ export async function zapUser(req: Request) {
   return email.toLowerCase().endsWith("@d.co.il") ? data.user : null;
 }
 
-// One Zapier hook (NOTIFY_WEBHOOK) delivers everything: it always sends the email
-// (Outlook) and, when teams_text is set, also posts to Teams (a person, or the channel).
+// Delivery without any M365 admin consent: email goes straight out through Brevo (sender verified
+// by its owner), channel posts go to a Teams "Workflows" webhook. NOTIFY_WEBHOOK (Zapier) stays
+// as a fallback for when the company connects M365 properly.
 export type Notice = {
   kind: string;
   to: string;
@@ -43,14 +44,57 @@ export type Notice = {
 };
 
 export async function notify(n: Notice) {
+  const brevo = Deno.env.get("BREVO_API_KEY");
+  const teams = Deno.env.get("TEAMS_WEBHOOK");
   const hook = Deno.env.get("NOTIFY_WEBHOOK");
-  if (!hook) return false;
-  const r = await fetch(hook, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ teams_text: "", teams_to: "", ...n }),
-  }).catch(() => null);
-  return !!r?.ok;
+  let ok = false;
+
+  // Demo colleagues live on the reserved .invalid domain and never get mail.
+  if (brevo && n.to && !n.to.endsWith(".invalid")) {
+    const r = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": brevo, "Content-Type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        sender: { name: "zap UP", email: Deno.env.get("SENDER_EMAIL") ?? Deno.env.get("OWNER_EMAIL") },
+        to: [{ email: n.to }],
+        subject: n.subject,
+        htmlContent: n.html,
+      }),
+    }).catch(() => null);
+    ok = !!r?.ok;
+  } else if (hook) {
+    const r = await fetch(hook, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teams_text: "", teams_to: "", ...n }),
+    }).catch(() => null);
+    ok = !!r?.ok;
+  }
+
+  // Channel posts (shares to the channel, new "קורה ב-zap" items) also land in Teams.
+  if (teams && n.teams_to === "channel" && n.teams_text) {
+    await fetch(teams, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "message",
+        attachments: [{
+          contentType: "application/vnd.microsoft.card.adaptive",
+          content: {
+            $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+            type: "AdaptiveCard",
+            version: "1.4",
+            rtl: true,
+            body: [
+              { type: "TextBlock", text: n.subject, weight: "Bolder", size: "Medium", wrap: true },
+              { type: "TextBlock", text: n.teams_text, wrap: true },
+            ],
+          },
+        }],
+      }),
+    }).catch(() => null);
+  }
+  return ok;
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

@@ -2,7 +2,7 @@
 //  - Teams channel and mail group, via Zapier, authenticated with the x-zap-secret header
 //  - the short form on the site, authenticated with the employee's session
 // The post is summarized in One Tone and published as a kind='internal' item.
-import { admin, cors, json, llm, log, parseJson, VOICE, zapUser } from "../_shared/core.ts";
+import { admin, cors, json, llm, log, notify, parseJson, VOICE, zapUser } from "../_shared/core.ts";
 
 type Body = { title?: string; team?: string; text: string; link?: string; author?: string; channel?: string };
 
@@ -63,6 +63,16 @@ ${text.slice(0, 6000)}`,
       status: auto ? "approved" : "pending",
     }).select("id").single();
     if (error) throw error;
+    // Posts that didn't come from Teams are echoed to the קורה ב-zap channel.
+    if (channel !== "teams" && auto) {
+      const site = Deno.env.get("SITE_URL") ?? "https://nitaizap.github.io/zap-know/";
+      await notify({
+        kind: "internal", to: "", subject: `קורה ב-zap: ${out.title_he}`, html: "",
+        teams_text: `${out.summary_he}
+${out.why_he}
+${site}#/item/${data.id}`, teams_to: "channel",
+      });
+    }
     await log("ingest-internal", true, { id: data.id, channel });
     return json({ ok: true, id: data.id, status: auto ? "approved" : "pending" });
   } catch (e) {
