@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { Listen } from '../components/Listen'
 import { Remind } from '../components/Remind'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { openAi } from '../components/AiSheet'
 import { fmtDate, supabase } from '../lib'
 import '../agent.css'
 
@@ -172,7 +173,12 @@ export function toolUrl(team: AgentTeam | null, name: string) {
 
 export default function Doc() {
   const { id } = useParams()
-  const navigate = useNavigate()
+  return <DocDetail docId={Number(id)} />
+}
+
+// A team document. Embedded (the feed's panel or sheet), related documents open in place.
+export function DocDetail({ docId, embedded, onOpenDoc }: { docId: number; embedded?: boolean; onOpenDoc?: (id: number) => void }) {
+  const id = docId
   const [doc, setDoc] = useState<TeamDoc | null>(null)
   const [team, setTeam] = useState<AgentTeam | null>(null)
   const [related, setRelated] = useState<TeamDoc[]>([])
@@ -214,15 +220,15 @@ export default function Doc() {
 
   const ask = () => {
     const q = `ספרו לי עוד על "${doc.title}"${team ? ` של צוות ${team.team}` : ''}`
-    navigate(`/internal?ask=${encodeURIComponent(q)}${team ? `&team=${team.id}` : ''}`)
+    openAi(q, { teamId: team?.id ?? null })
   }
 
   return (
-    <div className="ag">
+    <div className={embedded ? 'ag dt-doc' : 'ag'}>
       <header className="doc-head">
         <div className="doc-meta">
           <span className="ag-chip">{DOC_KIND_HE[doc.kind] ?? doc.kind}</span>
-          {team && <Link to={`/teams/${team.id}`}>צוות {team.team}</Link>}
+          {team && (embedded ? <span>צוות {team.team}</span> : <Link to={`/teams/${team.id}`}>צוות {team.team}</Link>)}
           <span>עודכן ב-{fmtDate(doc.updated_at)}</span>
           {doc.is_demo && <DemoNote />}
         </div>
@@ -261,11 +267,19 @@ export default function Doc() {
           <h2>עוד מצוות {team?.team ?? 'הזה'}</h2>
           <div className="ag-sources">
             {related.map((r) => (
-              <Link key={r.id} className="ag-src" to={`/doc/${r.id}`}>
-                <span className="ag-chip">{DOC_KIND_HE[r.kind] ?? r.kind}</span>
-                <b>{r.title}</b>
-                {r.summary_he && <small>{r.summary_he}</small>}
-              </Link>
+              embedded && onOpenDoc ? (
+                <button key={r.id} type="button" className="ag-src" onClick={() => onOpenDoc(r.id)}>
+                  <span className="ag-chip">{DOC_KIND_HE[r.kind] ?? r.kind}</span>
+                  <b>{r.title}</b>
+                  {r.summary_he && <small>{r.summary_he}</small>}
+                </button>
+              ) : (
+                <Link key={r.id} className="ag-src" to={`/doc/${r.id}`}>
+                  <span className="ag-chip">{DOC_KIND_HE[r.kind] ?? r.kind}</span>
+                  <b>{r.title}</b>
+                  {r.summary_he && <small>{r.summary_he}</small>}
+                </Link>
+              )
             ))}
           </div>
         </section>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { DetailLink } from './detail'
 import { ITEM_COLS, Item, KIND_LABEL, fmtMinutes, supabase } from '../lib'
 
 const OPTIONS = [5, 10, 15, 30, 60]
@@ -42,7 +42,7 @@ export function FitTime({ compact }: { compact?: boolean }) {
               <ol>
                 {list.map((i) => (
                   <li key={i.id}>
-                    <Link to={`/item/${i.id}`}><b>{i.title_he}</b></Link>
+                    <DetailLink kind="item" id={i.id}><b>{i.title_he}</b></DetailLink>
                     <span className="small muted">{KIND_LABEL[i.kind]} · {fmtMinutes(i.minutes)}</span>
                   </li>
                 ))}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DetailLink } from '../components/detail'
 import { Layer } from '../components/Layer'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useApp } from '../App'
@@ -131,11 +132,11 @@ export default function InternalHub() {
               {shownDocs.length ? (
                 <div className="card">
                   {(tab === 'all' ? shownDocs.slice(0, 4) : shownDocs).map((d) => (
-                    <Link key={d.id} to={`/doc/${d.id}`} className="doc-row">
+                    <DetailLink key={d.id} kind="doc" id={d.id} className="doc-row">
                       <span className="tavatar" style={{ background: teamColor(d.team_id) }} aria-hidden="true">{teamInitials(teamName(d.team_id))}</span>
                       <span style={{ minWidth: 0 }}><b>{d.title}</b><span className="small">צוות {teamName(d.team_id)}</span></span>
                       <span className="kind">{DOC_KIND_HE[d.kind]}</span>
-                    </Link>
+                    </DetailLink>
                   ))}
                 </div>
               ) : <Empty>אין מסמך שמתאים לסינון.</Empty>}

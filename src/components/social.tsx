@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
+import { DetailLink } from './detail'
 import { Layer } from './Layer'
 import { Avatar, useFaces } from './Avatar'
-import { Link } from 'react-router-dom'
 import { Item, callFn, supabase } from '../lib'
 import { earn } from './points'
 import { IClose, IComment, IShare, IThumbDown, IThumbUp } from './icons'
@@ -97,7 +97,7 @@ export function ReactionBar({ item, onComments, compact }: { item: Item; onComme
         {compact ? null : onComments ? (
           <button className="rb" aria-label={`תגובות, ${s.comments_count}`} onClick={(e) => { stop(e); onComments() }}><IComment size={18} /><span>{s.comments_count}</span></button>
         ) : (
-          <Link className="rb" aria-label={`תגובות, ${s.comments_count}`} to={`/item/${item.id}#comments`}><IComment size={18} /><span>{s.comments_count}</span></Link>
+          <DetailLink className="rb" label={`תגובות, ${s.comments_count}`} kind="item" id={item.id}><IComment size={18} /><span>{s.comments_count}</span></DetailLink>
         )}
         <button className="rb share" aria-label={`שיתוף${s.shares_count ? `, שותף ${s.shares_count} פעמים` : ''}`} title="שיתוף"
           onClick={(e) => { stop(e); setSharing(true) }}><IShare size={18} />{!compact && s.shares_count ? <span>{s.shares_count}</span> : null}</button>

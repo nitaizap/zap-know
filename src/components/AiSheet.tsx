@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { openDetail } from './detail'
+import { useSearchParams } from 'react-router-dom'
 import { callFn, supabase } from '../lib'
 import { DocPreview, previewLines } from './ui'
 import { DOC_KIND_HE, type DocKind } from '../pages/Doc'
@@ -167,7 +168,12 @@ export function AiSheet() {
                       </>
                     )
                     return c.url.startsWith('#')
-                      ? <Link key={j} role="listitem" className="ai-card" to={c.url.slice(1)} onClick={() => setOpen(false)}>{inner}</Link>
+                      ? <a key={j} role="listitem" className="ai-card" href={c.url}
+                          onClick={(e) => {
+                            const m = c.url.match(/^#\/(item|doc)\/(\d+)/)
+                            if (!m || e.metaKey || e.ctrlKey) { setOpen(false); return }
+                            e.preventDefault(); setOpen(false); openDetail({ kind: m[1] as 'item' | 'doc', id: Number(m[2]) })
+                          }}>{inner}</a>
                       : <a key={j} role="listitem" className="ai-card" href={c.url} target="_blank" rel="noopener noreferrer">{inner}</a>
                   })}
                 </div>

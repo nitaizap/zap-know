@@ -15,6 +15,7 @@ import { AiButton } from '../components/AiSheet'
 import { teamColor, teamInitials } from './Doc'
 import { DocPreview, previewLines } from '../components/ui'
 import { Layer } from '../components/Layer'
+import { DetailBody, DetailLink, setDetailHost, type Target } from '../components/detail'
 
 // zap UP is a TikTok for work: one full-screen vertical feed (up/down = next/prev), a horizontal
 // swipe per card (right = save, left = not for me), double-tap = like, and a rail of reactions.
@@ -141,12 +142,21 @@ export default function Feed({ source, head, listTo, agent }: {
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [kept, setKept] = useState<Set<number>>(new Set())
   const [sheet, setSheet] = useState<{ item: FeedItem; kind: 'comments' | 'share' } | null>(null)
-  const [tab, setTab] = useState<'comments' | 'next'>('next')
+  const [tab, setTab] = useState<PanelTab>('next')
+  const [pinned, setPinned] = useState<Target | null>(null)
   const desk = useDesk()
   const scroller = useRef<HTMLDivElement>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout>>()
 
   const topicName = new Map(topicList.map((t) => [t.slug, t.name_he]))
+
+  // On a desktop, "לפתוח" (and any open from the AI or a deep link) lands in this feed's panel.
+  useEffect(() => {
+    if (!desk) return
+    return setDetailHost((t) => { setPinned(t); setTab('details') })
+  }, [desk])
+  // Scrolling on: the panel follows the card on screen.
+  useEffect(() => { setPinned(null) }, [active])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setMyId(data.session?.user.id ?? ''))
@@ -391,7 +401,7 @@ export default function Feed({ source, head, listTo, agent }: {
       </div>
 
       {desk && (
-        <FeedPanel cur={cur} entries={entries} active={active} tab={tab} setTab={setTab} goTo={goTo} myId={myId}
+        <FeedPanel cur={cur} entries={entries} active={active} tab={tab} setTab={setTab} goTo={goTo} myId={myId} pinned={pinned} setPinned={setPinned}
           team={cur?.t === 'item' ? authorOf(cur.item) : null} topicName={cur?.t === 'item' ? topicName.get(cur.item.topic_slug ?? '') ?? '' : ''} />
       )}
 
@@ -416,16 +426,36 @@ export default function Feed({ source, head, listTo, agent }: {
 const SPECIAL_LABEL = { episode: 'הפרק השבועי שלכם', leaders: 'המובילים החודש', quote: 'עובדים מספרים' } as const
 
 // Desktop only: what's on screen, its comments, and what comes next. Never covers the card.
-function FeedPanel({ cur, entries, active, tab, setTab, goTo, myId, team, topicName }: {
-  cur: Entry | undefined; entries: Entry[]; active: number; tab: 'comments' | 'next'; setTab: (t: 'comments' | 'next') => void
+type PanelTab = 'details' | 'comments' | 'next'
+const targetOf = (i: FeedItem): Target => (i.doc_id ? { kind: 'doc', id: i.doc_id } : { kind: 'item', id: i.id })
+
+function FeedPanel({ cur, entries, active, tab, setTab, goTo, myId, team, topicName, pinned, setPinned }: {
+  cur: Entry | undefined; entries: Entry[]; active: number; tab: PanelTab; setTab: (t: PanelTab) => void
   goTo: (i: number) => void; myId: string; team: TeamLite | null; topicName: string
+  pinned: Target | null; setPinned: (t: Target | null) => void
 }) {
   const item = cur?.t === 'item' ? cur.item : null
   const s = useSocial(item?.id ?? -1)
   const next = entries.map((en, i) => ({ en, i })).slice(active + 1, active + 9)
   const showComments = !!item && tab === 'comments'
+  const detail = tab === 'details' ? pinned ?? (item ? targetOf(item) : null) : null
+  const panel = useRef<HTMLElement>(null)
+  useEffect(() => { panel.current?.scrollTo({ top: 0 }) }, [detail?.kind, detail?.id])
+
+  if (detail) {
+    return (
+      <aside className="fd-panel" aria-label="פרטים" ref={panel}>
+        <div className="fp-detail">
+          <div className="fp-detail-head">
+            <button onClick={() => { setPinned(null); setTab('next') }}>→ חזרה</button>
+          </div>
+          <div className="fp-detail-body"><DetailBody target={detail} onOpen={(t) => setPinned(t)} /></div>
+        </div>
+      </aside>
+    )
+  }
   return (
-    <aside className="fd-panel" aria-label="פרטים">
+    <aside className="fd-panel" aria-label="פרטים" ref={panel}>
       {item ? (
         <div className="fp-item">
           <div className="fp-by">
@@ -447,7 +477,7 @@ function FeedPanel({ cur, entries, active, tab, setTab, goTo, myId, team, topicN
             <span className="fp-chip">{KIND_LABEL[item.kind]}</span>
           </div>
           <div className="fp-actions">
-            <Link className="fp-btn" to={item.doc_id ? `/doc/${item.doc_id}` : `/item/${item.id}`}>לפתוח</Link>
+            <button className="fp-btn" onClick={() => setTab('details')}>לפתוח</button>
             {!item.doc_id && /^https?:/.test(item.source_url) && (
               <a className="fp-btn ghost" href={item.source_url} target="_blank" rel="noopener noreferrer" onClick={() => track(item.id, 'click_source')}>למקור ↗</a>
             )}
@@ -456,6 +486,7 @@ function FeedPanel({ cur, entries, active, tab, setTab, goTo, myId, team, topicN
       ) : cur && cur.t !== 'item' ? <div className="fp-item"><h2>{SPECIAL_LABEL[cur.t]}</h2></div> : null}
 
       <div className="fp-tabs" role="tablist">
+        {item && <button role="tab" aria-selected={false} onClick={() => setTab('details')}>פרטים</button>}
         {item && (
           <button role="tab" aria-selected={showComments} className={showComments ? 'on' : ''} onClick={() => setTab('comments')}>
             תגובות{s ? ` · ${s.comments_count}` : ''}
@@ -552,7 +583,6 @@ function FeedCard({ item, index, active, near, topicName, lines, team, kept, onK
   const stampSave = Math.max(0, Math.min(1, dx / 120))
   const stampHide = Math.max(0, Math.min(1, -dx / 120))
   const pub = fmtDate(item.published_at ?? item.created_at)
-  const openTo = item.doc_id ? `/doc/${item.doc_id}` : `/item/${item.id}`
   const authorName = team ? `צוות ${team.team}` : item.kind === 'internal' ? 'קורה ב-zap' : item.source_name
   const why = item.why_he || item.summary_he
   // Light media (a document page, a web capture) gets a dark band behind the text.
@@ -589,7 +619,7 @@ function FeedCard({ item, index, active, near, topicName, lines, team, kept, onK
           {why && <p className="fd-why1">{why}</p>}
           <div className="fd-foot">
             {chips.map((c) => <span key={c.label} className={`fd-chip ${c.cls}`}>{c.label}</span>)}
-            <Link className="fd-open" to={openTo}>לפתוח</Link>
+            <DetailLink className="fd-open" {...targetOf(item)}>לפתוח</DetailLink>
           </div>
         </div>
       </div>
@@ -790,10 +820,10 @@ function EpisodeSlide({ ep, index }: { ep: Episode; index: number }) {
         <ol className="tk-ep-list">
           {ep.items.map((i, n) => (
             <li key={i.id}>
-              <Link to={`/item/${i.id}`}>
+              <DetailLink kind="item" id={i.id}>
                 <span className="tk-ep-thumb">{i.thumbnail_url ? <img src={i.thumbnail_url} alt="" loading="lazy" /> : <b>{n + 1}</b>}</span>
                 <span>{i.title_he}</span>
-              </Link>
+              </DetailLink>
             </li>
           ))}
         </ol>
@@ -842,7 +872,7 @@ function QuoteSlide({ q, index }: { q: Quote; index: number }) {
           {q.user_id && <Avatar face={{ user_id: q.user_id, name: q.author }} size={44} />}
           <span><b>{q.author}</b>{q.team && <small>{q.team}</small>}</span>
         </div>
-        <Link className="tk-quote-on" to={`/item/${q.item_id}`}>על: {q.item_title} ←</Link>
+        <DetailLink className="tk-quote-on" kind="item" id={q.item_id}>על: {q.item_title} ←</DetailLink>
       </div>
     </section>
   )

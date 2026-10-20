@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Item, KIND_LABEL, fmtDate, fmtMinutes } from '../lib'
 import { ReactionBar } from './social'
 import '../adopt.css'
+import { DetailLink } from './detail'
 import { IHeadphones, ISpark } from './icons'
 
 // Page hero: Light setup line + Black punch line with the hand-drawn navy swoosh.
@@ -74,7 +75,7 @@ export function ItemCard({ item, progress, reasons }: { item: Item; progress?: n
   return (
     <article className="card itemcard">
       {item.is_demo && <DemoBadge />}
-      <Link to={`/item/${item.id}`} className="cardlink">
+      <DetailLink kind="item" id={item.id} className="cardlink">
         <Thumb item={item} />
         {item.kind === 'podcast' && <span className="pod-badge" aria-label="פודקאסט"><IHeadphones size={16} /></span>}
         <div className="card-top">
@@ -95,7 +96,7 @@ export function ItemCard({ item, progress, reasons }: { item: Item; progress?: n
           <span>{fmtDate(item.published_at || item.created_at)}</span>
           {item.minutes ? <span className="card-len">{fmtMinutes(item.minutes)}</span> : null}
         </div>
-      </Link>
+      </DetailLink>
       <ReactionBar item={item} compact />
     </article>
   )
@@ -177,10 +178,10 @@ export function BitesRow({ items, extra }: { items: Item[]; extra?: React.ReactN
       </div>
       <div className="bites-row">
         {items.map((i) => (
-          <Link key={i.id} to={`/item/${i.id}`} className="bite">
+          <DetailLink key={i.id} kind="item" id={i.id} className="bite">
             <span className="bite-len">{fmtMinutes(i.minutes)}</span>
             <b>{i.title_he}</b>
-          </Link>
+          </DetailLink>
         ))}
       </div>
     </section>

@@ -7,7 +7,6 @@ import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import External from './pages/External'
 import InternalHub from './pages/InternalHub'
-import ItemPage from './pages/Item'
 import TeamDetail from './pages/TeamDetail'
 import Admin from './pages/Admin'
 import Me from './pages/Me'
@@ -17,8 +16,8 @@ import { Avatar } from './components/Avatar'
 import { SearchBox } from './components/SearchBox'
 import { AiButton, AiSheet } from './components/AiSheet'
 import { useViewportVar } from './components/Layer'
+import { DetailHost, openDetail } from './components/detail'
 
-const Doc = lazy(() => import('./pages/Doc'))
 const Drive = lazy(() => import('./pages/Drive'))
 const Contribute = lazy(() => import('./pages/Contribute'))
 const page = (P: React.ComponentType) => <Suspense fallback={<div className="skeleton" style={{ marginTop: 28 }} />}><P /></Suspense>
@@ -32,6 +31,13 @@ function To({ path, keep = [] }: { path: string; keep?: [string, string][] }) {
   const qs = next.toString()
   return <Navigate to={`${base}${qs ? (base.includes('?') ? '&' : '?') + qs : ''}${hash ? '#' + hash : ''}`} replace />
 }
+// A shared /item/:id or /doc/:id link: the home feed, with that item open on top of it.
+function DeepOpen({ kind }: { kind: 'item' | 'doc' }) {
+  const { id } = useParams()
+  useEffect(() => { if (id) openDetail({ kind, id: Number(id) }) }, [kind, id])
+  return <Home />
+}
+
 function TopicRedirect() {
   const { slug } = useParams()
   return <Navigate to={`/external?topic=${slug ?? ''}`} replace />
@@ -88,9 +94,9 @@ export default function App() {
             <Route path="/external" element={<External />} />
             <Route path="/internal" element={<InternalHub />} />
             <Route path="/me" element={<Me />} />
-            <Route path="/item/:id" element={<ItemPage />} />
+            <Route path="/item/:id" element={<DeepOpen kind="item" />} />
             <Route path="/teams/:id" element={<TeamDetail />} />
-            <Route path="/doc/:id" element={page(Doc)} />
+            <Route path="/doc/:id" element={<DeepOpen kind="doc" />} />
             <Route path="/contribute" element={page(Contribute)} />
             <Route path="/drive" element={page(Drive)} />
             <Route path="/admin" element={<Admin />} />
@@ -115,6 +121,7 @@ export default function App() {
         </main>
       </Shell>
       <AiSheet />
+      <DetailHost />
       <Toaster />
     </AppCtx.Provider>
   )
@@ -134,7 +141,7 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
   const loc = useLocation()
   const [params] = useSearchParams()
   // Feed pages own the whole screen.
-  const imm = loc.pathname === '/' || (['/external', '/internal'].includes(loc.pathname) && params.get('view') !== 'list')
+  const imm = loc.pathname === '/' || /^\/(item|doc)\//.test(loc.pathname) || (['/external', '/internal'].includes(loc.pathname) && params.get('view') !== 'list')
   useEffect(() => { setOpen(false); setMenu(false) }, [loc.pathname])
   // A new page starts at the top; /me#section scrolls itself.
   useEffect(() => { if (!loc.hash) window.scrollTo(0, 0) }, [loc.pathname]) // eslint-disable-line react-hooks/exhaustive-deps

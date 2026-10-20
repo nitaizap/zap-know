@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DetailLink } from '../components/detail'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
 import { KIND_LABEL, Item, supabase } from '../lib'
@@ -159,12 +160,12 @@ export default function Me() {
         {progress.length > 0 && (
           <div className="lane" style={{ marginBottom: 16 }}>
             {progress.slice(0, 3).map((r) => (
-              <Link key={r.item_id} to={`/item/${r.item_id}`} className="card link">
+              <DetailLink key={r.item_id} kind="item" id={r.item_id} className="card link">
                 <span className="small muted">ממשיכים ללמוד</span>
                 <b>{r.title_he}</b>
                 <div className="bar" style={{ margin: '10px 0 4px' }}><i style={{ width: `${Math.round(progressPct(r.detail) * 100)}%` }} /></div>
                 <span className="small muted">{(r.detail ?? '').replace('/', ' מתוך ')} שיעורים</span>
-              </Link>
+              </DetailLink>
             ))}
           </div>
         )}
@@ -194,7 +195,7 @@ export default function Me() {
                         </span>
                       ))}
                     </div>
-                    <Link to={`/item/${first.item_id}`} className="tl-title">{first.title_he}</Link>
+                    <DetailLink kind="item" id={first.item_id} className="tl-title">{first.title_he}</DetailLink>
                     <div className="small muted">
                       {KIND_LABEL[first.kind]}{topicName(first.topic_slug) ? ` · ${topicName(first.topic_slug)}` : ''} · {first.source_name}
                     </div>
@@ -328,7 +329,7 @@ function MyReminders() {
         {list.map((r) => (
           <li key={r.id}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Link to={r.item_id ? `/item/${r.item_id}` : `/doc/${r.doc_id}`}><b>{r.title}</b></Link>
+              <DetailLink kind={r.item_id ? 'item' : 'doc'} id={(r.item_id ?? r.doc_id)!}><b>{r.title}</b></DetailLink>
               <div className="small muted">{fmtWhen(r.send_at)}{r.note ? ` · ${r.note}` : ''}</div>
             </div>
             <button className="linkbtn small" onClick={() => cancel(r.id)}>לבטל</button>

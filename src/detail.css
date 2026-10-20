@@ -1,0 +1,40 @@
+/* Opening an item in place: a full-height sheet on a phone, a side panel on a desktop. */
+.dt-back { position: fixed; inset: 0; z-index: 94; background: rgba(0, 28, 50, .55); display: flex; align-items: flex-end; justify-content: center; }
+.dt-sheet { width: min(720px, 100%); height: calc(var(--vvh, 100dvh) - 8px); max-height: calc(var(--vvh, 100dvh) - 8px); display: flex; flex-direction: column;
+  background: #fff; color: #001c32; border-radius: 24px 24px 0 0; box-shadow: 0 -10px 40px rgba(0, 0, 0, .35); animation: dt-up .25s ease-out;
+  transition: transform .2s ease; font-family: 'Noto Sans Hebrew', system-ui, sans-serif; }
+@keyframes dt-up { from { transform: translateY(60px); opacity: 0; } }
+.dt-head { flex: none; position: relative; display: flex; align-items: center; justify-content: space-between; padding: 18px 12px 8px 18px; border-bottom: 1px solid #e6e8eb; touch-action: none; cursor: grab; }
+.dt-head b { font-weight: 900; font-size: 17px; }
+.dt-grab { position: absolute; top: 7px; left: 50%; width: 44px; height: 5px; border-radius: 5px; background: #bfc6cc; transform: translateX(-50%); }
+.dt-x { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #e6eaf2; color: #052b7a; display: grid; place-items: center; cursor: pointer; }
+.dt-x:focus-visible { outline: 3px solid #052b7a; outline-offset: 2px; }
+.dt-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 18px max(24px, env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+
+/* Item and document content, sized for a panel. */
+.dt-item h1 { font-size: 24px !important; margin-top: 6px !important; }
+.dt-item > .small:first-child { margin-top: 12px !important; }
+.dt-item .row { flex-wrap: wrap; }
+.dt-item .btn[target="_blank"], .dt-doc a[target="_blank"].doc-btn { background: #052b7a; color: #fff; }
+.dt-doc { padding: 12px 0 0; max-width: none; }
+.dt-doc .doc-head h1 { font-size: 24px; }
+.dt-doc button.ag-src { font: inherit; text-align: start; cursor: pointer; width: 100%; }
+.dt-doc-talk { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e6e8eb; }
+.dt-doc-talk h2 { font-weight: 900; font-size: 19px; margin: 0 0 10px; color: #052b7a; }
+
+@media (min-width: 1024px) {
+  .dt-back { inset: 0 auto 0 0; width: 460px; background: none; align-items: stretch; }
+  .dt-sheet { height: 100%; max-height: 100%; width: 100%; border-radius: 0; box-shadow: 0 0 50px rgba(0, 0, 0, .4); animation: dt-in .22s ease-out; }
+  .dt-grab { display: none; }
+  .dt-head { cursor: default; }
+  @keyframes dt-in { from { transform: translateX(-30px); opacity: 0; } }
+}
+
+/* Desktop feed panel: the same content, in place of the summary. */
+.fp-detail { display: flex; flex-direction: column; min-height: 100%; }
+.fp-detail-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fff; border-bottom: 1px solid #e6e8eb; }
+.fp-detail-head button { min-height: 40px; border: 0; border-radius: 999px; background: #e6eaf2; color: #052b7a; font: inherit; font-weight: 700; padding: 0 16px; cursor: pointer; }
+.fp-detail-head button:focus-visible { outline: 3px solid #052b7a; outline-offset: 2px; }
+.fp-detail-body { padding: 0 20px 24px; }
+
+@media (prefers-reduced-motion: reduce) { .dt-sheet { animation: none; transition: none; } }

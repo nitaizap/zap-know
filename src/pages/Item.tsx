@@ -13,7 +13,12 @@ import { IHeadphones } from '../components/icons'
 
 export default function ItemPage() {
   const { id } = useParams()
-  const itemId = Number(id)
+  return <ItemDetail itemId={Number(id)} />
+}
+
+// Everything about one item. Embedded (the feed's panel or sheet), it skips the media the card
+// already shows and never navigates away; only the source itself opens, in a new tab.
+export function ItemDetail({ itemId, embedded }: { itemId: number; embedded?: boolean }) {
   const { profile, topics } = useApp()
   const location = useLocation()
   const [item, setItem] = useState<Item | null | undefined>(undefined)
@@ -132,16 +137,16 @@ export default function ItemPage() {
   const topic = topics.find((t) => t.slug === item.topic_slug)
 
   return (
-    <article style={{ maxWidth: 760 }}>
+    <article className={embedded ? 'dt-item' : undefined} style={{ maxWidth: 760 }}>
       <div className="small" style={{ marginTop: 24 }}>
-        {topic && <Link to={`/topic/${topic.slug}`}>{topic.name_he}</Link>}
+        {topic && (embedded ? <span className="muted">{topic.name_he}</span> : <Link to={`/topic/${topic.slug}`}>{topic.name_he}</Link>)}
       </div>
       <h1 style={{ fontWeight: 900, fontSize: 'clamp(24px, 5vw, 34px)', lineHeight: 1.2, margin: '8px 0', color: 'var(--navy)' }}>
         {item.title_he}
       </h1>
       {item.title_orig && <div className="small muted" dir="auto">{item.title_orig}</div>}
       <ItemMeta item={item} />
-      <MediaHero item={item} />
+      {!embedded && <MediaHero item={item} />}
       {item.kind === 'podcast' && item.audio_url
         ? <div style={{ marginTop: 16 }}><AudioPlayer src={item.audio_url} title={item.title_he} /></div>
         : <Listen kind="item" id={item.id} />}
