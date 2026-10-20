@@ -474,3 +474,37 @@
 /* The profile sheet's tabs too. */
 .me-tabs { display: flex; overflow: hidden; }
 .me-tabs button { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-inline: 6px; font-size: clamp(13px, 3.4vw, 15px); }
+
+/* ---------- The weekly podcast: bell, list, one player ---------- */
+.ep-bell { position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  border: 1.5px solid rgba(255, 255, 255, .55); background: rgba(0, 28, 50, .45); color: #bfc6cc; }
+.ep-bell.fresh { background: #ffc600; border-color: #ffc600; color: #001c32; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+.ep-bell:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; }
+.ep-count { position: absolute; top: -4px; inset-inline-end: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #ff5c9e; color: #001c32;
+  font-size: 11px; font-weight: 900; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; }
+.topbar .ep-bell { border-color: #c1cade; background: #fff; color: #73828e; }
+.topbar .ep-bell.fresh { background: #ffc600; border-color: #ffc600; color: #001c32; box-shadow: none; }
+.ep-list { list-style: none; margin: 0; padding: 12px 0 20px; display: grid; gap: 12px; }
+.ep-list li { padding: 14px; border-radius: 16px; border: 1px solid #e6e8eb; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.ep-list li.fresh { border-color: #ffc600; background: #fff9e6; }
+.ep-top { display: flex; align-items: center; gap: 8px; }
+.ep-top b { font-weight: 900; font-size: 16px; color: #052b7a; }
+.ep-new { background: #ff5c9e; color: #001c32; font-size: 12px; font-weight: 900; padding: 2px 9px; border-radius: 999px; }
+.ep-segs { display: flex; flex-wrap: wrap; gap: 6px; }
+.ep-segs span { background: #edeff9; color: #33449e; border-radius: 999px; padding: 3px 10px; font-size: 12.5px; font-weight: 700; }
+.ep-player { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 360px; }
+.ep-play { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; background: #052b7a; color: #fff; font: inherit; font-weight: 900; font-size: 15px; cursor: pointer; }
+.ep-player.on .ep-play { background: #ffc600; color: #001c32; }
+.ep-play:focus-visible, .ep-more:focus-visible, .ep-mark:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; }
+.ep-bar { height: 4px; border-radius: 4px; background: #e6eaf2; overflow: hidden; }
+.ep-bar i { display: block; height: 100%; background: #ffc600; }
+.ep-player.big .ep-play { min-height: 50px; font-size: 16px; background: #fff; color: #052b7a; }
+.ep-player.big.on .ep-play { background: #ffc600; color: #001c32; }
+.ep-player.big .ep-bar { background: rgba(255, 255, 255, .25); }
+.ep-more, .ep-mark { border: 0; background: none; padding: 4px 0; font: inherit; font-size: 14px; font-weight: 700; color: #052b7a; cursor: pointer; text-decoration: underline; }
+.ep-mark { color: #4d6070; }
+.ep-card { margin: 0; white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
+.ep-noaudio { font-size: 13.5px; color: #4d6070; }
+.tk-episode .ep-noaudio { color: rgba(255, 255, 255, .8); }
+.ep-empty { padding: 24px 4px; color: #263e51; line-height: 1.6; }
+.ep-empty b { font-weight: 900; font-size: 18px; color: #052b7a; }

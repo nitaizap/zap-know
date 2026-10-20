@@ -16,6 +16,7 @@ import { AiButton } from '../components/AiSheet'
 import { teamColor, teamInitials } from './Doc'
 import { DocPreview, previewLines } from '../components/ui'
 import { Layer } from '../components/Layer'
+import { EpisodeBell, EpisodePlayer } from '../components/Episodes'
 import { choosePreview, pageShot, proxied, ytId } from '../preview'
 import { TypeBadge } from '../components/TypeBadge'
 import zapMark from '../assets/zap-mark-white.png'
@@ -431,6 +432,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
               </Link>
             )}
             {!desk && chip}
+            <EpisodeBell />
             <AiButton />
             {desk && (chip ?? (
               <Link to="/me" className="tk-me" aria-label="האזור שלי">
@@ -1008,14 +1010,6 @@ function useListen(item: FeedItem, active: boolean) {
 }
 
 function EpisodeSlide({ ep, index }: { ep: Episode; index: number }) {
-  const [playing, setPlaying] = useState(false)
-  const audio = useRef<HTMLAudioElement | null>(null)
-  useEffect(() => () => { audio.current?.pause() }, [])
-  const toggle = () => {
-    if (!ep.audio_url) return
-    if (!audio.current) { audio.current = new Audio(ep.audio_url); audio.current.onended = () => setPlaying(false) }
-    if (playing) { audio.current.pause(); setPlaying(false) } else audio.current.play().then(() => setPlaying(true), () => setPlaying(false))
-  }
   return (
     <section className="fd-card shape-tall" data-index={index} aria-label="הפרק השבועי שלכם">
       <div className="fd-inner tk-special tk-episode">
@@ -1032,12 +1026,8 @@ function EpisodeSlide({ ep, index }: { ep: Episode; index: number }) {
             </li>
           ))}
         </ol>
-        {ep.audio_url && (
-          <button className={`tk-big-play${playing ? ' on' : ''}`} onClick={toggle} aria-pressed={playing}>
-            <span className="fd-eq small" aria-hidden>{Array.from({ length: 5 }, (_, k) => <i key={k} />)}</span>
-            {playing ? 'עוצרים' : 'להאזין לפרק'}
-          </button>
-        )}
+        {/* The same player as the bell's list: playing it marks it heard. */}
+        <EpisodePlayer ep={ep} big />
       </div>
     </section>
   )

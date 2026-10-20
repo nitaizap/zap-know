@@ -15,6 +15,7 @@ import { SearchBox } from './components/SearchBox'
 import { AiButton, AiSheet } from './components/AiSheet'
 import { useViewportVar } from './components/Layer'
 import { DetailHost, openDetail } from './components/detail'
+import { EpisodeBell } from './components/Episodes'
 
 const Drive = lazy(() => import('./pages/Drive'))
 const Contribute = lazy(() => import('./pages/Contribute'))
@@ -161,6 +162,7 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
           </nav>
 
           <SearchBox topics={topics} />
+          <EpisodeBell />
           <AiButton />
 
           <div className="topbar-end">
