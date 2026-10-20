@@ -1,0 +1,54 @@
+/* Avatars, podcast player, time picker, reminders, drive pill (five ideas). */
+.avatar { display: inline-grid; place-items: center; flex: none; border-radius: 30%; overflow: hidden; vertical-align: middle; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-svg { display: block; }
+.avatar-initial { color: #fff; font-weight: 900; line-height: 1; }
+.me-link .avatar { box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--navy-20); }
+.avatar-picker { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 6px 0 4px; }
+.avatar-picker-ctl { display: grid; gap: 8px; }
+.pod-avatar { margin-bottom: 6px; }
+.board .avatar { margin-inline-end: 4px; }
+.person-btn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; text-align: start; }
+.comments .avatar { margin-inline-end: 2px; }
+
+.pod-badge {
+  position: absolute; inset-block-start: 10px; inset-inline-start: 10px; z-index: 2;
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(0, 28, 50, .72); color: #fff;
+}
+.itemcard { position: relative; }
+
+.aplayer { display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--navy-5); }
+.aplayer-ctl { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.aplayer-ctl button { border: 0; background: none; color: var(--navy); cursor: pointer; font: inherit; }
+.aplayer-main { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--navy) !important; color: #fff !important; }
+.aplayer-skip { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; font-size: 13px; }
+.aplayer-speed { min-width: 48px; padding: 6px 10px; border-radius: 999px; background: #fff !important; font-weight: 800; }
+.aplayer-bar { display: flex; align-items: center; gap: 8px; direction: ltr; }
+.aplayer-bar input { flex: 1; accent-color: var(--navy); }
+.aplayer button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+
+.btn.on { background: var(--navy-5); border-color: var(--navy); }
+
+.bites-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.fit { margin: 4px 0; }
+.fit-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fit-label { font-weight: 700; color: var(--navy); font-size: 14px; }
+.fit-pick .chip { min-width: 40px; justify-content: center; }
+.fit-list { margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: var(--yellow-5); }
+.fit-list ol { margin: 0 0 6px; padding-inline-start: 18px; display: grid; gap: 6px; }
+.fit-list li { display: grid; }
+.fit-compact .fit-list { position: relative; }
+
+.remind-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.reminders { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.reminders li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--gray-10); }
+.reminders li:last-child { border-bottom: 0; }
+
+.drive-pill {
+  display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 14px; padding: 7px 14px; border-radius: 999px;
+  background: var(--yellow-5); color: var(--navy); font-weight: 800; text-decoration: none; border: 1px solid var(--yellow-40);
+}
+.drive-pill:hover { background: var(--yellow-10); }
+.podcast-card h3 { display: flex; align-items: center; gap: 8px; }
+.fd-time { display: inline-flex; align-items: center; gap: 4px; }

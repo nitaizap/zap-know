@@ -1,0 +1,31 @@
+.drive { max-width: 560px; margin: 24px auto 40px; text-align: center; }
+.drive-hero h1 { font-weight: 900; font-size: clamp(30px, 7vw, 44px); color: var(--navy, #052b7a); margin: 10px 0 6px; }
+.drive-hero p { font-size: 18px; color: var(--dark-60, #4d6070); margin: 0 auto; max-width: 420px; }
+.drive-ico { display: inline-grid; place-items: center; width: 84px; height: 84px; border-radius: 26px; background: var(--yellow-50, #fff9e6); color: var(--navy, #052b7a); }
+.drive-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 28px 0 14px; }
+.drive-dur {
+  display: grid; gap: 2px; padding: 22px 8px; border-radius: 22px; border: 2px solid var(--navy-50, #e6eaf2);
+  background: #fff; cursor: pointer; font: inherit; color: var(--navy, #052b7a); transition: transform .12s, border-color .12s;
+}
+.drive-dur b { font-size: 40px; font-weight: 900; line-height: 1; }
+.drive-dur:hover { border-color: var(--navy, #052b7a); transform: translateY(-2px); }
+.drive-dur:focus-visible { outline: 3px solid var(--yellow, #ffc600); outline-offset: 2px; }
+.drive-note { max-width: 420px; margin: 0 auto; }
+.drive-loading { padding: 60px 16px; font-size: 18px; color: var(--navy, #052b7a); display: grid; justify-items: center; }
+.drive-now { padding: 18px 8px 8px; }
+.drive-now h1 { font-weight: 900; font-size: clamp(22px, 5.5vw, 30px); line-height: 1.25; color: var(--navy, #052b7a); margin: 8px 0 4px; }
+.drive-kind { display: inline-block; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--navy-50, #e6eaf2); color: var(--navy, #052b7a); }
+.drive-making { color: var(--dark-60, #4d6070); margin: 8px 0 0; }
+.drive-progress { height: 6px; border-radius: 6px; background: var(--navy-50, #e6eaf2); overflow: hidden; margin: 18px 0; }
+.drive-progress i { display: block; height: 100%; background: var(--navy, #052b7a); transition: width .3s linear; }
+.drive-ctl { display: flex; align-items: center; justify-content: center; gap: 22px; }
+.drive-ctl button { border: 0; background: none; color: var(--navy, #052b7a); cursor: pointer; padding: 10px; border-radius: 50%; }
+.drive-ctl button:disabled { opacity: .35; cursor: default; }
+.drive-ctl .drive-main { width: 104px; height: 104px; display: grid; place-items: center; background: var(--navy, #052b7a); color: #fff; box-shadow: 0 10px 26px rgba(5, 43, 122, .25); }
+.drive-ctl button:focus-visible { outline: 3px solid var(--yellow, #ffc600); outline-offset: 2px; }
+.drive-left { color: var(--dark-60, #4d6070); margin: 14px 0 20px; }
+.drive-list { list-style: none; padding: 0; margin: 0 0 18px; text-align: start; display: grid; gap: 6px; }
+.drive-list button { width: 100%; text-align: start; display: grid; gap: 2px; padding: 10px 14px; border-radius: 14px; border: 0; background: #fff; font: inherit; cursor: pointer; color: var(--dark, #001c32); }
+.drive-list li.on button { background: var(--navy, #052b7a); color: #fff; }
+.drive-list li.done button { opacity: .55; }
+@media (prefers-reduced-motion: reduce) { .drive-dur, .drive-progress i { transition: none; } }

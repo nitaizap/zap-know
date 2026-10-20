@@ -7,6 +7,9 @@ import { Listen } from '../components/Listen'
 import { BuyResult, ManagerPrompt, buy } from '../components/budget'
 import { Comments, ReactionBar } from '../components/social'
 import { earn } from '../components/points'
+import { AudioPlayer } from '../components/AudioPlayer'
+import { Remind } from '../components/Remind'
+import { IHeadphones } from '../components/icons'
 
 export default function ItemPage() {
   const { id } = useParams()
@@ -16,6 +19,7 @@ export default function ItemPage() {
   const [item, setItem] = useState<Item | null | undefined>(undefined)
   const [done, setDone] = useState<number[]>([])
   const [saved, setSaved] = useState(false)
+  const [later, setLater] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [note, setNote] = useState('')
   const [reported, setReported] = useState(false)
@@ -33,11 +37,13 @@ export default function ItemPage() {
       supabase.from('items').select(ITEM_COLS).eq('id', itemId).maybeSingle(),
       supabase.from('progress').select('lessons_done').eq('user_id', profile.user_id).eq('item_id', itemId).maybeSingle(),
       supabase.from('saves').select('item_id').eq('user_id', profile.user_id).eq('item_id', itemId).maybeSingle(),
-    ]).then(([it, pr, sv]) => {
+      supabase.from('listen_later').select('item_id').eq('user_id', profile.user_id).eq('item_id', itemId).maybeSingle(),
+    ]).then(([it, pr, sv, ll]) => {
       if (!alive) return
       setItem((it.data as Item) ?? null)
       setDone((pr.data as { lessons_done: number[] } | null)?.lessons_done ?? [])
       setSaved(!!sv.data)
+      setLater(!ll.error && !!ll.data)
     })
     // Price is optional and fetched on its own, so a missing column never breaks the page.
     supabase.from('items').select('price,currency').eq('id', itemId).maybeSingle().then(({ data, error }) => {
@@ -71,6 +77,17 @@ export default function ItemPage() {
       await supabase.from('saves').insert({ user_id: profile.user_id, item_id: itemId })
       track(itemId, 'save')
       earn('save')
+    }
+  }
+
+  // "להאזין אחר כך": queued items land in the personal podcast feed.
+  async function toggleLater() {
+    if (later) {
+      setLater(false)
+      await supabase.from('listen_later').delete().eq('user_id', profile.user_id).eq('item_id', itemId)
+    } else {
+      setLater(true)
+      await supabase.from('listen_later').insert({ user_id: profile.user_id, item_id: itemId })
     }
   }
 
@@ -119,7 +136,9 @@ export default function ItemPage() {
       {item.title_orig && <div className="small muted" dir="auto">{item.title_orig}</div>}
       <ItemMeta item={item} />
       <MediaHero item={item} />
-      <Listen kind="item" id={item.id} />
+      {item.kind === 'podcast' && item.audio_url
+        ? <div style={{ marginTop: 16 }}><AudioPlayer src={item.audio_url} title={item.title_he} /></div>
+        : <Listen kind="item" id={item.id} />}
       {item.verticals.length > 0 && (
         <div className="chips">{item.verticals.map((v) => <span key={v} className="badge">{v}</span>)}</div>
       )}
@@ -135,7 +154,11 @@ export default function ItemPage() {
         <a className="btn" href={item.source_url} target="_blank" rel="noopener noreferrer" onClick={() => track(itemId, 'click_source')}>
           {item.kind === 'course' ? 'לקורס המקורי ←' : 'למקור ←'}
         </a>
-        <button className="btn ghost" onClick={toggleSave}>{saved ? 'שמור אצלכם ✓' : 'שמירה לאחר כך'}</button>
+        <button className="btn ghost" onClick={toggleSave}>{saved ? 'שמור אצלכם ✓' : 'לשמור לאחר כך'}</button>
+        <button className={`btn ghost${later ? ' on' : ''}`} onClick={toggleLater} aria-pressed={later}>
+          <IHeadphones size={18} /> {later ? 'בתור ההאזנה שלכם' : 'להאזין אחר כך'}
+        </button>
+        <Remind itemId={item.id} />
       </div>
       <ReactionBar item={item} onComments={toComments} />
 

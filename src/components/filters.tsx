@@ -16,7 +16,7 @@ const LENS: { v: Len; label: string }[] = [
 const SORTS: { v: Sort; label: string }[] = [
   { v: 'top', label: 'מומלץ' }, { v: 'new', label: 'חדש' }, { v: 'short', label: 'הכי קצר' }, { v: 'long', label: 'הכי ארוך' }, { v: 'liked', label: 'הכי אהוב' },
 ]
-const KINDS: { v: Filters['kind']; label: string }[] = [{ v: 'course', label: 'קורס' }, { v: 'news', label: 'עדכון' }, { v: 'internal', label: 'פנימי' }]
+const KINDS: { v: Filters['kind']; label: string }[] = [{ v: 'course', label: 'קורס' }, { v: 'news', label: 'עדכון' }, { v: 'podcast', label: 'פודקאסט' }, { v: 'internal', label: 'פנימי' }]
 
 // Remembers the last choice per page; storage can be unavailable, so every access is guarded.
 export function useFilters(page: string, base: Partial<Filters> = {}): [Filters, (f: Filters) => void] {

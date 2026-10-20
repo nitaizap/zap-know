@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import '../onboarding.css'
 import { ALLOWED_DOMAIN, NEEDS, Profile, Topic, supabase } from '../lib'
+import { AvatarPicker } from './Avatar'
 
 // Everything onboarding asks, in one place, so onboarding and "ההעדפות שלי" stay in sync.
 export const ROLE_OPTIONS = [
@@ -117,6 +118,9 @@ export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; top
   const p = profile as ProfileX
   const [name, setName] = useState(p.display_name ?? suggestName(p.email))
   const [color, setColor] = useState(p.avatar_color ?? AVATAR_COLORS[0])
+  const [look, setLook] = useState<{ avatar_url: string | null; avatar_style: string | null }>({
+    avatar_url: p.avatar_url ?? null, avatar_style: p.avatar_style ?? (p.avatar_url ? 'photo' : 'initial'),
+  })
   const [vertical, setVertical] = useState(p.vertical ?? '')
   const [role, setRole] = useState(p.role ?? '')
   const [seniority, setSeniority] = useState(p.seniority ?? '')
@@ -139,7 +143,7 @@ export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; top
       user_id: p.user_id, email: p.email,
       display_name: name.trim(), role, topics: picked, needs, needs_note: note.trim() || null,
       manager_email: manager.trim().toLowerCase() || null,
-      avatar_color: color, vertical: vertical || null, seniority: seniority || null, formats,
+      avatar_color: color, avatar_url: look.avatar_url, avatar_style: look.avatar_style, vertical: vertical || null, seniority: seniority || null, formats,
       weekly_time: time || null, english_ok: english, goal: goal.trim() || null,
       notify_channel: channel, notify_day: day,
     })
@@ -165,11 +169,9 @@ export function PrefsPanel({ profile, topics, onSaved }: { profile: Profile; top
       {group('me', 'מי אני', <>
         <label className="field"><span className="small muted">איך לקרוא לכם</span>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} /></label>
-        <div className="ob-colors">
-          {AVATAR_COLORS.map((c) => (
-            <button key={c} type="button" aria-label="צבע" className={`ob-color ${color === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setColor(c)} />
-          ))}
-        </div>
+        <h4 className="ob-sub">איך תיראו בטבלה ובתגובות</h4>
+        <AvatarPicker userId={p.user_id} name={name} value={{ ...look, avatar_color: color }}
+          onChange={(v) => { setLook({ avatar_url: v.avatar_url, avatar_style: v.avatar_style }); setColor(v.avatar_color) }} />
       </>)}
 
       {group('where', 'איפה אני ב-zap', <>

@@ -5,6 +5,9 @@ import { KIND_LABEL, Item, supabase } from '../lib'
 import { Empty, Headline, Skeletons, clip } from '../components/ui'
 import { PrefsPanel } from '../components/prefs'
 import { PointsDashboard } from '../components/points'
+import { SUPABASE_URL, fmtMinutes } from '../lib'
+import { fmtWhen } from '../components/Remind'
+import { ICopy, IHeadphones } from '../components/icons'
 
 type Action = 'open' | 'like' | 'dislike' | 'save' | 'comment' | 'shared_by_me' | 'shared_with_me' | 'progress' | 'purchase'
 type Row = {
@@ -125,6 +128,10 @@ export default function Me() {
 
       <PointsDashboard />
 
+      <WeekTime goal={(profile as { weekly_time?: string | null }).weekly_time ?? null} />
+      <MyPodcast />
+      <MyReminders />
+
       {stats && (
         <div className="tiles" style={{ marginTop: 16 }}>
           {TILES.map((t) => (
@@ -209,5 +216,104 @@ export default function Me() {
         <PrefsPanel profile={profile} topics={topics} onSaved={setProfile} />
       </div>
     </div>
+  )
+}
+
+// The weekly goal from onboarding, against minutes opened this week.
+const GOAL_MIN: Record<string, number> = { '15 דקות': 15, 'שעה': 60, '2-3 שעות': 150, 'יותר': 240 }
+function WeekTime({ goal }: { goal: string | null }) {
+  const [mins, setMins] = useState<number | null>(null)
+  useEffect(() => {
+    const since = new Date(); since.setDate(since.getDate() - since.getDay()); since.setHours(0, 0, 0, 0)
+    supabase.rpc('my_history', { p_q: '', p_type: 'open', p_limit: 200 }).then(async ({ data, error }) => {
+      if (error) return
+      const ids = ((data as Row[]) ?? []).filter((r) => new Date(r.at) >= since).map((r) => r.item_id)
+      if (!ids.length) { setMins(0); return }
+      const { data: its } = await supabase.from('items').select('id,minutes').in('id', ids)
+      setMins(((its as { minutes: number | null }[] | null) ?? []).reduce((a, i) => a + (i.minutes ?? 0), 0))
+    })
+  }, [])
+  const target = goal ? GOAL_MIN[goal] : null
+  if (mins === null || !target) return null
+  const pct = Math.min(1, mins / target)
+  return (
+    <section className="card weektime" style={{ marginTop: 16 }}>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <b>הזמן שלכם ללמידה השבוע</b>
+        <span className="small muted">{fmtMinutes(mins) || '0 דק׳'} מתוך {goal}</span>
+      </div>
+      <div className="bar" style={{ margin: '10px 0 6px' }}><i style={{ width: `${Math.round(pct * 100)}%` }} /></div>
+      <span className="small muted">{pct >= 1 ? 'עמדתם ביעד של השבוע. כל הכבוד.' : 'כל ביס קטן נספר. אפשר להשלים גם בנסיעה, עם "אני בדרך".'}</span>
+    </section>
+  )
+}
+
+// The private podcast feed: subscribe once, and saved items keep arriving as audio.
+function MyPodcast() {
+  const [token, setToken] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    supabase.rpc('my_podcast_token').then(({ data, error }) => { if (!error && data) setToken(String(data)) })
+  }, [])
+  if (!token) return null
+  const url = `${SUPABASE_URL}/functions/v1/podcast?t=${token}`
+  async function copy() {
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2500) } catch { /* the field is selectable */ }
+  }
+  return (
+    <section className="card podcast-card" style={{ marginTop: 16 }}>
+      <h3 style={{ margin: '0 0 4px' }}><IHeadphones size={20} /> הפודקאסט האישי שלכם</h3>
+      <p className="small muted" style={{ margin: '0 0 10px' }}>
+        הפרק השבועי, השיחות על מה ששמרתם, ופרקים שסימנתם "להאזין אחר כך". מוסיפים פעם אחת לאפליקציית פודקאסטים, וזה מתעדכן לבד.
+      </p>
+      <div className="row">
+        <input className="input" dir="ltr" readOnly value={url} onFocus={(e) => e.target.select()} style={{ flex: 1, minWidth: 0 }} />
+        <button className="btn" onClick={copy}><ICopy size={18} /> {copied ? 'הועתק' : 'להעתיק'}</button>
+      </div>
+      <p className="small muted" style={{ margin: '10px 0 0' }}>
+        ב-Apple Podcasts, Pocket Casts או Overcast בוחרים "הוספה לפי קישור" ומדביקים. Spotify לא תומך בפידים פרטיים. הקישור אישי, אל תשתפו אותו.
+      </p>
+    </section>
+  )
+}
+
+type Reminder = { id: number; item_id: number | null; doc_id: number | null; send_at: string; note: string | null }
+function MyReminders() {
+  const [list, setList] = useState<(Reminder & { title: string })[] | null>(null)
+  useEffect(() => {
+    supabase.from('reminders').select('id,item_id,doc_id,send_at,note').is('sent_at', null).order('send_at').then(async ({ data, error }) => {
+      if (error) return
+      const rs = (data as Reminder[]) ?? []
+      const itemIds = rs.flatMap((r) => (r.item_id ? [r.item_id] : []))
+      const docIds = rs.flatMap((r) => (r.doc_id ? [r.doc_id] : []))
+      const [its, docs] = await Promise.all([
+        itemIds.length ? supabase.from('items').select('id,title_he').in('id', itemIds) : Promise.resolve({ data: [] }),
+        docIds.length ? supabase.from('team_docs').select('id,title').in('id', docIds) : Promise.resolve({ data: [] }),
+      ])
+      const it = new Map(((its.data as { id: number; title_he: string }[] | null) ?? []).map((x) => [x.id, x.title_he]))
+      const dc = new Map(((docs.data as { id: number; title: string }[] | null) ?? []).map((x) => [x.id, x.title]))
+      setList(rs.map((r) => ({ ...r, title: (r.item_id ? it.get(r.item_id) : dc.get(r.doc_id!)) ?? 'פריט' })))
+    })
+  }, [])
+  if (!list || list.length === 0) return null
+  async function cancel(id: number) {
+    setList((l) => (l ?? []).filter((r) => r.id !== id))
+    await supabase.from('reminders').delete().eq('id', id)
+  }
+  return (
+    <section className="card" style={{ marginTop: 16 }}>
+      <h3 style={{ margin: '0 0 8px' }}>תזכורות שלי</h3>
+      <ul className="reminders">
+        {list.map((r) => (
+          <li key={r.id}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Link to={r.item_id ? `/item/${r.item_id}` : `/doc/${r.doc_id}`}><b>{r.title}</b></Link>
+              <div className="small muted">{fmtWhen(r.send_at)}{r.note ? ` · ${r.note}` : ''}</div>
+            </div>
+            <button className="linkbtn small" onClick={() => cancel(r.id)}>לבטל</button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

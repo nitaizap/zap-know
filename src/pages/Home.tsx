@@ -6,6 +6,8 @@ import { BitesRow, Empty, EpisodeCard, Headline, ItemCard, MetroLine, Skeletons 
 import { FeedRow, loadFeed, reasonChips } from '../components/social'
 import { LeaderTeaser } from '../components/points'
 import { suggestName } from '../components/prefs'
+import { FitTime } from '../components/FitTime'
+import { ICar } from '../components/icons'
 
 type Episode = { id: number; week: string; body_he: string; item_ids: number[]; audio_url: string | null }
 
@@ -120,6 +122,7 @@ export default function Home() {
       <Headline light={`היי ${firstName},`} black="מה חדש השבוע">
         <MetroLine top={6} />
       </Headline>
+      <Link to="/drive" className="drive-pill"><ICar size={18} /> אני בדרך</Link>
 
       {!profile.display_name && (
         <div className="card name-prompt">
@@ -163,7 +166,7 @@ export default function Home() {
         </div>
       </section>
 
-      <BitesRow items={bites} />
+      <BitesRow items={bites} extra={<FitTime compact />} />
 
       <LeaderTeaser />
 

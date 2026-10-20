@@ -6,6 +6,7 @@ import {
   ROLE_OPTIONS, SENIORITY_OPTIONS, TIME_OPTIONS, TOPIC_ICON, VERTICAL_OPTIONS, managerOk, saveProfile, suggestName,
 } from '../components/prefs'
 import '../onboarding.css'
+import { Avatar, AvatarPicker } from '../components/Avatar'
 
 // A short, game-like intro: one question per screen, big tappable cards, about a minute.
 export default function Onboarding({ session, topics, existing, onDone }: {
@@ -15,6 +16,9 @@ export default function Onboarding({ session, topics, existing, onDone }: {
   const [step, setStep] = useState(0)
   const [name, setName] = useState(ex.display_name ?? suggestName(session.user.email ?? ''))
   const [color, setColor] = useState(ex.avatar_color ?? AVATAR_COLORS[0])
+  const [look, setLook] = useState<{ avatar_url: string | null; avatar_style: string | null }>({
+    avatar_url: ex.avatar_url ?? null, avatar_style: ex.avatar_style ?? 'character',
+  })
   const [vertical, setVertical] = useState(ex.vertical ?? '')
   const [role, setRole] = useState(ex.role ?? '')
   const [seniority, setSeniority] = useState(ex.seniority ?? '')
@@ -50,7 +54,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
       needs,
       needs_note: note.trim() || null,
       ...(manager.trim() ? { manager_email: manager.trim().toLowerCase() } : {}),
-      avatar_color: color,
+      avatar_color: color, avatar_url: look.avatar_url, avatar_style: look.avatar_style,
       vertical: vertical || null,
       seniority: seniority || null,
       formats,
@@ -94,16 +98,9 @@ export default function Onboarding({ session, topics, existing, onDone }: {
             <p className="ob-help">ככה תופיעו בטבלת המובילים, בתגובות ובשיתופים.</p>
             <input className="input ob-big-input" value={name} maxLength={40} autoFocus
               onChange={(e) => setName(e.target.value)} placeholder="שם פרטי ושם משפחה" />
-            <p className="ob-help">ובחרו צבע לאווטאר:</p>
-            <div className="ob-avatar-row">
-              <span className="ob-avatar" style={{ background: color }}>{first.charAt(0)}</span>
-              <div className="ob-colors">
-                {AVATAR_COLORS.map((c) => (
-                  <button key={c} type="button" aria-label="צבע" className={`ob-color ${color === c ? 'on' : ''}`}
-                    style={{ background: c }} onClick={() => setColor(c)} />
-                ))}
-              </div>
-            </div>
+            <p className="ob-help">ואיך תיראו? דמות, אות או תמונה שלכם:</p>
+            <AvatarPicker userId={session.user.id} name={name || first} value={{ ...look, avatar_color: color }}
+              onChange={(v) => { setLook({ avatar_url: v.avatar_url, avatar_style: v.avatar_style }); setColor(v.avatar_color) }} />
           </>}
 
           {step === 1 && <>
@@ -221,7 +218,7 @@ export default function Onboarding({ session, topics, existing, onDone }: {
             <div className="ob-burst" aria-hidden>
               {AVATAR_COLORS.slice(0, 6).map((c, i) => <span key={c} style={{ background: c, ['--i' as string]: i } as React.CSSProperties} />)}
             </div>
-            <span className="ob-avatar big" style={{ background: color }}>{first.charAt(0)}</span>
+            <Avatar face={{ user_id: session.user.id, name: name || first, ...look, avatar_color: color }} size={84} className="ob-avatar-big" />
             <h1 className="ob-title center"><span className="ob-light">הכל מוכן,</span> {first}</h1>
             <p className="ob-hand">עוד זאפ קטן ואתם בפנים</p>
             <div className="ob-summary">

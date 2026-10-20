@@ -18,7 +18,8 @@ import BudgetPage from './pages/Budget'
 import Me from './pages/Me'
 import Leaderboard from './pages/Leaderboard'
 import { PointsPill, Toaster } from './components/points'
-import { IBook, IChat, IClose, IGrid, IHome, ILogout, IMenu, INews, IPlay, IShield, ITrophy, IUser, IUsers, IWallet } from './components/icons'
+import { IBook, ICar, IChat, IClose, IGrid, IHome, ILogout, IMenu, INews, IPlay, IShield, ITrophy, IUser, IUsers, IWallet } from './components/icons'
+import { Avatar } from './components/Avatar'
 
 // Pages built separately load lazily; a route appears only once its file exists.
 const pageModules = import.meta.glob(['./pages/Feed.tsx', './pages/TeamAgent.tsx', './pages/Doc.tsx'])
@@ -27,6 +28,7 @@ const lazyPage = (path: string) =>
 const Feed = lazyPage('./pages/Feed.tsx')
 const TeamAgent = lazyPage('./pages/TeamAgent.tsx')
 const Doc = lazyPage('./pages/Doc.tsx')
+const Drive = lazy(() => import('./pages/Drive'))
 const page = (P: React.ComponentType | null) =>
   P ? <Suspense fallback={<div className="skeleton" style={{ marginTop: 28 }} />}><P /></Suspense> : <Home />
 
@@ -80,6 +82,7 @@ export default function App() {
             <Route path="/feed" element={page(Feed)} />
             <Route path="/agent" element={page(TeamAgent)} />
             <Route path="/doc/:id" element={page(Doc)} />
+            <Route path="/drive" element={page(Drive)} />
             <Route path="/topics" element={<Topics />} />
             <Route path="/topic/:slug" element={<TopicPage />} />
             <Route path="/library" element={<Library />} />
@@ -126,6 +129,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
 
   const secondary = [
     { to: '/me', label: 'האזור שלי', icon: IUser },
+    { to: '/drive', label: 'אני בדרך', icon: ICar },
     { to: '/library', label: 'מאגר', icon: IBook },
     { to: '/internal', label: 'קורה ב-zap', icon: INews },
     { to: '/ask', label: 'שאלו את zap UP', icon: IChat },
@@ -133,7 +137,6 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
     { to: '/budget', label: 'התקציב שלי', icon: IWallet },
     ...(profile.is_admin ? [{ to: '/admin', label: 'אישורים וניהול', icon: IShield }] : []),
   ]
-  const initial = (profile.display_name || profile.email).trim().charAt(0).toUpperCase()
 
   return (
     <div className="app">
@@ -160,7 +163,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
           <div className="topbar-end">
             <PointsPill />
             <NavLink to="/me" className="me-link" aria-label="האזור שלי">
-              <span className="me-avatar">{initial}</span>
+              <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={34} className="me-avatar-img" />
             </NavLink>
             <button className="icon-btn menu-btn" aria-label="תפריט" aria-expanded={open} onClick={() => setOpen(true)}><IMenu /></button>
           </div>
@@ -175,7 +178,7 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
               <button className="icon-btn" aria-label="סגירה" onClick={() => setOpen(false)}><IClose /></button>
             </div>
             <div className="drawer-me">
-              <span className="me-avatar">{initial}</span>
+              <Avatar face={{ ...profile, name: profile.display_name || profile.email }} size={40} />
               <div><b>{profile.display_name || profile.email.split('@')[0]}</b><div className="small muted">{profile.role ?? ''}</div></div>
             </div>
             <nav className="drawer-nav">

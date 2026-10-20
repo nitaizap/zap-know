@@ -34,3 +34,13 @@ export const ILogout = (p: P) => <Svg {...p}><path d="M14 4h4a2 2 0 0 1 2 2v12a2
 export const IShield = (p: P) => <Svg {...p}><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z" /><path d="m9 12 2 2 4-4" /></Svg>
 export const INews = (p: P) => <Svg {...p}><rect x="4" y="4.5" width="16" height="15" rx="2" /><path d="M8 9h8M8 12.5h8M8 16h5" /></Svg>
 export const IPlay = (p: P) => <Svg {...p}><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="m10.5 9.5 4 2.5-4 2.5z" /></Svg>
+export const IClock = (p: P) => <Svg {...p}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Svg>
+export const ICar = (p: P) => <Svg {...p}><path d="M5 16.5V12l2-5h10l2 5v4.5" /><path d="M4 16.5h16v2.5H4z" /><circle cx="8" cy="13.5" r="1" /><circle cx="16" cy="13.5" r="1" /></Svg>
+export const IPause = (p: P) => <Svg {...p}><path d="M9 6v12M15 6v12" /></Svg>
+export const IPlayFill = (p: P) => <Svg {...p}><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" /></Svg>
+export const INext = (p: P) => <Svg {...p}><path d="M6 6l8 6-8 6z" /><path d="M18 6v12" /></Svg>
+export const IPrev = (p: P) => <Svg {...p}><path d="M18 6l-8 6 8 6z" /><path d="M6 6v12" /></Svg>
+export const IRewind = (p: P) => <Svg {...p}><path d="M4 12a8 8 0 1 0 2.3-5.7" /><path d="M4 4v4h4" /></Svg>
+export const IForward = (p: P) => <Svg {...p}><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v4h-4" /></Svg>
+export const IBookmark = (p: P) => <Svg {...p}><path d="M7 4h10v16l-5-3.5L7 20z" /></Svg>
+export const ICopy = (p: P) => <Svg {...p}><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M5 15V6a1 1 0 0 1 1-1h9" /></Svg>

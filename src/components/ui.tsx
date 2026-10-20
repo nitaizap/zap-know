@@ -75,6 +75,7 @@ export function ItemCard({ item, progress, reasons }: { item: Item; progress?: n
       {item.is_demo && <DemoBadge />}
       <Link to={`/item/${item.id}`} className="cardlink">
         <Thumb item={item} />
+        {item.kind === 'podcast' && <span className="pod-badge" aria-label="פודקאסט"><IHeadphones size={16} /></span>}
         <div className="card-top">
           <KindBadge kind={item.kind} />
           {reasons?.map((r) => <span key={r} className="reason">{r}</span>)}
@@ -121,7 +122,7 @@ export function Thumb({ item }: { item: Item }) {
 }
 
 function ThumbFallback({ item }: { item: Item }) {
-  const Icon = item.kind === 'news' ? INews : IBook
+  const Icon = item.kind === 'podcast' ? IHeadphones : item.kind === 'news' ? INews : IBook
   return (
     <div className={`thumb-tile tone-${toneOf(item)}`} aria-hidden="true">
       <Icon size={34} />
@@ -147,11 +148,14 @@ export function MediaHero({ item }: { item: Item }) {
 }
 
 // "ביס קטן": one compact horizontal row of ≤10-minute items.
-export function BitesRow({ items }: { items: Item[] }) {
-  if (!items.length) return null
+export function BitesRow({ items, extra }: { items: Item[]; extra?: React.ReactNode }) {
+  if (!items.length && !extra) return null
   return (
     <section className="bites">
-      <h2 className="section">ביס קטן <small>עד 10 דקות</small></h2>
+      <div className="bites-head">
+        <h2 className="section">ביס קטן <small>עד 10 דקות</small></h2>
+        {extra}
+      </div>
       <div className="bites-row">
         {items.map((i) => (
           <Link key={i.id} to={`/item/${i.id}`} className="bite">

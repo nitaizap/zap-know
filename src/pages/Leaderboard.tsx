@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib'
 import { Empty, Headline, MetroLine, Skeletons } from '../components/ui'
 import { BoardRow, RulesPanel, useMyPoints } from '../components/points'
+import { Avatar } from '../components/Avatar'
 
 type Scope = 'people' | 'teams'
 type Period = 'month' | 'all'
@@ -56,6 +57,7 @@ export default function Leaderboard() {
         <div className="podium" aria-label="שלושת המובילים">
           {podium.map((r, i) => (
             <div key={r.rank + r.name} className={`pod pod-${i + 1}${r.is_me ? ' me' : ''}`}>
+              {r.user_id && <Avatar face={{ ...r, user_id: r.user_id }} size={i === 0 ? 56 : 46} className="pod-avatar" />}
               <span className="pod-name">{r.name}</span>
               <span className="small pod-team">{scope === 'teams' ? `${r.members} פעילים` : r.team}</span>
               <span className="pod-pts">{r.points.toLocaleString('he-IL')}</span>
@@ -70,6 +72,7 @@ export default function Leaderboard() {
           {rows.map((r) => (
             <li key={r.rank + r.name} className={r.is_me ? 'me' : ''} title={`${r.name}: ${r.points} ${unit}`}>
               <span className="board-rank">{r.rank}</span>
+              {r.user_id ? <Avatar face={{ ...r, user_id: r.user_id }} size={32} /> : null}
               <span className="board-who">
                 <b>{r.name}{r.is_me ? ' (אתם)' : ''}</b>
                 <span className="small muted">{scope === 'teams' ? `${r.members} פעילים` : r.team}</span>

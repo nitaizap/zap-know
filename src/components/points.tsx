@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Avatar } from './Avatar'
 import { Link, NavLink } from 'react-router-dom'
 import { supabase } from '../lib'
 import { IBolt } from './icons'
@@ -61,7 +62,10 @@ export type MyPoints = {
   badges: string[] | null
 }
 
-export type BoardRow = { rank: number; name: string; team: string; points: number; members: number; is_me: boolean }
+export type BoardRow = {
+  rank: number; name: string; team: string; points: number; members: number; is_me: boolean
+  user_id?: string | null; avatar_url?: string | null; avatar_style?: string | null; avatar_color?: string | null
+}
 
 const EVENT = 'zapup:points'
 
@@ -244,7 +248,8 @@ export function LeaderTeaser() {
         <ol className="teaser-list">
           {rows.map((r) => (
             <li key={r.rank + r.name} className={r.is_me ? 'me' : ''}>
-              <span className="medal">{r.rank}</span> {r.name} <span className="small muted">{r.team}</span>
+              <span className="medal">{r.rank}</span>
+              {r.user_id && <Avatar face={{ ...r, user_id: r.user_id }} size={26} />} {r.name} <span className="small muted">{r.team}</span>
               <b className="num">{r.points.toLocaleString('he-IL')}</b>
             </li>
           ))}

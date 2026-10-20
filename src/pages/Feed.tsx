@@ -6,6 +6,9 @@ import { earn } from '../components/points'
 import { FilterBar, applyFilters, useFilters, useSavedIds } from '../components/filters'
 import { useApp } from '../App'
 import '../feed.css'
+import { Remind } from '../components/Remind'
+import { FitTime } from '../components/FitTime'
+import { IClock, IClose } from '../components/icons'
 
 // Social-media style feed: vertical snap cards (up/down = next/prev, like TikTok),
 // a horizontal swipe on each card (right = save, left = not for me, like Tinder),
@@ -85,6 +88,7 @@ const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-r
 
 export default function Feed() {
   const [tab, setTab] = useState<Tab>('foryou')
+  const [fit, setFit] = useState(false)
   const { topics: topicList } = useApp()
   const [f, setF] = useFilters('feed')
   const saved = useSavedIds(f.saved)
@@ -185,11 +189,24 @@ export default function Feed() {
 
   return (
     <div className="fd-wrap">
+      {fit && (
+        <div className="sheet-wrap" onClick={() => setFit(false)}>
+          <div className="sheet card" role="dialog" aria-label="כמה זמן יש לכם" onClick={(e) => e.stopPropagation()}>
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0 }}>כמה זמן יש לכם?</h3>
+              <button className="icon-btn" onClick={() => setFit(false)} aria-label="לסגור"><IClose /></button>
+            </div>
+            <p className="small muted" style={{ margin: '4px 0 10px' }}>בוחרים מספר דקות, ומקבלים חבילה שנכנסת בדיוק בזה.</p>
+            <FitTime />
+          </div>
+        </div>
+      )}
       <div className="fd-tabs" role="tablist" aria-label="סוג הפיד">
         {TABS.map((t) => (
           <button key={t.key} role="tab" aria-selected={tab === t.key} className={`fd-tab ${tab === t.key ? 'on' : ''}`}
             onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
+        <button className="fd-tab fd-time" onClick={() => setFit(true)}><IClock size={16} /> יש לי זמן</button>
         <div className="fd-filter"><FilterBar value={f} onChange={setF} show={{ topic: topicList, kind: true, len: true, vertical: true, saved: true }} /></div>
       </div>
 
@@ -324,6 +341,7 @@ function FeedCard({ item, index, active, topicName, myId, onSave, onHide }: {
             onClick={() => { if (!saved) { setSaved(true); supabase.from('saves').insert({ item_id: item.id, user_id: myId }).then(({ error }) => { if (!error) { track(item.id, 'save'); earn('save') } }) } }}>
             <IcoSave />
           </RailBtn>
+          <Remind itemId={item.id} trigger={(open) => <RailBtn label="אחר כך" onClick={open}><IClock size={22} /></RailBtn>} />
         </div>
 
         <div className="fd-swipe-hint" aria-hidden>

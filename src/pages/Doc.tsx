@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { Listen } from '../components/Listen'
+import { Remind } from '../components/Remind'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fmtDate, supabase } from '../lib'
 import '../agent.css'
@@ -248,6 +249,7 @@ export default function Doc() {
             לכתוב ל{team.contact_name ?? `צוות ${team.team}`}
           </a>
         )}
+        <Remind docId={doc.id} trigger={(open) => <button type="button" className="doc-btn ghost" onClick={open}>שלחו לי את זה ב...</button>} />
       </div>
 
       <article className="doc-body">

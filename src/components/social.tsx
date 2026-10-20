@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Avatar, useFaces } from './Avatar'
 import { Link } from 'react-router-dom'
 import { Item, callFn, supabase } from '../lib'
 import { earn } from './points'
@@ -114,6 +115,7 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<{ msg: string; link?: string } | null>(null)
   const [err, setErr] = useState('')
+  const face = useFaces(people.map((p) => p.user_id))
 
   useEffect(() => {
     if (mode !== 'colleague') return
@@ -186,7 +188,8 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
                 <ul className="people">
                   {people.map((p) => (
                     <li key={p.user_id}>
-                      <button onClick={() => setTo(p)}>
+                      <button onClick={() => setTo(p)} className="person-btn">
+                        <Avatar face={face(p.user_id) ?? { user_id: p.user_id, name: p.name }} size={30} />
                         <b>{p.name}</b> <span className="small muted">{p.role ?? ''}</span>
                         <div className="small muted" dir="ltr">{p.email}</div>
                       </button>
@@ -219,6 +222,7 @@ export function Comments({ item, myId }: { item: Item; myId: string }) {
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
   const [reported, setReported] = useState<number[]>([])
+  const face = useFaces((list ?? []).map((c) => c.user_id))
 
   useEffect(() => {
     supabase.from('comments').select('id,user_id,author_name,body,at').eq('item_id', item.id).order('at')
@@ -259,6 +263,7 @@ export function Comments({ item, myId }: { item: Item; myId: string }) {
         {list.map((c) => (
           <li key={c.id}>
             <div className="row" style={{ gap: 6 }}>
+              <Avatar face={face(c.user_id) ?? { user_id: c.user_id, name: c.author_name }} size={28} />
               <b>{c.author_name}</b>
               <span className="small muted">{new Date(c.at).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
               <span style={{ marginInlineStart: 'auto' }} />

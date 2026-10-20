@@ -14,7 +14,7 @@ export type Lesson = { title_he: string; title_orig?: string; minutes?: number }
 
 export type Item = {
   id: number
-  kind: 'course' | 'news' | 'internal'
+  kind: 'course' | 'news' | 'internal' | 'podcast'
   topic_slug: string | null
   verticals: string[]
   title_he: string
@@ -37,6 +37,7 @@ export type Item = {
   preview_video_id?: string | null
   minutes?: number | null
   likes?: number
+  audio_url?: string | null
 }
 
 export type TeamProfile = {
@@ -64,6 +65,10 @@ export type Profile = {
   manager_email?: string | null
   needs?: string[]
   needs_note?: string | null
+  avatar_url?: string | null
+  avatar_style?: string | null
+  avatar_color?: string | null
+  weekly_time?: string | null
 }
 
 export type Source = {
@@ -134,7 +139,7 @@ export const ROLES = ['שיווק', 'PPC', 'סושיאל', 'מכירות', 'מו
 
 export const VERTICALS = ['zap', 'zapstore', 'Wisebuy', 'דפי זהב', 'Doctors', 'משפטי', 'REST', 'Weekend', 'zapX', 'zap לעסקים']
 
-export const KIND_LABEL: Record<Item['kind'], string> = { course: 'קורס', news: 'עדכון', internal: 'קורה ב-zap' }
+export const KIND_LABEL: Record<Item['kind'], string> = { course: 'קורס', news: 'עדכון', internal: 'קורה ב-zap', podcast: 'פודקאסט' }
 
 // Sunday of the current week (the Israeli work week), as YYYY-MM-DD; matches items.hot_week.
 export function weekStart(d = new Date()): string {
@@ -155,7 +160,7 @@ const BASE_COLS =
 // them, so an older schema never breaks a page. ITEM_COLS is a live binding: probeMediaCols()
 // upgrades it for every importer.
 export let ITEM_COLS: typeof BASE_COLS = BASE_COLS
-const OPTIONAL_COLS = ['thumbnail_url,preview_video_id', 'minutes', 'likes']
+const OPTIONAL_COLS = ['thumbnail_url,preview_video_id', 'minutes', 'likes', 'audio_url']
 export async function probeMediaCols() {
   const ok = await Promise.all(OPTIONAL_COLS.map(async (c) => !(await supabase.from('items').select(c).limit(1)).error))
   const extra = OPTIONAL_COLS.filter((_, n) => ok[n])
