@@ -56,9 +56,9 @@ async function toCards(sources: Src[]): Promise<Card[]> {
 export function AiButton({ fab }: { fab?: boolean }) {
   const [fresh] = useState(() => { try { return !localStorage.getItem('zapup.ai.seen') } catch { return false } })
   return (
-    <button type="button" className={`ai-pill${fab ? ' ai-fab' : ''}${fresh ? ' pulse' : ''}`} aria-label="לשאול את ה-AI" aria-keyshortcuts="/"
+    <button type="button" className={`ai-pill${fab ? ' ai-fab' : ''}${fresh ? ' pulse' : ''}`} aria-label="חיפוש ושאלה ל-AI" aria-keyshortcuts="/"
       onClick={() => openAi()}>
-      <Spark /> AI
+      <AiMark />
     </button>
   )
 }
@@ -140,7 +140,7 @@ export function AiSheet() {
     <div className="ai-back" onClick={() => setOpen(false)}>
       <section className="ai-sheet" role="dialog" aria-modal="true" aria-label="לשאול את ה-AI" onClick={(e) => e.stopPropagation()}>
         <header className="ai-head">
-          <span className="ai-badge"><Spark /> AI</span>
+          <span className="ai-badge"><AiMark /></span>
           <b>{teamName ? `שואלים את צוות ${teamName}` : 'כל הידע של zap, בשאלה אחת'}</b>
           {msgs.length > 0 && <button className="ai-new" onClick={() => setMsgs([])}>שיחה חדשה</button>}
           <button className="ai-x" aria-label="לסגור" onClick={() => setOpen(false)}><IClose /></button>
@@ -204,6 +204,17 @@ export function AiSheet() {
         </form>
       </section>
     </div>
+  )
+}
+
+/** The AI control's content, one reading unit: ✦ sparkle, "AI", a magnifying glass (ask or search). */
+export function AiMark() {
+  return (
+    <span className="ai-mark" aria-hidden="true">
+      <Spark size={18} />
+      <b>AI</b>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4.2-4.2" /></svg>
+    </span>
   )
 }
 

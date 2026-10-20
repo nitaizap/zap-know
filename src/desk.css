@@ -508,3 +508,11 @@
 .tk-episode .ep-noaudio { color: rgba(255, 255, 255, .8); }
 .ep-empty { padding: 24px 4px; color: #263e51; line-height: 1.6; }
 .ep-empty b { font-weight: 900; font-size: 18px; color: #052b7a; }
+
+/* The AI pill: sparkle · AI · search, one control, centred on the text line; the bell matches its height. */
+.ai-mark { display: inline-flex; align-items: center; gap: 6px; line-height: 1; }
+.ai-mark b { font-weight: 900; letter-spacing: .3px; }
+.ai-mark svg { display: block; flex: none; }
+.ai-pill { min-height: 38px; height: 38px; padding: 0 14px; }
+.ai-pill.ai-fab { height: 52px; }
+.ep-bell { width: 38px; height: 38px; }
