@@ -139,7 +139,7 @@ async function episodes(onlyEmail?: string) {
       { role: "system", content: VOICE },
       {
         role: "user",
-        content: `כתבו את הפרק השבועי האישי של zap KNOW${p.display_name ? ` ל${p.display_name}` : ""} (תפקיד: ${p.role ?? "לא צוין"}).
+        content: `כתבו את הפרק השבועי האישי של zap UP${p.display_name ? ` ל${p.display_name}` : ""} (תפקיד: ${p.role ?? "לא צוין"}).
 card_he: כרטיס קצר לטימס ולמייל. פתיח של שורה, ואז שורה לכל פריט ("• כותרת: למה זה שווה לכם"). ${cont ? `בסוף שורה שמזמינה להמשיך את "${cont.items.title_he}" (סיימו ${cont.lessons_done.length} מתוך ${cont.items.lesson_plan.length} שיעורים).` : ""} עד 90 מילים.
 script_he: אותו תוכן כתסריט לאודיו של כ-2 דקות, משפטים קצרים לדיבור, בלי סימנים ובלי קישורים.
 JSON בלבד.
@@ -159,10 +159,10 @@ ${picks.map((i) => `- ${i.title_he}: ${i.why_he ?? ""}`).join("\n")}`,
     }, { onConflict: "user_id,week" });
     const ok = await notify({
       kind: "episode", to: p.email,
-      subject: "הפרק השבועי שלכם ב-zap KNOW",
+      subject: "הפרק השבועי שלכם ב-zap UP",
       html: mail("הפרק השבועי שלכם", out.card_he.split("\n").filter(Boolean), [
         ...(audioUrl ? [{ label: "להאזנה (2 דקות)", url: audioUrl }] : []),
-        { label: "לפתוח את zap KNOW", url: SITE, primary: !audioUrl },
+        { label: "לפתוח את zap UP", url: SITE, primary: !audioUrl },
       ]),
       teams_text: `${out.card_he}${audioUrl ? `
 להאזנה: ${audioUrl}` : ""}

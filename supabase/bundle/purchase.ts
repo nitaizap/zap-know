@@ -61,7 +61,7 @@ export function mail(title: string, lines: string[], buttons: { label: string; u
 <p style="font-size:22px;font-weight:900;color:#052b7a;margin:0 0 12px">${esc(title)}</p>
 ${lines.map((l) => `<p style="margin:0 0 10px">${esc(l)}</p>`).join("")}
 ${buttons.map((b) => `<a href="${b.url}" style="display:inline-block;margin:8px 0 0 8px;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:700;${b.primary === false ? "background:#e6eaf2;color:#052b7a" : "background:#052b7a;color:#fff"}">${esc(b.label)}</a>`).join("")}
-<p style="color:#73828e;font-size:12px;margin:18px 0 0">zap KNOW · מרכז הלמידה של zap</p></div>`;
+<p style="color:#73828e;font-size:12px;margin:18px 0 0">zap UP · מרכז הלמידה והידע של zap</p></div>`;
 }
 
 // Every run lands in run_log; failures also alert the owner.
@@ -72,7 +72,7 @@ export async function log(job: string, ok: boolean, detail: unknown) {
     await notify({
       kind: "alert",
       to: owner,
-      subject: `zap KNOW: משהו נתקע ב-${job}`,
+      subject: `zap UP: משהו נתקע ב-${job}`,
       html: mail(`משהו נתקע ב-${job}`, [
         "אחת האוטומציות לא הצליחה לרוץ עד הסוף. הפרטים ביומן הפעולות, במסך הניהול.",
         JSON.stringify(detail).slice(0, 600),
@@ -81,7 +81,7 @@ export async function log(job: string, ok: boolean, detail: unknown) {
   }
 }
 
-export const VOICE = `את/ה כותב/ת בשם zap KNOW, מרכז הלמידה של עובדי zap, בעברית זאפית (zap One Tone, עולם פנים ארגוני).
+export const VOICE = `את/ה כותב/ת בשם zap UP (zap KNOW), מרכז הלמידה והידע של עובדי zap, בעברית זאפית (zap One Tone, עולם פנים ארגוני).
 - פשוטה, חכמה, ישירה, אנושית, מקדמת. מדברים כמו קולגה, לא כמו HR.
 - העיקר קודם: מה זה → מה זה נותן לך → מה עושים עכשיו.
 - בתוכן ידע: בהירות לפני שובבות. רעיון אחד במשפט, קול פעיל, בלי סלנג כשהדיוק חשוב.
@@ -158,7 +158,7 @@ export function weekStart(d = new Date()) {
 
 // Learning budget purchases.
 //  POST (employee session) {item_id?, title, url, category, price, reason}
-//    within the monthly budget → auto_approved: buy now with the zap KNOW virtual card
+//    within the monthly budget → auto_approved: buy now with the zap UP virtual card
 //    above it → pending_manager: the direct manager gets a one-click request (Zapier → Teams/Outlook)
 //  GET ?id=&t=&d=approve|decline → the manager's one-click link, answers with a small page
 
@@ -168,7 +168,7 @@ const FN = `${Deno.env.get("SUPABASE_URL")}/functions/v1/purchase`;
 function page(title: string, body: string) {
   return new Response(
     `<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>zap KNOW</title><body style="font-family:Arial,sans-serif;color:#001c32;background:#f3f3f3;margin:0;padding:40px 16px">
+<title>zap UP</title><body style="font-family:Arial,sans-serif;color:#001c32;background:#f3f3f3;margin:0;padding:40px 16px">
 <div style="max-width:420px;margin:auto;background:#fff;border-radius:16px;padding:28px">
 <p style="font-size:24px;font-weight:900;color:#052b7a;margin:0 0 12px">${title}</p><p style="font-size:16px;line-height:1.6;margin:0">${body}</p></div></body></html>`,
     { headers: { "Content-Type": "text/html; charset=utf-8" } },
@@ -200,8 +200,8 @@ Deno.serve(async (req) => {
     const { data: who } = await admin.from("profiles").select("email").eq("user_id", p.user_id).single();
     if (who) {
       const text = status === "approved"
-        ? `המנהל/ת אישר/ה את "${p.title}". אפשר לקנות עכשיו עם הכרטיס של zap KNOW.`
-        : `"${p.title}" לא אושר הפעם. שווה לדבר עם המנהל/ת, או לחפש חלופה ב-zap KNOW.`;
+        ? `המנהל/ת אישר/ה את "${p.title}". אפשר לקנות עכשיו עם הכרטיס של zap UP.`
+        : `"${p.title}" לא אושר הפעם. שווה לדבר עם המנהל/ת, או לחפש חלופה ב-zap UP.`;
       await notify({
         kind: "decision", to: who.email,
         subject: status === "approved" ? `אושר: ${p.title}` : `לא אושר הפעם: ${p.title}`,

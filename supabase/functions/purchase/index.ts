@@ -1,6 +1,6 @@
 // Learning budget purchases.
 //  POST (employee session) {item_id?, title, url, category, price, reason}
-//    within the monthly budget → auto_approved: buy now with the zap KNOW virtual card
+//    within the monthly budget → auto_approved: buy now with the zap UP virtual card
 //    above it → pending_manager: the direct manager gets a one-click request (Zapier → Teams/Outlook)
 //  GET ?id=&t=&d=approve|decline → the manager's one-click link, answers with a small page
 import { admin, cors, json, log, mail, notify, zapUser } from "../_shared/core.ts";
@@ -11,7 +11,7 @@ const FN = `${Deno.env.get("SUPABASE_URL")}/functions/v1/purchase`;
 function page(title: string, body: string) {
   return new Response(
     `<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>zap KNOW</title><body style="font-family:Arial,sans-serif;color:#001c32;background:#f3f3f3;margin:0;padding:40px 16px">
+<title>zap UP</title><body style="font-family:Arial,sans-serif;color:#001c32;background:#f3f3f3;margin:0;padding:40px 16px">
 <div style="max-width:420px;margin:auto;background:#fff;border-radius:16px;padding:28px">
 <p style="font-size:24px;font-weight:900;color:#052b7a;margin:0 0 12px">${title}</p><p style="font-size:16px;line-height:1.6;margin:0">${body}</p></div></body></html>`,
     { headers: { "Content-Type": "text/html; charset=utf-8" } },
@@ -43,8 +43,8 @@ Deno.serve(async (req) => {
     const { data: who } = await admin.from("profiles").select("email").eq("user_id", p.user_id).single();
     if (who) {
       const text = status === "approved"
-        ? `המנהל/ת אישר/ה את "${p.title}". אפשר לקנות עכשיו עם הכרטיס של zap KNOW.`
-        : `"${p.title}" לא אושר הפעם. שווה לדבר עם המנהל/ת, או לחפש חלופה ב-zap KNOW.`;
+        ? `המנהל/ת אישר/ה את "${p.title}". אפשר לקנות עכשיו עם הכרטיס של zap UP.`
+        : `"${p.title}" לא אושר הפעם. שווה לדבר עם המנהל/ת, או לחפש חלופה ב-zap UP.`;
       await notify({
         kind: "decision", to: who.email,
         subject: status === "approved" ? `אושר: ${p.title}` : `לא אושר הפעם: ${p.title}`,

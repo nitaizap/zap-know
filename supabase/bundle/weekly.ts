@@ -62,7 +62,7 @@ export function mail(title: string, lines: string[], buttons: { label: string; u
 <p style="font-size:22px;font-weight:900;color:#052b7a;margin:0 0 12px">${esc(title)}</p>
 ${lines.map((l) => `<p style="margin:0 0 10px">${esc(l)}</p>`).join("")}
 ${buttons.map((b) => `<a href="${b.url}" style="display:inline-block;margin:8px 0 0 8px;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:700;${b.primary === false ? "background:#e6eaf2;color:#052b7a" : "background:#052b7a;color:#fff"}">${esc(b.label)}</a>`).join("")}
-<p style="color:#73828e;font-size:12px;margin:18px 0 0">zap KNOW · מרכז הלמידה של zap</p></div>`;
+<p style="color:#73828e;font-size:12px;margin:18px 0 0">zap UP · מרכז הלמידה והידע של zap</p></div>`;
 }
 
 // Every run lands in run_log; failures also alert the owner.
@@ -73,7 +73,7 @@ export async function log(job: string, ok: boolean, detail: unknown) {
     await notify({
       kind: "alert",
       to: owner,
-      subject: `zap KNOW: משהו נתקע ב-${job}`,
+      subject: `zap UP: משהו נתקע ב-${job}`,
       html: mail(`משהו נתקע ב-${job}`, [
         "אחת האוטומציות לא הצליחה לרוץ עד הסוף. הפרטים ביומן הפעולות, במסך הניהול.",
         JSON.stringify(detail).slice(0, 600),
@@ -82,7 +82,7 @@ export async function log(job: string, ok: boolean, detail: unknown) {
   }
 }
 
-export const VOICE = `את/ה כותב/ת בשם zap KNOW, מרכז הלמידה של עובדי zap, בעברית זאפית (zap One Tone, עולם פנים ארגוני).
+export const VOICE = `את/ה כותב/ת בשם zap UP (zap KNOW), מרכז הלמידה והידע של עובדי zap, בעברית זאפית (zap One Tone, עולם פנים ארגוני).
 - פשוטה, חכמה, ישירה, אנושית, מקדמת. מדברים כמו קולגה, לא כמו HR.
 - העיקר קודם: מה זה → מה זה נותן לך → מה עושים עכשיו.
 - בתוכן ידע: בהירות לפני שובבות. רעיון אחד במשפט, קול פעיל, בלי סלנג כשהדיוק חשוב.
@@ -296,7 +296,7 @@ async function episodes(onlyEmail?: string) {
       { role: "system", content: VOICE },
       {
         role: "user",
-        content: `כתבו את הפרק השבועי האישי של zap KNOW${p.display_name ? ` ל${p.display_name}` : ""} (תפקיד: ${p.role ?? "לא צוין"}).
+        content: `כתבו את הפרק השבועי האישי של zap UP${p.display_name ? ` ל${p.display_name}` : ""} (תפקיד: ${p.role ?? "לא צוין"}).
 card_he: כרטיס קצר לטימס ולמייל. פתיח של שורה, ואז שורה לכל פריט ("• כותרת: למה זה שווה לכם"). ${cont ? `בסוף שורה שמזמינה להמשיך את "${cont.items.title_he}" (סיימו ${cont.lessons_done.length} מתוך ${cont.items.lesson_plan.length} שיעורים).` : ""} עד 90 מילים.
 script_he: אותו תוכן כתסריט לאודיו של כ-2 דקות, משפטים קצרים לדיבור, בלי סימנים ובלי קישורים.
 JSON בלבד.
@@ -316,10 +316,10 @@ ${picks.map((i) => `- ${i.title_he}: ${i.why_he ?? ""}`).join("\n")}`,
     }, { onConflict: "user_id,week" });
     const ok = await notify({
       kind: "episode", to: p.email,
-      subject: "הפרק השבועי שלכם ב-zap KNOW",
+      subject: "הפרק השבועי שלכם ב-zap UP",
       html: mail("הפרק השבועי שלכם", out.card_he.split("\n").filter(Boolean), [
         ...(audioUrl ? [{ label: "להאזנה (2 דקות)", url: audioUrl }] : []),
-        { label: "לפתוח את zap KNOW", url: SITE, primary: !audioUrl },
+        { label: "לפתוח את zap UP", url: SITE, primary: !audioUrl },
       ]),
       teams_text: `${out.card_he}${audioUrl ? `
 להאזנה: ${audioUrl}` : ""}

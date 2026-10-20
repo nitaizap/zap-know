@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
     await notify({
       kind: "share",
       to: b.channel === "colleague" ? to!.email : channelBox,
-      subject: `${from} שיתף/ה איתך מ-zap KNOW: ${item.title_he}`,
-      html: mail("שיתפו איתך משהו", lines, [{ label: "לפתוח ב-zap KNOW", url: link }]),
+      subject: `${from} שיתף/ה איתך מ-zap UP: ${item.title_he}`,
+      html: mail("שיתפו איתך משהו", lines, [{ label: "לפתוח ב-zap UP", url: link }]),
       teams_text: `${lines.join("\n")}
 ${link}`,
       teams_to: b.channel === "colleague" ? to!.email : "channel",

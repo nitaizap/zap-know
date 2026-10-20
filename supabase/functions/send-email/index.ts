@@ -22,8 +22,8 @@ Deno.serve(async (req) => {
   const ok = await notify({
     kind: "login",
     to: p.user.email,
-    subject: `${code} הוא הקוד שלכם ל-zap KNOW`,
-    html: mail("הקוד שלכם ל-zap KNOW", [
+    subject: `${code} הוא הקוד שלכם ל-zap UP`,
+    html: mail("הקוד שלכם ל-zap UP", [
       "מעתיקים את הקוד למסך הכניסה, וזהו, אתם בפנים.",
       code,
       "הקוד תקף לשעה. לא ביקשתם להיכנס? אפשר פשוט להתעלם מהמייל.",

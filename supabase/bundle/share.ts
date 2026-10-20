@@ -61,7 +61,7 @@ export function mail(title: string, lines: string[], buttons: { label: string; u
 <p style="font-size:22px;font-weight:900;color:#052b7a;margin:0 0 12px">${esc(title)}</p>
 ${lines.map((l) => `<p style="margin:0 0 10px">${esc(l)}</p>`).join("")}
 ${buttons.map((b) => `<a href="${b.url}" style="display:inline-block;margin:8px 0 0 8px;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:700;${b.primary === false ? "background:#e6eaf2;color:#052b7a" : "background:#052b7a;color:#fff"}">${esc(b.label)}</a>`).join("")}
-<p style="color:#73828e;font-size:12px;margin:18px 0 0">zap KNOW · מרכז הלמידה של zap</p></div>`;
+<p style="color:#73828e;font-size:12px;margin:18px 0 0">zap UP · מרכז הלמידה והידע של zap</p></div>`;
 }
 
 // Every run lands in run_log; failures also alert the owner.
@@ -72,7 +72,7 @@ export async function log(job: string, ok: boolean, detail: unknown) {
     await notify({
       kind: "alert",
       to: owner,
-      subject: `zap KNOW: משהו נתקע ב-${job}`,
+      subject: `zap UP: משהו נתקע ב-${job}`,
       html: mail(`משהו נתקע ב-${job}`, [
         "אחת האוטומציות לא הצליחה לרוץ עד הסוף. הפרטים ביומן הפעולות, במסך הניהול.",
         JSON.stringify(detail).slice(0, 600),
@@ -81,7 +81,7 @@ export async function log(job: string, ok: boolean, detail: unknown) {
   }
 }
 
-export const VOICE = `את/ה כותב/ת בשם zap KNOW, מרכז הלמידה של עובדי zap, בעברית זאפית (zap One Tone, עולם פנים ארגוני).
+export const VOICE = `את/ה כותב/ת בשם zap UP (zap KNOW), מרכז הלמידה והידע של עובדי zap, בעברית זאפית (zap One Tone, עולם פנים ארגוני).
 - פשוטה, חכמה, ישירה, אנושית, מקדמת. מדברים כמו קולגה, לא כמו HR.
 - העיקר קודם: מה זה → מה זה נותן לך → מה עושים עכשיו.
 - בתוכן ידע: בהירות לפני שובבות. רעיון אחד במשפט, קול פעיל, בלי סלנג כשהדיוק חשוב.
@@ -190,8 +190,8 @@ Deno.serve(async (req) => {
     await notify({
       kind: "share",
       to: b.channel === "colleague" ? to!.email : channelBox,
-      subject: `${from} שיתף/ה איתך מ-zap KNOW: ${item.title_he}`,
-      html: mail("שיתפו איתך משהו", lines, [{ label: "לפתוח ב-zap KNOW", url: link }]),
+      subject: `${from} שיתף/ה איתך מ-zap UP: ${item.title_he}`,
+      html: mail("שיתפו איתך משהו", lines, [{ label: "לפתוח ב-zap UP", url: link }]),
       teams_text: `${lines.join("\n")}
 ${link}`,
       teams_to: b.channel === "colleague" ? to!.email : "channel",
