@@ -222,7 +222,7 @@ begin
       sh.by_name as shared_by,
       me.role as my_role,
       (select ma.f from feats ft join my_aff ma on ma.f = ft.f where ft.id = pool.id and ma.w > 0
-         order by ma.w desc limit 1) as top_f
+         order by (ma.f like 't:%' or ma.f like 'tool:%' or ma.f like 's:%') desc, ma.w desc limit 1) as top_f
     from pool
     cross join me
     left join team_docs td on td.id = pool.doc_id
