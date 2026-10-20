@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DetailLink } from './detail'
 import { Layer } from './Layer'
 import { Avatar, useFaces } from './Avatar'
@@ -220,26 +220,42 @@ export function ShareSheet({ item, onClose }: { item: Item; onClose: () => void 
   )
 }
 
-type Comment = { id: number; user_id: string; author_name: string; body: string; at: string }
+type Comment = { id: number; user_id: string; author_name: string; body: string; at: string; pending?: boolean }
 
-// "@" in a comment opens a colleague picker; whoever is still @mentioned when it's posted gets an email.
-export function Comments({ item, myId, bare, onCount }: { item: Item; myId: string; bare?: boolean; onCount?: (n: number) => void }) {
+// The conversation on an item: the list, and a composer that is always there, pinned at the
+// bottom (docked) in the side panel and the phone sheet, inline on full pages.
+export function Comments({ item, myId, bare, docked, autoFocus, onCount }: {
+  item: Item; myId: string; bare?: boolean; docked?: boolean; autoFocus?: boolean; onCount?: (n: number) => void
+}) {
   const [list, setList] = useState<Comment[] | null>(null)
+  const [failed, setFailed] = useState(false)
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
   const [reported, setReported] = useState<number[]>([])
   const [mq, setMq] = useState<string | null>(null) // the text after "@" while picking
   const [matches, setMatches] = useState<Person[]>([])
   const [mentioned, setMentioned] = useState<Person[]>([])
   const [notified, setNotified] = useState('')
-  const face = useFaces([...(list ?? []).map((c) => c.user_id), ...matches.map((m) => m.user_id)])
+  const [me, setMe] = useState<{ name: string; avatar_url?: string | null; avatar_style?: string | null; avatar_color?: string | null } | null>(null)
+  const face = useFaces([...(list ?? []).map((c) => c.user_id), ...matches.map((m) => m.user_id), myId])
+  const box = useRef<HTMLTextAreaElement>(null)
+  const scroller = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    setList(null); setFailed(false)
     supabase.from('comments').select('id,user_id,author_name,body,at').eq('item_id', item.id).order('at')
-      .then(({ data, error }) => setList(error ? null : (data as Comment[]) ?? []))
+      .then(({ data, error }) => { if (error) { setFailed(true); setList([]) } else setList((data as Comment[]) ?? []) })
   }, [item.id])
-
-  useEffect(() => { if (list) onCount?.(list.length) }, [list?.length])
+  useEffect(() => {
+    if (!myId) return
+    supabase.from('profiles').select('display_name,email,avatar_url,avatar_style,avatar_color').eq('user_id', myId).maybeSingle()
+      .then(({ data }) => { const p = data as { display_name: string | null; email: string } | null; if (p) setMe({ ...p, name: p.display_name || p.email.split('@')[0] }) })
+  }, [myId])
+  useEffect(() => { if (autoFocus) setTimeout(() => box.current?.focus({ preventScroll: true }), 250) }, [autoFocus, item.id])
+  useEffect(() => { if (list) onCount?.(list.filter((c) => !c.pending).length) }, [list?.length])
+  // New comments land at the bottom, next to the composer.
+  useEffect(() => { if (docked) scroller.current?.scrollTo({ top: scroller.current.scrollHeight }) }, [list?.length, docked])
 
   useEffect(() => {
     if (mq === null) { setMatches([]); return }
@@ -248,8 +264,6 @@ export function Comments({ item, myId, bare, onCount }: { item: Item; myId: stri
     }, 150)
     return () => clearTimeout(t)
   }, [mq])
-
-  if (list === null || item.kind === 'internal') return null
 
   function onType(v: string) {
     setBody(v)
@@ -261,20 +275,31 @@ export function Comments({ item, myId, bare, onCount }: { item: Item; myId: stri
     setBody((b) => b.replace(/@([^\s@]{0,20})$/, `@${p.name} `))
     setMentioned((m) => (m.some((x) => x.user_id === p.user_id) ? m : [...m, p]))
     setMq(null)
+    box.current?.focus()
   }
 
-  async function add(e: React.FormEvent) {
-    e.preventDefault()
-    if (!body.trim()) return
-    setBusy(true)
+  async function add(e?: React.FormEvent) {
+    e?.preventDefault()
     const text = body.trim()
+    if (!text || busy) return
+    setBusy(true); setErr('')
+    // Optimistic: it's in the list (and the card's count) right away.
+    const temp: Comment = { id: -Date.now(), user_id: myId, author_name: me?.name ?? 'אתם', body: text, at: new Date().toISOString(), pending: true }
+    setList((l) => [...(l ?? []), temp])
+    setBody('')
+    const before = store.get(item.id)?.comments_count ?? 0
+    setSocial(item.id, { comments_count: before + 1 })
     const { data, error } = await supabase.rpc('add_comment', { p_item: item.id, p_body: text })
     setBusy(false)
-    if (error || !data) return
-    setList((l) => [...(l ?? []), data as Comment])
+    if (error || !data) {
+      setList((l) => (l ?? []).filter((c) => c.id !== temp.id))
+      setSocial(item.id, { comments_count: before })
+      setBody(text)
+      setErr('התגובה לא עלתה. נסו שוב.')
+      return
+    }
+    setList((l) => (l ?? []).map((c) => (c.id === temp.id ? (data as Comment) : c)))
     earn('comment')
-    setBody('')
-    setSocial(item.id, { comments_count: (store.get(item.id)?.comments_count ?? 0) + 1 })
     const toTell = mentioned.filter((p) => p.user_id !== myId && text.includes(`@${p.name}`))
     setMentioned([])
     if (toTell.length) {
@@ -295,41 +320,50 @@ export function Comments({ item, myId, bare, onCount }: { item: Item; myId: stri
     await supabase.rpc('report_comment', { p_comment: id })
   }
 
+  const myFace = face(myId) ?? { user_id: myId, ...(me ?? { name: 'אתם' }) }
   return (
-    <section id="comments" className={bare ? 'card itab-body' : 'card'} style={bare ? undefined : { marginTop: 24 }}>
-      {!bare && <h2 style={{ fontWeight: 900, fontSize: 19, margin: '0 0 10px' }}>מה אומרים פה</h2>}
-      {list.length === 0 && <p className="small muted">עוד אין תגובות. מה לקחתם מזה?</p>}
-      <ul className="comments">
-        {list.map((c) => (
-          <li key={c.id}>
-            <div className="row" style={{ gap: 6 }}>
-              <Avatar face={face(c.user_id) ?? { user_id: c.user_id, name: c.author_name }} size={28} />
-              <b>{c.author_name}</b>
-              <span className="small muted">{new Date(c.at).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
-              <span style={{ marginInlineStart: 'auto' }} />
-              {c.user_id === myId ? (
-                <button className="linkbtn small" onClick={() => remove(c.id)}>למחוק</button>
-              ) : reported.includes(c.id) ? (
-                <span className="small muted">קיבלנו, תודה</span>
-              ) : (
-                <button className="linkbtn small" onClick={() => report(c.id)}>לדווח</button>
-              )}
-            </div>
-            <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{c.body}</p>
-          </li>
-        ))}
-      </ul>
-      <form onSubmit={add} style={{ marginTop: 12 }}>
+    <section id="comments" className={`cmts${docked ? ' docked' : ''}${bare ? '' : ' card'}`} style={bare || docked ? undefined : { marginTop: 24 }}>
+      {!bare && !docked && <h2 style={{ fontWeight: 900, fontSize: 19, margin: '0 0 10px' }}>מה אומרים פה</h2>}
+      <div className="cmts-list" ref={scroller}>
+        {list === null && <p className="small muted">טוענים את התגובות</p>}
+        {list?.length === 0 && <p className="cmts-empty">{failed ? 'לא הצלחנו לטעון את התגובות כרגע.' : 'עוד אין תגובות. אתם ראשונים'}</p>}
+        <ul className="comments">
+          {(list ?? []).map((c) => (
+            <li key={c.id} className={c.pending ? 'pending' : ''}>
+              <div className="row" style={{ gap: 6 }}>
+                <Avatar face={face(c.user_id) ?? { user_id: c.user_id, name: c.author_name }} size={32} />
+                <b>{c.author_name}</b>
+                <span className="small muted">{c.pending ? 'שולחים' : new Date(c.at).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
+                <span style={{ marginInlineStart: 'auto' }} />
+                {c.pending ? null : c.user_id === myId ? (
+                  <button className="linkbtn small" onClick={() => remove(c.id)}>למחוק</button>
+                ) : reported.includes(c.id) ? (
+                  <span className="small muted">קיבלנו, תודה</span>
+                ) : (
+                  <button className="linkbtn small" onClick={() => report(c.id)}>לדווח</button>
+                )}
+              </div>
+              <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{c.body}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <form className="cmts-compose" onSubmit={add}>
+        <Avatar face={myFace} size={32} />
         <div className="mention-wrap">
-          <textarea className="textarea" maxLength={1000} value={body} onChange={(e) => onType(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Escape') setMq(null) }}
-            placeholder="שווה? לא שווה? טיפ למי שמתחיל? אפשר לתייג עם @" style={{ minHeight: 70 }} aria-describedby="mention-hint" />
+          <textarea ref={box} className="cmts-input" rows={1} maxLength={1000} value={body} onChange={(e) => onType(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setMq(null)
+              // Enter sends, Shift+Enter is a new line (not while picking someone to tag).
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && mq === null) { e.preventDefault(); add() }
+            }}
+            placeholder="הוסיפו תגובה…" aria-label="הוסיפו תגובה" aria-describedby="mention-hint" />
           {mq !== null && matches.length > 0 && (
             <ul className="mention-pick" role="listbox" aria-label="לתייג עמית או עמיתה">
               {matches.map((p) => (
                 <li key={p.user_id}>
                   <button type="button" role="option" aria-selected="false" onClick={() => pick(p)}>
-                    <Avatar face={face(p.user_id) ?? { user_id: p.user_id, name: p.name }} size={26} />
+                    <Avatar face={face(p.user_id) ?? { user_id: p.user_id, name: p.name }} size={24} />
                     <b>{p.name}</b> <span className="small muted">{p.role ?? ''}</span>
                   </button>
                 </li>
@@ -337,15 +371,17 @@ export function Comments({ item, myId, bare, onCount }: { item: Item; myId: stri
             </ul>
           )}
         </div>
-        <span id="mention-hint" className="small muted">תיוג שולח את התגובה במייל.</span>
-        <div><button className="btn" style={{ marginTop: 8 }} disabled={!body.trim() || busy}>{busy ? 'מפרסמים' : 'לפרסם תגובה'}</button></div>
-        {notified && <div className="notice ok mention-toast" role="status">{notified}</div>}
+        <button className="cmts-send" disabled={!body.trim() || busy} aria-label="לשלוח תגובה">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 12l18-9-6 18-3-7-9-2z" transform="scale(-1,1) translate(-24,0)" /></svg>
+        </button>
       </form>
+      <span id="mention-hint" className="cmts-hint">@ מתייג עמית, וזה נשלח אליו במייל.</span>
+      {err && <div className="notice err" role="alert">{err}</div>}
+      {notified && <div className="notice ok mention-toast" role="status">{notified}</div>}
     </section>
   )
 }
 
-// Ranked feed (team-aware). Null when the ranking isn't available, so callers can fall back.
 export type FeedRow = { id: number; score: number; popular_with: string | null; shared_by: string | null }
 export async function loadFeed(limit: number, topic?: string | null, kind?: string | null): Promise<FeedRow[] | null> {
   const { data, error } = await supabase.rpc('feed', { p_limit: limit, p_topic: topic ?? null, p_kind: kind ?? null })

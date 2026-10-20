@@ -467,14 +467,14 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
 
       {/* Desktop: a panel only when something was opened. ✕ or Esc and it's gone. */}
       {desk && panel && (
-        <aside className="fd-panel" aria-label={panel.kind === 'comments' ? 'תגובות' : 'פרטים'}>
+        <aside className={`fd-panel${panel.kind === 'comments' ? ' cm' : ''}`} aria-label={panel.kind === 'comments' ? 'תגובות' : 'פרטים'}>
           <div className="fp-head">
             <b>{panel.kind === 'comments' ? 'תגובות' : 'פרטים'}</b>
             <button className="fp-x" onClick={() => setPanel(null)} aria-label="לסגור"><IcoX /></button>
           </div>
           <div className="fp-body">
             {panel.kind === 'comments'
-              ? <Comments key={panel.item.id} item={panel.item} myId={myId} bare />
+              ? <Comments key={panel.item.id} item={panel.item} myId={myId} bare docked autoFocus />
               : <DetailBody target={panel.target} onOpen={(t) => setPanel({ kind: 'details', target: t })} />}
           </div>
         </aside>
@@ -488,7 +488,7 @@ export default function Feed({ source, head, listTo, agent, q = '', chip, prefix
                 <b>תגובות</b>
                 <button onClick={() => setSheet(null)} aria-label="לסגור"><IcoX /></button>
               </div>
-              <div className="fd-sheet-body"><Comments item={sheet.item} myId={myId} bare /></div>
+              <div className="fd-sheet-body cm"><Comments item={sheet.item} myId={myId} bare docked autoFocus /></div>
             </div>
           </div>
         </Layer>

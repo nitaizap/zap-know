@@ -373,3 +373,30 @@
 .aa-sheet, .me-sheet-img { width: 100%; border-radius: 14px; border: 1px solid #e6e8eb; background: #fff; }
 .me-avatar-block { margin: 16px 0; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .ob-ai { text-align: start; margin: 8px 0 12px; padding: 14px; border-radius: 16px; background: #f6f7f9; }
+
+/* ---------- Comments: the composer is always there ---------- */
+.cmts { display: flex; flex-direction: column; gap: 8px; }
+.cmts-list { min-width: 0; }
+.cmts-empty { margin: 12px 0; color: #4d6070; font-size: 15px; }
+.comments li.pending { opacity: .6; }
+.cmts-compose { display: flex; align-items: flex-end; gap: 8px; margin: 0; padding: 10px 0 0; border-top: 1px solid #e6e8eb; position: static !important; background: #fff; }
+.cmts-compose .mention-wrap { flex: 1; min-width: 0; position: relative; }
+.cmts-input { width: 100%; resize: none; min-height: 44px; max-height: 140px; border: 1.5px solid #c1cade; border-radius: 22px; padding: 10px 16px; font: inherit; font-size: 16px; line-height: 1.4; field-sizing: content; }
+.cmts-input:focus { outline: none; border-color: #052b7a; box-shadow: 0 0 0 3px rgba(5, 43, 122, .18); }
+.cmts-send { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: #052b7a; color: #fff; display: grid; place-items: center; cursor: pointer; }
+.cmts-send:disabled { opacity: .4; cursor: default; }
+.cmts-send:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; }
+.cmts-compose .mention-pick { top: auto; bottom: 100%; margin: 0 0 6px; }
+.cmts-hint { font-size: 12px; color: #73828e; }
+/* Docked (side panel, phone sheet): header fixed, list scrolls, composer pinned at the bottom. */
+.cmts.docked { height: 100%; min-height: 0; gap: 0; }
+.cmts.docked .cmts-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 8px; }
+.cmts.docked .cmts-compose { flex: none; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); }
+.cmts.docked .cmts-hint { flex: none; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+.fd-sheet-body.cm { overflow: hidden; display: flex; flex-direction: column; padding: 0 16px; }
+.fd-sheet-body.cm > .cmts { flex: 1; }
+@media (min-width: 1024px) {
+  .fd-panel.cm { overflow: hidden; }
+  .fd-panel.cm .fp-body { min-height: 0; display: flex; flex-direction: column; padding-bottom: 0; }
+  .fd-panel.cm .fp-body > .cmts { flex: 1; }
+}
