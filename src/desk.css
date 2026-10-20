@@ -200,3 +200,87 @@
   .st.live .st-img, .st-shim, .fd-media.live .fd-shot.on, .fd-media.live .docpv.big ul, .fd-media .fd-pod.on .fd-eq i, .fd-panel { animation: none !important; }
   .fd-video, .st-img { transition: none; }
 }
+
+/* ---------- Round 3: one frame for every post ---------- */
+.tabbar { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 1024px) {
+  /* Every card is the same 9:16 frame, whatever the media; the media fits inside it. */
+  .desk .fd-inner, .desk .shape-wide .fd-inner, .desk .shape-square .fd-inner {
+    height: calc(100cqh - 32px); width: calc((100cqh - 32px) * 9 / 16); max-width: calc(100cqw - 110px); aspect-ratio: auto; }
+  .desk .fd-title { font-size: clamp(20px, 2.6cqh, 26px); }
+}
+.fd-mp4 { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+
+/* Team document: the doc's own material as a poster in the team's colour. */
+.dv { position: absolute; inset: 0; overflow: hidden; display: flex; flex-direction: column; gap: 18px; padding: 150px 24px 150px; }
+.dv-shape { position: absolute; border-radius: 28%; background: currentColor; opacity: .08; pointer-events: none; }
+.dv-shape.a { width: 70%; aspect-ratio: 1; inset-inline-end: -22%; top: -12%; }
+.dv-shape.b { width: 46%; aspect-ratio: 1; inset-inline-start: -16%; bottom: 18%; }
+.dv-team { position: relative; display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.dv-team b { font-weight: 700; }
+.dv-badge { width: 40px; height: 40px; border-radius: 12px; background: #fff; display: grid; place-items: center; font-weight: 900; font-size: 15px; flex: none; }
+.dv-quote { position: relative; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.dv-quote p { margin: 0; font-weight: 300; font-size: 17px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.dv-quote p.lead { font-weight: 900; font-size: clamp(22px, 6.4cqw, 30px); line-height: 1.25; -webkit-line-clamp: 4; }
+.dv-quote mark { background: none; color: inherit; }
+.dv-quote p.lead mark { background: linear-gradient(transparent 60%, rgba(255, 198, 0, .55) 60%); }
+.dv-foot { position: relative; margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.dv-faces { display: inline-flex; }
+.dv-faces > * { margin-inline-start: -10px; border: 2px solid #fff; border-radius: 50%; }
+.dv-faces > *:first-child { margin-inline-start: 0; }
+.dv-tools { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.dv-tool { width: 36px; height: 36px; border-radius: 10px; background: #fff; display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
+.dv-tool.txt { width: auto; padding: 0 10px; font-size: 12px; font-weight: 700; color: #001c32; }
+.dv.live .dv-shape.a { animation: dv-drift 14s ease-in-out infinite alternate; }
+@keyframes dv-drift { to { transform: translate(-6%, 6%) rotate(8deg); } }
+@media (min-width: 1024px) { .desk .dv { padding: 64px 24px 130px; } }
+
+/* Podcast art pulses gently while it plays. */
+.fd-pod.on .pod-art { animation: pod-pulse 1.6s ease-in-out infinite; }
+@keyframes pod-pulse { 50% { transform: scale(1.03); box-shadow: 0 22px 60px rgba(255, 92, 158, .45); } }
+
+/* ---------- The leaderboard that fits (no inner scroll) ---------- */
+.bc { display: flex; flex-direction: column; gap: 10px; min-height: 0; height: 100%; color: #001c32; }
+.bc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.bc-head > b { font-weight: 900; font-size: 20px; }
+.bc-toggles { display: flex; gap: 6px; flex-wrap: wrap; }
+.bc-toggles > span { display: inline-flex; background: #e6eaf2; border-radius: 999px; padding: 2px; }
+.bc-toggles button { border: 0; background: none; border-radius: 999px; padding: 5px 10px; font: inherit; font-size: 13px; font-weight: 700; color: #4d6070; cursor: pointer; min-height: 30px; }
+.bc-toggles button[aria-pressed="true"] { background: #052b7a; color: #fff; }
+.bc-list { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 140px; overflow: hidden; display: flex; flex-direction: column; }
+.bc-list li { height: 46px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 8px; border-radius: 12px; }
+.bc-list li.me { background: #fff9e6; box-shadow: inset 0 0 0 1.5px #ffc600; }
+.bc-rank { width: 22px; text-align: center; font-weight: 900; color: #052b7a; }
+.bc-av { width: 30px; height: 30px; border-radius: 50%; background: #e6eaf2; display: grid; place-items: center; font-weight: 900; color: #052b7a; }
+.bc-name { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.bc-name b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc-name small { font-size: 12px; color: #4d6070; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc-pts { font-weight: 900; font-variant-numeric: tabular-nums; }
+.bc-empty { height: auto !important; color: #4d6070; }
+.bc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: #4d6070; flex-wrap: wrap; }
+.bc-more { border: 0; background: #052b7a; color: #fff; border-radius: 12px; padding: 0 16px; min-height: 40px; font: inherit; font-weight: 900; cursor: pointer; }
+.bc-more:focus-visible, .bc-toggles button:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; }
+/* In the feed: a white board on the leaders card, inside the same frame. */
+.tk-leaders { padding: 118px 16px 24px !important; justify-content: stretch; overflow: hidden !important; }
+.tk-leaders > :first-child, .tk-leaders > :last-child { margin: 0; }
+.bc.dark { background: #fff; border-radius: 20px; padding: 16px; box-shadow: 0 20px 50px rgba(0, 0, 0, .35); }
+@media (min-width: 1024px) { .desk .tk-leaders { padding: 20px 16px !important; } }
+.me-panel .bc { height: auto; }
+.me-panel .bc-list { flex: none; height: calc(46px * 6); }
+
+/* ---------- האזור שלי: the chip and the search ---------- */
+.me-chip { display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px 3px 4px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .3);
+  background: rgba(0, 28, 50, .55); color: #fff; font: inherit; cursor: pointer; backdrop-filter: blur(8px); min-height: 40px; }
+.me-chip span { display: flex; flex-direction: column; line-height: 1.1; text-align: start; }
+.me-chip b { font-size: 13px; font-weight: 900; }
+.me-chip small { font-size: 11.5px; font-weight: 300; }
+.me-chip:hover { background: #052b7a; }
+.me-chip:focus-visible { outline: 3px solid #ffc600; outline-offset: 2px; }
+.tk-search { height: 38px; width: min(200px, 42vw); border-radius: 999px; border: 1px solid rgba(255, 255, 255, .4); background: rgba(0, 28, 50, .6); color: #fff;
+  padding: 0 14px; font: inherit; font-size: 15px; }
+.tk-search::placeholder { color: rgba(255, 255, 255, .7); }
+.tk-search:focus { outline: 3px solid #ffc600; outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dv.live .dv-shape.a, .fd-pod.on .pod-art { animation: none !important; }
+}

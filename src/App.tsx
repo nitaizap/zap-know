@@ -5,13 +5,11 @@ import { Profile, Topic, probeMediaCols, supabase } from './lib'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
-import External from './pages/External'
-import InternalHub from './pages/InternalHub'
 import TeamDetail from './pages/TeamDetail'
 import Admin from './pages/Admin'
 import Me from './pages/Me'
 import { PointsPill, Toaster } from './components/points'
-import { IBook, IClose, IHome, ILogout, IMenu, IShield, IUser, IUsers } from './components/icons'
+import { IClose, IHome, ILogout, IMenu, IShield, IUser } from './components/icons'
 import { Avatar } from './components/Avatar'
 import { SearchBox } from './components/SearchBox'
 import { AiButton, AiSheet } from './components/AiSheet'
@@ -91,8 +89,8 @@ export default function App() {
         <main className="container main">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/external" element={<External />} />
-            <Route path="/internal" element={<InternalHub />} />
+            <Route path="/external" element={<To path="/?tab=out" keep={[['ask', 'ask'], ['q', 'q']]} />} />
+            <Route path="/internal" element={<To path="/?tab=in" keep={[['ask', 'ask'], ['team', 'team']]} />} />
             <Route path="/me" element={<Me />} />
             <Route path="/item/:id" element={<DeepOpen kind="item" />} />
             <Route path="/teams/:id" element={<TeamDetail />} />
@@ -130,8 +128,6 @@ export default function App() {
 // Four pages, nothing else in the nav. Admin and sign-out live in the avatar menu.
 const PRIMARY = [
   { to: '/', label: 'בית', icon: IHome, end: true },
-  { to: '/external', label: 'ידע מבחוץ', icon: IBook },
-  { to: '/internal', label: 'ידע מבפנים', icon: IUsers },
   { to: '/me', label: 'האזור שלי', icon: IUser },
 ]
 
@@ -146,7 +142,7 @@ function Shell({ profile, topics, children }: { profile: Profile; topics: Topic[
   const loc = useLocation()
   const [params] = useSearchParams()
   // Feed pages own the whole screen.
-  const imm = loc.pathname === '/' || /^\/(item|doc)\//.test(loc.pathname) || (['/external', '/internal'].includes(loc.pathname) && params.get('view') !== 'list')
+  const imm = loc.pathname === '/' || loc.pathname === '/me' || /^\/(item|doc)\//.test(loc.pathname) || (['/external', '/internal'].includes(loc.pathname) && params.get('view') !== 'list')
   useEffect(() => { setOpen(false); setMenu(false) }, [loc.pathname])
   // A new page starts at the top; /me#section scrolls itself.
   useEffect(() => { if (!loc.hash) window.scrollTo(0, 0) }, [loc.pathname]) // eslint-disable-line react-hooks/exhaustive-deps

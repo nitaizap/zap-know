@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DetailLink } from '../components/detail'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import Feed from './Feed'
+import { Layer } from '../components/Layer'
+import { BoardCard } from '../components/board'
+import { IClose } from '../components/icons'
 import { useApp } from '../App'
 import { KIND_LABEL, Item, supabase } from '../lib'
 import { Empty, Skeletons, clip } from '../components/ui'
@@ -8,7 +12,6 @@ import { PrefsPanel } from '../components/prefs'
 import { PointsDashboard, useMyPoints } from '../components/points'
 import { Avatar } from '../components/Avatar'
 import { PageAgent } from '../components/PageAgent'
-import Leaderboard from './Leaderboard'
 import BudgetPage from './Budget'
 import '../lean.css'
 import { SUPABASE_URL, fmtMinutes } from '../lib'
@@ -83,7 +86,8 @@ const progressPct = (detail: string | null) => {
   return b > 0 ? Math.min(1, a / b) : 0
 }
 
-export default function Me() {
+// The profile sheet: me, my points and the board, my budget, my settings.
+export function MeDetails({ start }: { start?: MeTab }) {
   const { profile, topics, setProfile } = useApp()
   const [stats, setStats] = useState<Stats | null>(null)
   const [rows, setRows] = useState<Row[] | null | undefined>(undefined)
@@ -126,9 +130,7 @@ export default function Me() {
   }, [rows])
 
   const topicName = (slug: string | null) => topics.find((t) => t.slug === slug)?.name_he
-  const loc = useLocation()
-  const nav = useNavigate()
-  const tab = tabOfHash(loc.hash)
+  const [tab, setTab] = useState<MeTab>(start ?? 'points')
   const pts = useMyPoints()
   const name = profile.display_name || profile.email.split('@')[0]
 
@@ -148,9 +150,9 @@ export default function Me() {
       </header>
 
       <div className="me-tabs" role="tablist" aria-label="האזור שלי">
-        {ME_TABS.map((t) => (
+        {ME_TABS.filter((t) => t.key !== 'history').map((t) => (
           <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? 'on' : ''}
-            onClick={() => nav({ hash: t.key === 'history' ? '' : t.key }, { replace: true })}>{t.label}</button>
+            onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
       </div>
 
@@ -224,7 +226,7 @@ export default function Me() {
           </div>
         )}
         <h2 className="me-h2">הטבלה</h2>
-        <Leaderboard embedded />
+        <BoardCard />
       </section>}
 
       {tab === 'budget' && <section className="me-panel"><BudgetPage embedded /></section>}
@@ -337,5 +339,84 @@ function MyReminders() {
         ))}
       </ul>
     </section>
+  )
+}
+
+// האזור שלי looks like the rest of zap UP: the same full-screen feed, with my own lanes and a search.
+// Profile, points, the board, budget and settings live behind the chip, in a sheet.
+const LANES = [
+  { key: 'saved', label: 'שמרתי' }, { key: 'later', label: 'אחר כך' }, { key: 'history', label: 'היסטוריה' },
+] as const
+
+export default function Me() {
+  const { profile } = useApp()
+  const loc = useLocation()
+  const [params, setParams] = useSearchParams()
+  const lane = LANES.find((l) => l.key === params.get('lane'))?.key ?? 'saved'
+  const [q, setQ] = useState('')
+  const [dq, setDq] = useState('')
+  const [searching, setSearching] = useState(false)
+  // Old links (/me#budget, /me#leaderboard, /me#prefs) open the sheet on their tab.
+  const [sheet, setSheet] = useState<MeTab | null>(() => {
+    const t = loc.hash && loc.hash !== '#' ? tabOfHash(loc.hash) : null
+    return t === 'history' ? null : t
+  })
+  const pts = useMyPoints()
+  const name = profile.display_name || profile.email.split('@')[0]
+
+  useEffect(() => { const t = setTimeout(() => setDq(q), 300); return () => clearTimeout(t) }, [q])
+  useEffect(() => {
+    if (!sheet) return
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setSheet(null) }
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [sheet])
+
+  const pick = (key: string) => {
+    const next = new URLSearchParams(params)
+    next.set('lane', key)
+    setParams(next, { replace: true })
+  }
+
+  const chip = (
+    <button type="button" className="me-chip" onClick={() => setSheet('points')} aria-label={`הפרופיל שלי${pts ? `, ${pts.level.name}, ${pts.month} נקודות החודש` : ''}`}>
+      <Avatar face={{ ...profile, name }} size={30} />
+      {pts && <span><b>{pts.level.name}</b><small>{pts.month.toLocaleString('he-IL')} נק׳</small></span>}
+    </button>
+  )
+  const head = (
+    <>
+      {LANES.map((l) => (
+        <button key={l.key} role="tab" aria-selected={l.key === lane} className={`tk-tab${l.key === lane ? ' on' : ''}`} onClick={() => pick(l.key)}>{l.label}</button>
+      ))}
+      {searching || q ? (
+        <input className="tk-search" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש אצלי"
+          aria-label="חיפוש באזור שלי" onBlur={() => { if (!q) setSearching(false) }} onKeyDown={(e) => { if (e.key === 'Escape') { setQ(''); setSearching(false) } }} />
+      ) : (
+        <button type="button" className="tk-ico" aria-label="חיפוש באזור שלי" onClick={() => setSearching(true)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+        </button>
+      )}
+    </>
+  )
+
+  return (
+    <>
+      <Feed key={lane} source={lane} q={dq} head={head} chip={chip} />
+      {sheet && (
+        <Layer>
+          <div className="dt-back" onClick={() => setSheet(null)}>
+            <section className="dt-sheet" role="dialog" aria-modal="true" aria-label="הפרופיל שלי" onClick={(e) => e.stopPropagation()}>
+              <header className="dt-head">
+                <span className="dt-grab" aria-hidden />
+                <b>הפרופיל שלי</b>
+                <button className="dt-x" onClick={() => setSheet(null)} aria-label="לסגור"><IClose /></button>
+              </header>
+              <div className="dt-body"><MeDetails start={sheet} /></div>
+            </section>
+          </div>
+        </Layer>
+      )}
+    </>
   )
 }
