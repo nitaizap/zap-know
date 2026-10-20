@@ -56,5 +56,5 @@ gamification, a learning budget and audio ("להאזנה", drive mode, personal 
 ## Working in parallel (two Claude accounts)
 - Work on a branch and open a PR; or agree file ownership before starting. Pull with
   `git pull --rebase --autostash` before every push.
-- Announce SQL patches by number (next free: `patch-024`). Never edit an applied patch; add a new one.
+- Announce SQL patches by number (next free: `patch-025`). Never edit an applied patch; add a new one.
 - Commit messages end with the Co-Authored-By / Claude-Session lines your session gives you.
